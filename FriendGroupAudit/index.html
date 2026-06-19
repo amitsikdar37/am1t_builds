@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friend Group Audit | Data-Driven Roast Engine</title>
+    <meta name="description" content="Upload your WhatsApp group chat export and get a brutally honest, data-driven roast of your friend group. Ranks friends on embarrassing metrics like response time, dry texting, ghosting, and late-night activity.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Scanline overlay -->
+    <div class="scanline-overlay"></div>
+
+    <!-- Animated background grid -->
+    <div class="bg-grid"></div>
+
+    <!-- Floating particles -->
+    <div id="particles"></div>
+
+    <!-- UPLOAD SCREEN -->
+    <section id="upload-screen" class="screen active">
+        <div class="glitch-container">
+            <h1 class="glitch-title" data-text="FRIEND GROUP AUDIT">FRIEND GROUP AUDIT</h1>
+        </div>
+        <p class="subtitle">DATA-DRIVEN ROAST ENGINE <span class="blink">v2.0</span></p>
+        <p class="tagline">Upload your WhatsApp chat export. We'll handle the emotional damage.</p>
+
+        <div class="upload-zone" id="upload-zone">
+            <div class="upload-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+            </div>
+            <p class="upload-text">DROP YOUR <span class="highlight">.txt</span> CHAT EXPORT HERE</p>
+            <p class="upload-subtext">or click to browse files</p>
+            <input type="file" id="file-input" accept=".txt" hidden>
+        </div>
+
+        <div class="file-info" id="file-info" style="display: none;">
+            <span class="file-icon">📄</span>
+            <span class="file-name" id="file-name"></span>
+            <span class="file-size" id="file-size"></span>
+        </div>
+
+        <button class="btn-audit" id="btn-audit" disabled>
+            <span class="btn-text">INITIATE AUDIT</span>
+            <span class="btn-arrow">→</span>
+        </button>
+    </section>
+
+    <!-- LOADING / ANALYSIS SCREEN -->
+    <section id="loading-screen" class="screen">
+        <div class="terminal-window">
+            <div class="terminal-header">
+                <div class="terminal-dots">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                </div>
+                <span class="terminal-title">audit_engine.exe</span>
+            </div>
+            <div class="terminal-body" id="terminal-body">
+                <!-- Animated terminal lines will be injected here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- RESULTS SCREEN -->
+    <section id="results-screen" class="screen">
+        <div class="results-header">
+            <h1 class="results-title">AUDIT COMPLETE</h1>
+            <p class="results-subtitle">Classification: <span class="highlight">FRIENDSHIP DAMAGE REPORT</span></p>
+            <div class="chat-meta" id="chat-meta"></div>
+        </div>
+
+        <div class="metrics-grid">
+            <!-- METRIC 1: BEROZGAR AWARD -->
+            <div class="metric-card" id="metric-berozgar">
+                <div class="metric-header">
+                    <div class="metric-icon">⚡</div>
+                    <div class="metric-label">
+                        <span class="metric-tag">[METRIC: RESPONSE LATENCY]</span>
+                        <h2 class="metric-title">The "Berozgar" Award</h2>
+                    </div>
+                </div>
+                <div class="metric-body" id="berozgar-body">
+                    <!-- Results injected -->
+                </div>
+            </div>
+
+            <!-- METRIC 2: DRY TEXTER INDEX -->
+            <div class="metric-card" id="metric-dry">
+                <div class="metric-header">
+                    <div class="metric-icon">🏜️</div>
+                    <div class="metric-label">
+                        <span class="metric-tag">[METRIC: LEXICAL DIVERSITY]</span>
+                        <h2 class="metric-title">The Dry Texter Index</h2>
+                    </div>
+                </div>
+                <div class="metric-body" id="dry-body">
+                    <!-- Results injected -->
+                </div>
+            </div>
+
+            <!-- METRIC 3: LEFT ON READ -->
+            <div class="metric-card" id="metric-ghost">
+                <div class="metric-header">
+                    <div class="metric-icon">👻</div>
+                    <div class="metric-label">
+                        <span class="metric-tag">[METRIC: THREAD DROP-OUTS]</span>
+                        <h2 class="metric-title">The "Left on Read" Champion</h2>
+                    </div>
+                </div>
+                <div class="metric-body" id="ghost-body">
+                    <!-- Results injected -->
+                </div>
+            </div>
+
+            <!-- METRIC 4: MIDNIGHT SIMP -->
+            <div class="metric-card" id="metric-midnight">
+                <div class="metric-header">
+                    <div class="metric-icon">🌙</div>
+                    <div class="metric-label">
+                        <span class="metric-tag">[METRIC: NIGHT-TIME ACTIVITY]</span>
+                        <h2 class="metric-title">The Midnight Simp</h2>
+                    </div>
+                </div>
+                <div class="metric-body" id="midnight-body">
+                    <!-- Results injected -->
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-audit btn-restart" id="btn-restart">
+            <span class="btn-text">RUN ANOTHER AUDIT</span>
+            <span class="btn-arrow">↻</span>
+        </button>
+    </section>
+
+    <script src="parser.js"></script>
+    <script src="analyzer.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
