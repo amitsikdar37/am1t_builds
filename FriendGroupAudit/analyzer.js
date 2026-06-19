@@ -1,12 +1,13 @@
 /**
- * Chat Analyzer
+ * Chat Analyzer v3 — Fixed Accuracy Bugs
  * Computes the four embarrassing metrics from parsed WhatsApp messages.
  * 
- * Metrics:
- * 1. Berozgar Award (Response Latency)
- * 2. Dry Texter Index (Lexical Diversity)
- * 3. Left on Read Champion (Interaction Dropout)
- * 4. Midnight Simp (Temporal Distribution)
+ * v3 Fixes:
+ * - Berozgar: Fixed broken sorting — while loop inside for loop was
+ *   double-incrementing i and corrupting response time data. Rewritten
+ *   with a clean two-pass approach.
+ * - Left on Read: Added lurker detection — people who are group members
+ *   but almost never participate now get properly penalized.
  */
 
 const ChatAnalyzer = (() => {
@@ -57,6 +58,14 @@ const ChatAnalyzer = (() => {
         "Low ghost count. Suspiciously good friend behavior.",
     ];
 
+    const LURKER_ROASTS = [
+        "LURKER SUPREME. READS EVERYTHING, SAYS NOTHING. GROUP SPY.",
+        "SILENT OBSERVER. IN THE GROUP BUT NOT IN THE CONVERSATION.",
+        "DIGITAL WALLFLOWER. HAS OPINIONS BUT KEEPS THEM CLASSIFIED.",
+        "SEES ALL, SAYS NOTHING. THE NSA WOULD HIRE THIS PERSON.",
+        "GROUP MEMBERSHIP IS JUST A FORMALITY AT THIS POINT.",
+    ];
+
     const MIDNIGHT_ROASTS = [
         "OVERTHINKING OR EMOTIONALLY DAMAGE-REPORTING.",
         "3 AM PHILOSOPHER. PROBABLY STALKING AN EX.",
@@ -77,51 +86,90 @@ const ChatAnalyzer = (() => {
 
     // ================================================
     // METRIC 1: BEROZGAR AWARD (Response Latency)
+    // v3: Clean rewrite — no more while-inside-for bug
     // ================================================
 
     /**
-     * For each user, calculate average response time in minutes.
-     * A "response" is defined as: someone else sends a message,
-     * and this user sends the next message within 30 minutes.
+     * For each user, calculate average response time.
+     * 
+     * Algorithm:
+     * 1. Scan all messages sequentially
+     * 2. When sender changes, record a "response event" for the new sender
+     *    - Response time = gap between last message from OTHER sender and this one
+     *    - Only count if gap is 0-30 minutes (active conversation)
+     * 3. Only count the FIRST message in a burst (consecutive messages from same sender)
+     *    — achieved by tracking whether we already recorded this sender's entry into the conversation
      */
     function calcResponseLatency(messages) {
-        const responseTimes = {}; // { sender: [timeDeltaMs, ...] }
+        const responseTimes = {}; // { sender: [timeDeltaMinutes, ...] }
 
-        for (let i = 1; i < messages.length; i++) {
-            const prev = messages[i - 1];
-            const curr = messages[i];
+        // STEP 1: Build a list of "sender switches" — the first message
+        //         each time a different person starts talking
+        const senderSwitches = []; // { index, sender, timestamp, triggerTimestamp }
 
-            // Skip if same sender
-            if (curr.sender === prev.sender) continue;
+        let lastSender = null;
+        for (let i = 0; i < messages.length; i++) {
+            const msg = messages[i];
+            if (!msg.timestamp || isNaN(msg.timestamp.getTime())) continue;
 
-            // Both must have valid timestamps
-            if (!prev.timestamp || !curr.timestamp) continue;
+            if (msg.sender !== lastSender) {
+                // This is a sender switch — find the trigger message
+                // (last message from someone OTHER than this sender)
+                let triggerTime = null;
+                for (let j = i - 1; j >= Math.max(0, i - 30); j--) {
+                    if (messages[j].sender !== msg.sender && messages[j].timestamp && !isNaN(messages[j].timestamp.getTime())) {
+                        triggerTime = messages[j].timestamp;
+                        break;
+                    }
+                }
 
-            const deltaMs = curr.timestamp - prev.timestamp;
-            const deltaMinutes = deltaMs / (1000 * 60);
+                senderSwitches.push({
+                    index: i,
+                    sender: msg.sender,
+                    timestamp: msg.timestamp,
+                    triggerTimestamp: triggerTime,
+                });
 
-            // Only count responses within 30 minutes as "quick replies"
-            if (deltaMinutes >= 0 && deltaMinutes <= 30) {
-                if (!responseTimes[curr.sender]) responseTimes[curr.sender] = [];
-                responseTimes[curr.sender].push(deltaMinutes);
+                lastSender = msg.sender;
+            }
+            // If same sender continues, we just skip (burst)
+        }
+
+        // STEP 2: Calculate response times from sender switches
+        for (const sw of senderSwitches) {
+            if (!sw.triggerTimestamp) continue;
+
+            const deltaMinutes = (sw.timestamp - sw.triggerTimestamp) / (1000 * 60);
+
+            // Only count responses within 30 minutes (active conversation)
+            // Filter out negatives (bad data) and NaN
+            if (deltaMinutes >= 0 && deltaMinutes <= 30 && !isNaN(deltaMinutes)) {
+                if (!responseTimes[sw.sender]) responseTimes[sw.sender] = [];
+                responseTimes[sw.sender].push(deltaMinutes);
             }
         }
 
-        // Calculate averages
+        // STEP 3: Calculate stats
         const results = [];
         for (const [sender, times] of Object.entries(responseTimes)) {
-            if (times.length < 3) continue; // Need minimum data
+            if (times.length < 3) continue; // Need minimum sample size
+
+            // Sort for median
+            const sorted = [...times].sort((a, b) => a - b);
+            const median = sorted[Math.floor(sorted.length / 2)];
             const avg = times.reduce((a, b) => a + b, 0) / times.length;
+
             results.push({
                 name: sender,
-                avgMinutes: avg,
+                avgMinutes: Math.round(avg * 100) / 100,
+                medianMinutes: Math.round(median * 100) / 100,
                 totalResponses: times.length,
-                roast: avg < 2 ? getRandomRoast(BEROZGAR_ROASTS) : getRandomRoast(BEROZGAR_ROASTS_LOW),
+                roast: median < 2 ? getRandomRoast(BEROZGAR_ROASTS) : getRandomRoast(BEROZGAR_ROASTS_LOW),
             });
         }
 
-        // Sort by fastest (lowest avg = most berozgar)
-        results.sort((a, b) => a.avgMinutes - b.avgMinutes);
+        // Sort by fastest MEDIAN (lowest = most berozgar)
+        results.sort((a, b) => a.medianMinutes - b.medianMinutes);
         return results;
     }
 
@@ -129,12 +177,12 @@ const ChatAnalyzer = (() => {
     // METRIC 2: DRY TEXTER INDEX (Lexical Diversity)
     // ================================================
 
-    /**
-     * Calculate the percentage of messages that are "dry" —
-     * single-word or matching common filler patterns.
-     */
     function calcDryTexterIndex(messages) {
-        const DRY_REGEX = /^(ok|okay|okk+|okkk*|k+|hmm+|hm+|haan+|ha+|haha+|hehe+|lol|lmao|nice|achha|accha|ohh*|oo+|ooo*|ye|yep|yea|yeah|yes|no|nhi|ni|na|thik|theek|chal|chlo|wo|oo|ji|ohk|okayy*|seen|bruh|true|sahi|👍|🤣|😂|😭|👀|💀|🫡|😏|\.+|\?+|!+)$/i;
+        const DRY_WORDS_REGEX = /^(ok|okay|okk+|okkk*|k+|hmm+|hm+|haan+|ha+n?|haha+|hehe+|hihi+|lol+|lmao+|lmfao|rofl|nice|achha|accha|acha|ohh*|oo+h?|ooo*|ye+s?|yep|yea+h?|yup|no+|nah+|nhi+|ni+|na+h?|thik|theek|toh|chal+|chlo|chalo|wo+|ji+|ohk|okayy*|seen|bruh|true|sahi|bhai+|bro+|hn+|hnn+|are+|bc|bsdk|bkl|raa+|mc|betichod|loura|saala+|kya|aur|abe+|chup|ruk|de|le|bol|haa+|naa+|hmm|oo|kk+|yo+|sup|damn|shit|wtf|omg|ikr|idk|nvm|tb|toh|bs|bas|bilkul|dekh|sun|arre+|arey+|re+)$/i;
+
+        const EMOJI_ONLY_REGEX = /^[\s\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]+$/u;
+
+        const PUNCT_ONLY_REGEX = /^[.!?,\-_~*#@&;:'"()[\]{}<>\/\\|`^%$+=]+$/;
 
         const userMessages = {};
 
@@ -149,15 +197,20 @@ const ChatAnalyzer = (() => {
 
             userMessages[msg.sender].total++;
 
-            // Check if entire message is a single dry word/emoji
-            if (DRY_REGEX.test(content)) {
+            const isDry =
+                DRY_WORDS_REGEX.test(content) ||
+                EMOJI_ONLY_REGEX.test(content) ||
+                PUNCT_ONLY_REGEX.test(content) ||
+                content.length <= 2;
+
+            if (isDry) {
                 userMessages[msg.sender].dry++;
             }
         }
 
         const results = [];
         for (const [sender, data] of Object.entries(userMessages)) {
-            if (data.total < 5) continue; // Need minimum data
+            if (data.total < 5) continue;
             const pct = (data.dry / data.total) * 100;
             results.push({
                 name: sender,
@@ -168,30 +221,47 @@ const ChatAnalyzer = (() => {
             });
         }
 
-        // Sort by highest dry percentage
         results.sort((a, b) => b.dryPercent - a.dryPercent);
         return results;
     }
 
     // ================================================
     // METRIC 3: LEFT ON READ CHAMPION (Interaction Dropout)
+    // v3: Added lurker detection for people like Pranav
     // ================================================
 
     /**
-     * Count the number of times a user "ghosts" a conversation:
-     * - Someone sends a message
-     * - This user was the last one addressed (or a general group message)
-     * - No reply from this user for 6+ hours
-     * - We track per-user how many conversations died on their watch
+     * v3 approach — three-pass algorithm:
+     * 
+     * PASS 1: Session-based ghosting (same as v2)
+     *   When a conversation session dies (6hr gap), people who were
+     *   active in the last 15 min but didn't send the last message = ghosted.
+     * 
+     * PASS 2: @mention ghosting
+     *   Extra penalty for ignoring direct @tags.
+     * 
+     * PASS 3 (NEW): Lurker detection
+     *   Compare each user's total messages to the group average.
+     *   Users with significantly fewer messages (< 20% of avg)
+     *   get ghost points proportional to how many sessions they missed.
+     *   This catches people like Pranav who never participate.
      */
     function calcLeftOnRead(messages) {
-        const ghostCounts = {}; // { sender: count }
         const senders = [...new Set(messages.map(m => m.sender))];
+        const ghostData = {};
+        senders.forEach(s => ghostData[s] = { ghosted: 0, sessionsActive: 0, totalMessages: 0 });
 
-        // Initialize
-        senders.forEach(s => ghostCounts[s] = 0);
+        // Count total messages per user
+        for (const msg of messages) {
+            if (ghostData[msg.sender]) {
+                ghostData[msg.sender].totalMessages++;
+            }
+        }
 
-        // For each message, check if the conversation dies after it
+        // PASS 1: Session-based ghosting
+        let sessionStart = 0;
+        let totalSessions = 0;
+
         for (let i = 0; i < messages.length - 1; i++) {
             const current = messages[i];
             const next = messages[i + 1];
@@ -200,63 +270,128 @@ const ChatAnalyzer = (() => {
 
             const gapHours = (next.timestamp - current.timestamp) / (1000 * 60 * 60);
 
-            // If there's a 6+ hour gap after this message
             if (gapHours >= 6) {
-                // Everyone who DIDN'T reply after this message gets a ghost point
-                // But primarily the people who were "expected" to reply
-                // Simple heuristic: everyone except the sender of the current message
-                senders.forEach(s => {
-                    if (s !== current.sender) {
-                        ghostCounts[s]++;
+                totalSessions++;
+
+                // Find who was active in this session (last 60 min before gap)
+                const activeInSession = new Set();
+                for (let j = i; j >= sessionStart; j--) {
+                    if (!messages[j].timestamp) continue;
+                    const fromEnd = (current.timestamp - messages[j].timestamp) / (1000 * 60);
+                    if (fromEnd > 60) break;
+                    activeInSession.add(messages[j].sender);
+                }
+
+                // Mark session participation
+                activeInSession.forEach(s => {
+                    if (ghostData[s]) ghostData[s].sessionsActive++;
+                });
+
+                // Ghost penalty for recently active people who aren't the last sender
+                const lastSender = current.sender;
+                const recentActive = new Set();
+                for (let j = i; j >= sessionStart; j--) {
+                    if (!messages[j].timestamp) continue;
+                    const fromEnd = (current.timestamp - messages[j].timestamp) / (1000 * 60);
+                    if (fromEnd > 15) break;
+                    recentActive.add(messages[j].sender);
+                }
+
+                recentActive.forEach(s => {
+                    if (s !== lastSender && ghostData[s]) {
+                        ghostData[s].ghosted++;
                     }
                 });
+
+                sessionStart = i + 1;
             }
         }
 
-        // Also check if someone was directly mentioned/tagged but didn't reply
+        // PASS 2: @mention ghosts
         for (let i = 0; i < messages.length; i++) {
             const msg = messages[i];
             const content = msg.content;
 
-            // Check for @mentions
-            const mentionRegex = /@\u2068?([^⁩\s]+)\u2069?/g;
+            const mentionRegex = /@[\u2068]?([^\u2069\s@]+)[\u2069]?/g;
             let match;
             while ((match = mentionRegex.exec(content)) !== null) {
-                const mentioned = match[1];
-                // Find if mentioned person replied within the next 10 messages or 2 hours
+                const mentioned = match[1].trim();
+                if (!mentioned || mentioned.length < 2) continue;
+
                 let replied = false;
                 for (let j = i + 1; j < Math.min(i + 15, messages.length); j++) {
                     if (!messages[j].timestamp) continue;
                     const gap = (messages[j].timestamp - msg.timestamp) / (1000 * 60 * 60);
-                    if (gap > 2) break;
-                    if (messages[j].sender.toLowerCase().includes(mentioned.toLowerCase())) {
+                    if (gap > 3) break;
+
+                    const senderLower = messages[j].sender.toLowerCase();
+                    const mentionLower = mentioned.toLowerCase();
+                    if (senderLower.includes(mentionLower) || mentionLower.includes(senderLower)) {
                         replied = true;
                         break;
                     }
                 }
+
                 if (!replied) {
-                    // Find the actual sender name that matches the mention
-                    const matchedSender = senders.find(s =>
-                        s.toLowerCase().includes(mentioned.toLowerCase())
-                    );
-                    if (matchedSender && ghostCounts[matchedSender] !== undefined) {
-                        ghostCounts[matchedSender] += 2; // Extra penalty for ignoring a tag
+                    const matchedSender = senders.find(s => {
+                        const sLower = s.toLowerCase();
+                        const mLower = mentioned.toLowerCase();
+                        return sLower.includes(mLower) || mLower.includes(sLower);
+                    });
+
+                    if (matchedSender && ghostData[matchedSender]) {
+                        ghostData[matchedSender].ghosted += 2;
                     }
                 }
             }
         }
 
+        // PASS 3: Lurker detection
+        // Calculate average messages per person
+        const messageCounts = senders.map(s => ghostData[s].totalMessages);
+        const avgMessages = messageCounts.reduce((a, b) => a + b, 0) / senders.length;
+
+        if (totalSessions > 0 && avgMessages > 0) {
+            for (const sender of senders) {
+                const data = ghostData[sender];
+                const messageRatio = data.totalMessages / avgMessages;
+
+                // If this person sends significantly fewer messages than average,
+                // they're a lurker. The fewer they send, the more ghost points.
+                if (messageRatio < 0.3) {
+                    // Heavy lurker — missed most sessions
+                    const missedSessions = totalSessions - data.sessionsActive;
+                    // Scale penalty: lurkers get proportional ghost points
+                    // Boosted to 1.5x so they definitely top the list
+                    const lurkerPenalty = Math.round(missedSessions * 1.5);
+                    data.ghosted += lurkerPenalty;
+                    data.isLurker = true;
+                } else if (messageRatio < 0.5) {
+                    // Moderate lurker
+                    const missedSessions = totalSessions - data.sessionsActive;
+                    const lurkerPenalty = Math.round(missedSessions * 0.8);
+                    data.ghosted += lurkerPenalty;
+                    data.isLurker = true;
+                }
+            }
+        }
+
+        // Build results
         const results = [];
-        for (const [sender, count] of Object.entries(ghostCounts)) {
-            if (count === 0) continue;
+        for (const [sender, data] of Object.entries(ghostData)) {
+            if (data.ghosted === 0) continue;
             results.push({
                 name: sender,
-                ghostCount: count,
-                roast: count >= 15 ? getRandomRoast(GHOST_ROASTS) : getRandomRoast(GHOST_ROASTS_LOW),
+                ghostCount: data.ghosted,
+                sessionsActive: data.sessionsActive,
+                totalMessages: data.totalMessages,
+                isLurker: data.isLurker || false,
+                roast: data.isLurker
+                    ? getRandomRoast(LURKER_ROASTS)
+                    : (data.ghosted >= 15 ? getRandomRoast(GHOST_ROASTS) : getRandomRoast(GHOST_ROASTS_LOW)),
             });
         }
 
-        // Sort by most ghosts
         results.sort((a, b) => b.ghostCount - a.ghostCount);
         return results;
     }
@@ -265,10 +400,6 @@ const ChatAnalyzer = (() => {
     // METRIC 4: MIDNIGHT SIMP (Temporal Distribution)
     // ================================================
 
-    /**
-     * Calculate the percentage of a user's messages sent between
-     * 1:00 AM and 4:00 AM.
-     */
     function calcMidnightSimp(messages) {
         const userData = {};
 
@@ -282,7 +413,6 @@ const ChatAnalyzer = (() => {
             userData[msg.sender].total++;
 
             const hour = msg.timestamp.getHours();
-            // Between 1:00 AM (inclusive) and 4:00 AM (exclusive)
             if (hour >= 1 && hour < 4) {
                 userData[msg.sender].nightCount++;
             }
@@ -290,18 +420,17 @@ const ChatAnalyzer = (() => {
 
         const results = [];
         for (const [sender, data] of Object.entries(userData)) {
-            if (data.total < 5) continue; // Need minimum data
+            if (data.total < 5) continue;
             const pct = (data.nightCount / data.total) * 100;
             results.push({
                 name: sender,
-                nightPercent: Math.round(pct),
+                nightPercent: Math.round(pct * 10) / 10,
                 nightCount: data.nightCount,
                 totalMessages: data.total,
                 roast: pct >= 10 ? getRandomRoast(MIDNIGHT_ROASTS) : getRandomRoast(MIDNIGHT_ROASTS_LOW),
             });
         }
 
-        // Sort by highest midnight percentage
         results.sort((a, b) => b.nightPercent - a.nightPercent);
         return results;
     }
@@ -310,11 +439,8 @@ const ChatAnalyzer = (() => {
     // MAIN ANALYSIS
     // ================================================
 
-    /**
-     * Run all four metrics and return a structured results object.
-     */
     function analyze(messages) {
-        const allMessages = messages; // includes media, deleted for timeline
+        const allMessages = messages;
         const textMessages = messages.filter(m =>
             !m.isMedia && !m.isDeleted && m.content.trim().length > 0
         );

@@ -212,156 +212,227 @@
         renderDryTexter(results.dryTexter);
         renderGhost(results.leftOnRead);
         renderMidnight(results.midnightSimp);
+
+        // Animate all bars after a short delay
+        requestAnimationFrame(() => {
+            setTimeout(() => animateAllBars(), 200);
+        });
+    }
+
+    /**
+     * Renders a metric card with a prominent winner section and compact runner rows.
+     * @param {HTMLElement} container - The metric body element
+     * @param {Array} data - Sorted array of user results
+     * @param {Function} getWinnerHtml - Returns HTML for the winner section
+     * @param {Function} getRunnerHtml - Returns HTML for each runner row
+     */
+    function renderMetricCard(container, data, getWinnerHtml, getRunnerHtml) {
+        container.innerHTML = '';
+        if (data.length === 0) {
+            container.innerHTML = '<div class="metric-empty">Not enough data to calculate this metric.</div>';
+            return;
+        }
+
+        // Winner section
+        const winner = data[0];
+        container.innerHTML += `<div class="winner-section">${getWinnerHtml(winner)}</div>`;
+
+        // Runner-up section
+        if (data.length > 1) {
+            let runnersHtml = '<div class="runners-section">';
+            runnersHtml += '<div class="runners-section-label">Full Rankings</div>';
+            data.slice(1).forEach((user, i) => {
+                runnersHtml += getRunnerHtml(user, i + 2);
+            });
+            runnersHtml += '</div>';
+            container.innerHTML += runnersHtml;
+        }
     }
 
     function renderBerozgar(data) {
-        berozgarBody.innerHTML = '';
-        if (data.length === 0) {
-            berozgarBody.innerHTML = '<p class="term-line info">Not enough data to calculate response latency.</p>';
-            return;
-        }
-
-        // Max response time for bar scaling
-        const maxMinutes = Math.max(...data.map(d => d.avgMinutes), 1);
-
-        data.forEach((user, i) => {
-            const delay = i * 0.1;
-            // Invert bar: faster = longer bar (more berozgar)
-            const barPercent = Math.max(5, 100 - (user.avgMinutes / maxMinutes) * 100);
-
-            berozgarBody.innerHTML += `
-                <div class="user-result" style="animation-delay: ${delay}s">
-                    <div class="rank ${i > 0 ? 'secondary' : ''}">${i + 1}</div>
-                    <div class="user-info">
-                        <div class="user-name">→ ${user.name}</div>
-                        <div class="user-stat">${formatTime(user.avgMinutes)} average response time (${user.totalResponses} replies tracked)</div>
-                        <div class="stat-bar-container">
-                            <div class="stat-bar">
-                                <div class="stat-bar-fill" data-width="${barPercent}"></div>
-                            </div>
-                            <div class="stat-bar-value">${formatTime(user.avgMinutes)}</div>
+        renderMetricCard(berozgarBody, data,
+            // Winner HTML
+            (winner) => {
+                const median = winner.medianMinutes ?? winner.avgMinutes;
+                const barPercent = Math.min(95, Math.max(10, 100 - median * 10));
+                return `
+                    <div class="winner-row">
+                        <div class="winner-badge">🏆</div>
+                        <div class="winner-info">
+                            <div class="winner-label">Fastest Replier</div>
+                            <div class="winner-name">→ ${winner.name}</div>
+                            <div class="winner-stat-value">${formatTime(median)} median · ${formatTime(winner.avgMinutes)} avg · ${winner.totalResponses} replies</div>
                         </div>
-                        ${i === 0 ? `<div class="user-roast">[STATUS: ${user.roast}]</div>` : ''}
+                        <div class="winner-big-stat">
+                            <div class="big-number">${formatTime(median)}</div>
+                            <div class="big-number-label">median reply</div>
+                        </div>
                     </div>
-                </div>
-            `;
-        });
-
-        // Animate bars after render
-        requestAnimationFrame(() => {
-            setTimeout(() => animateBars(berozgarBody), 100);
-        });
+                    <div class="winner-bar-container">
+                        <div class="winner-bar">
+                            <div class="winner-bar-fill" data-width="${barPercent}"></div>
+                        </div>
+                    </div>
+                    <div class="winner-roast">[STATUS: ${winner.roast}]</div>
+                `;
+            },
+            // Runner HTML
+            (user, rank) => {
+                const median = user.medianMinutes ?? user.avgMinutes;
+                const maxTime = data[data.length - 1].avgMinutes || 1;
+                const barPercent = Math.max(8, 100 - (user.avgMinutes / maxTime) * 100);
+                return `
+                    <div class="runner-row" style="animation-delay: ${(rank - 1) * 0.08}s">
+                        <div class="runner-rank">${rank}</div>
+                        <div class="runner-info">
+                            <div class="runner-name">→ ${user.name}</div>
+                            <div class="runner-stat">${formatTime(median)} median · ${user.totalResponses} replies</div>
+                            <div class="runner-roast">${user.roast}</div>
+                        </div>
+                        <div class="runner-bar-container">
+                            <div class="runner-bar">
+                                <div class="runner-bar-fill" data-width="${barPercent}"></div>
+                            </div>
+                            <div class="runner-value">${formatTime(user.avgMinutes)}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        );
     }
 
     function renderDryTexter(data) {
-        dryBody.innerHTML = '';
-        if (data.length === 0) {
-            dryBody.innerHTML = '<p class="term-line info">Not enough data to calculate dry text index.</p>';
-            return;
-        }
-
-        data.forEach((user, i) => {
-            const delay = i * 0.1;
-
-            dryBody.innerHTML += `
-                <div class="user-result" style="animation-delay: ${delay}s">
-                    <div class="rank ${i > 0 ? 'secondary' : ''}">${i + 1}</div>
-                    <div class="user-info">
-                        <div class="user-name">→ ${user.name}</div>
-                        <div class="user-stat">${user.dryPercent}% Dry Text Rate (${user.dryCount}/${user.totalMessages} messages)</div>
-                        <div class="stat-bar-container">
-                            <div class="stat-bar">
-                                <div class="stat-bar-fill" data-width="${user.dryPercent}"></div>
-                            </div>
-                            <div class="stat-bar-value">${user.dryPercent}%</div>
-                        </div>
-                        ${i === 0 ? `<div class="user-roast">[STATUS: ${user.roast}]</div>` : ''}
+        renderMetricCard(dryBody, data,
+            (winner) => `
+                <div class="winner-row">
+                    <div class="winner-badge">🏜️</div>
+                    <div class="winner-info">
+                        <div class="winner-label">Driest Texter</div>
+                        <div class="winner-name">→ ${winner.name}</div>
+                        <div class="winner-stat-value">${winner.dryCount} dry texts out of ${winner.totalMessages} total messages</div>
+                    </div>
+                    <div class="winner-big-stat">
+                        <div class="big-number">${winner.dryPercent}%</div>
+                        <div class="big-number-label">dry rate</div>
                     </div>
                 </div>
-            `;
-        });
-
-        requestAnimationFrame(() => {
-            setTimeout(() => animateBars(dryBody), 200);
-        });
+                <div class="winner-bar-container">
+                    <div class="winner-bar">
+                        <div class="winner-bar-fill" data-width="${winner.dryPercent}"></div>
+                    </div>
+                </div>
+                <div class="winner-roast">[STATUS: ${winner.roast}]</div>
+            `,
+            (user, rank) => `
+                <div class="runner-row" style="animation-delay: ${(rank - 1) * 0.08}s">
+                    <div class="runner-rank">${rank}</div>
+                    <div class="runner-info">
+                        <div class="runner-name">→ ${user.name}</div>
+                        <div class="runner-stat">${user.dryCount}/${user.totalMessages} messages dry</div>
+                        <div class="runner-roast">${user.roast}</div>
+                    </div>
+                    <div class="runner-bar-container">
+                        <div class="runner-bar">
+                            <div class="runner-bar-fill" data-width="${user.dryPercent}"></div>
+                        </div>
+                        <div class="runner-value">${user.dryPercent}%</div>
+                    </div>
+                </div>
+            `
+        );
     }
 
     function renderGhost(data) {
-        ghostBody.innerHTML = '';
-        if (data.length === 0) {
-            ghostBody.innerHTML = '<p class="term-line info">Not enough data to calculate ghosting patterns.</p>';
-            return;
-        }
+        const maxGhost = data.length > 0 ? Math.max(...data.map(d => d.ghostCount), 1) : 1;
 
-        const maxGhost = Math.max(...data.map(d => d.ghostCount), 1);
-
-        data.forEach((user, i) => {
-            const delay = i * 0.1;
-            const barPercent = Math.max(5, (user.ghostCount / maxGhost) * 100);
-
-            ghostBody.innerHTML += `
-                <div class="user-result" style="animation-delay: ${delay}s">
-                    <div class="rank ${i > 0 ? 'secondary' : ''}">${i + 1}</div>
-                    <div class="user-info">
-                        <div class="user-name">→ ${user.name}</div>
-                        <div class="user-stat">${user.ghostCount} Ghosted Conversations</div>
-                        <div class="stat-bar-container">
-                            <div class="stat-bar">
-                                <div class="stat-bar-fill" data-width="${barPercent}"></div>
-                            </div>
-                            <div class="stat-bar-value">${user.ghostCount}</div>
-                        </div>
-                        ${i === 0 ? `<div class="user-roast">[STATUS: ${user.roast}]</div>` : ''}
+        renderMetricCard(ghostBody, data,
+            (winner) => `
+                <div class="winner-row">
+                    <div class="winner-badge">${winner.isLurker ? '🫥' : '👻'}</div>
+                    <div class="winner-info">
+                        <div class="winner-label">${winner.isLurker ? 'Certified Lurker' : 'Top Ghoster'}</div>
+                        <div class="winner-name">→ ${winner.name}</div>
+                        <div class="winner-stat-value">${winner.ghostCount} conversations ghosted${winner.totalMessages ? ' · ' + winner.totalMessages + ' total msgs sent' : ''}</div>
+                    </div>
+                    <div class="winner-big-stat">
+                        <div class="big-number">${winner.ghostCount}</div>
+                        <div class="big-number-label">ghosted</div>
                     </div>
                 </div>
-            `;
-        });
-
-        requestAnimationFrame(() => {
-            setTimeout(() => animateBars(ghostBody), 300);
-        });
+                <div class="winner-bar-container">
+                    <div class="winner-bar">
+                        <div class="winner-bar-fill" data-width="95"></div>
+                    </div>
+                </div>
+                <div class="winner-roast">[STATUS: ${winner.roast}]</div>
+            `,
+            (user, rank) => {
+                const barPercent = Math.max(8, (user.ghostCount / maxGhost) * 100);
+                return `
+                    <div class="runner-row" style="animation-delay: ${(rank - 1) * 0.08}s">
+                        <div class="runner-rank">${rank}</div>
+                        <div class="runner-info">
+                            <div class="runner-name">→ ${user.name}${user.isLurker ? ' 🫥' : ''}</div>
+                            <div class="runner-stat">${user.ghostCount} ghosted${user.totalMessages ? ' · ' + user.totalMessages + ' msgs sent' : ''}</div>
+                            <div class="runner-roast">${user.roast}</div>
+                        </div>
+                        <div class="runner-bar-container">
+                            <div class="runner-bar">
+                                <div class="runner-bar-fill" data-width="${barPercent}"></div>
+                            </div>
+                            <div class="runner-value">${user.ghostCount}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        );
     }
 
     function renderMidnight(data) {
-        midnightBody.innerHTML = '';
-        if (data.length === 0) {
-            midnightBody.innerHTML = '<p class="term-line info">Not enough data to calculate nighttime activity.</p>';
-            return;
-        }
-
-        data.forEach((user, i) => {
-            const delay = i * 0.1;
-            // Cap bar at 100%
-            const barPercent = Math.min(100, Math.max(5, user.nightPercent * 2));
-
-            midnightBody.innerHTML += `
-                <div class="user-result" style="animation-delay: ${delay}s">
-                    <div class="rank ${i > 0 ? 'secondary' : ''}">${i + 1}</div>
-                    <div class="user-info">
-                        <div class="user-name">→ ${user.name}</div>
-                        <div class="user-stat">${user.nightPercent}% of texts sent between 1AM–4AM (${user.nightCount}/${user.totalMessages})</div>
-                        <div class="stat-bar-container">
-                            <div class="stat-bar">
-                                <div class="stat-bar-fill" data-width="${barPercent}"></div>
-                            </div>
-                            <div class="stat-bar-value">${user.nightPercent}%</div>
-                        </div>
-                        ${i === 0 ? `<div class="user-roast">[STATUS: ${user.roast}]</div>` : ''}
+        renderMetricCard(midnightBody, data,
+            (winner) => `
+                <div class="winner-row">
+                    <div class="winner-badge">🌙</div>
+                    <div class="winner-info">
+                        <div class="winner-label">Night Owl</div>
+                        <div class="winner-name">→ ${winner.name}</div>
+                        <div class="winner-stat-value">${winner.nightCount} texts between 1AM–4AM out of ${winner.totalMessages} total</div>
+                    </div>
+                    <div class="winner-big-stat">
+                        <div class="big-number">${winner.nightPercent}%</div>
+                        <div class="big-number-label">after midnight</div>
                     </div>
                 </div>
-            `;
-        });
-
-        requestAnimationFrame(() => {
-            setTimeout(() => animateBars(midnightBody), 400);
-        });
+                <div class="winner-bar-container">
+                    <div class="winner-bar">
+                        <div class="winner-bar-fill" data-width="${Math.min(95, Math.max(10, winner.nightPercent * 2))}"></div>
+                    </div>
+                </div>
+                <div class="winner-roast">[STATUS: ${winner.roast}]</div>
+            `,
+            (user, rank) => `
+                <div class="runner-row" style="animation-delay: ${(rank - 1) * 0.08}s">
+                    <div class="runner-rank">${rank}</div>
+                    <div class="runner-info">
+                        <div class="runner-name">→ ${user.name}</div>
+                        <div class="runner-stat">${user.nightCount}/${user.totalMessages} texts after midnight</div>
+                        <div class="runner-roast">${user.roast}</div>
+                    </div>
+                    <div class="runner-bar-container">
+                        <div class="runner-bar">
+                            <div class="runner-bar-fill" data-width="${Math.min(95, Math.max(8, user.nightPercent * 2))}"></div>
+                        </div>
+                        <div class="runner-value">${user.nightPercent}%</div>
+                    </div>
+                </div>
+            `
+        );
     }
 
-    function animateBars(container) {
-        const fills = container.querySelectorAll('.stat-bar-fill');
-        fills.forEach(fill => {
+    function animateAllBars() {
+        document.querySelectorAll('.winner-bar-fill, .runner-bar-fill').forEach(fill => {
             const width = fill.getAttribute('data-width');
-            fill.style.width = width + '%';
+            if (width) fill.style.width = width + '%';
         });
     }
 
