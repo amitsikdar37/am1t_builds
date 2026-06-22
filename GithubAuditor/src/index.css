@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slateBase text-gray-200 font-mono antialiased min-h-screen selection:bg-toxicGreen selection:text-slateBase;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* Animations for terminal */
+@keyframes matrixFade {
+  0% { opacity: 0; transform: translateY(-5px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-matrix {
+  animation: matrixFade 0.2s ease-out forwards;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes flash {
+  0%, 100% { background-color: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.4); }
+  50% { background-color: rgba(239, 68, 68, 0.3); border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
+}
+
+.animate-flash {
+  animation: flash 1.5s ease-in-out infinite;
+}
