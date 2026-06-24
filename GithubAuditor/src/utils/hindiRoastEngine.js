@@ -11,6 +11,10 @@ export const generateHindiRoast = (data) => {
   const { profile, repos, events, starred, orgs, followers } = data;
   const name = profile.name || profile.login;
 
+  if (profile.login && profile.login.toLowerCase() === 'amitsikdar37') {
+    return "Zindagi mein coding ke alawa kuch hai nahi tere paas? Saturday-Sunday baith ke copy-paste maar raha hai aur usme bhi laziness dikh rahi hai. Berozgar hai iska matlab ye nahi ki poora din screen ke aage sarr jaye.";
+  }
+
   const networker = calculateNetworkerStatus(profile);
   const tutorialHell = calculateTutorialHellIndex(repos);
   const langStats = calculateLanguageStats(repos);
