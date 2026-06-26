@@ -24,24 +24,37 @@ BROWSER_PROCESSES = [
 ]
 
 
+import subprocess
+
 def speak_roast(text: str) -> threading.Thread:
     """
     Speak the roast text using offline TTS in a background thread.
+    Uses an isolated subprocess to prevent pyttsx3 from repeating previous
+    queues (a known bug when re-initializing in the same process).
 
     Returns the thread handle (caller can join if needed).
     """
 
     def _speak():
         try:
-            import pyttsx3
-
-            engine = pyttsx3.init()
-            engine.setProperty("volume", 1.0)   # Max volume
-            engine.setProperty("rate", 140)      # Slow & menacing
-            engine.say(text)
-            engine.runAndWait()
-            engine.stop()
-            logger.info("🔊 TTS playback completed.")
+            # Escape double quotes for the command line
+            safe_text = text.replace('"', '\\"')
+            
+            script = (
+                "import pyttsx3\n"
+                "engine = pyttsx3.init()\n"
+                "engine.setProperty('volume', 1.0)\n"
+                "engine.setProperty('rate', 140)\n"
+                f'engine.say("{safe_text}")\n'
+                "engine.runAndWait()\n"
+                "engine.stop()"
+            )
+            
+            subprocess.run(
+                ["python", "-c", script],
+                creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
+            )
+            logger.info("TTS playback completed.")
         except Exception as exc:
             logger.error("TTS engine error: %s", exc)
 
