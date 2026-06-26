@@ -1,0 +1,7 @@
+google-generativeai
+pyautogui
+pygetwindow
+psutil
+pyttsx3
+Pillow
+python-dotenv
