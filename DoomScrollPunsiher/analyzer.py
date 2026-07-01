@@ -67,10 +67,9 @@ def analyze_distraction(
         return random.choice(FALLBACK_ROASTS)
 
     try:
-        import google.generativeai as genai
+        from google import genai
 
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        client = genai.Client(api_key=api_key)
 
         prompt = (
             f"{SYSTEM_PROMPT}\n\n"
@@ -82,7 +81,10 @@ def analyze_distraction(
         if image is not None:
             content.append(image)
 
-        response = model.generate_content(content)
+        response = client.models.generate_content(
+            model="gemini-3.5-flash",
+            contents=content
+        )
 
         if response and response.text:
             roast = response.text.strip().strip('"').strip("'")
