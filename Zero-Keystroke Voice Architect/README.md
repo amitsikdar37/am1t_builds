@@ -16,14 +16,11 @@
 │     │  • Energy auto-calibration            │                   │
 │     │  • Wake: "Antigravity" / "Hey Agent"  │                   │
 │     │  • Google STT  OR  faster-whisper     │                   │
-│     │  • Cooldown lock (blocks re-trigger)  │                   │
 │     │                                       ▼                   │
 │  ConsoleUI  ◄───────────────────  ExecutionManager              │
 │  (console_ui.py)                  (execution_manager.py)        │
-│  • ANSI state banners             • Prompt builder              │
-│  • [AGY-ARCHITECT] prefix         • subprocess: agy run "…"     │
-│  • [AGY-BROWSER]   prefix         • Real-time stdout/stderr     │
-│                                   • 3s post-run cooldown        │
+│  • ANSI state banners             • agy --continue --print "…"  │
+│  • Simulated Progress Tracker     • Live Dashboard (Port 1337)  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -35,42 +32,46 @@
 |------|---------|
 | `main.py` | Entry point, signal handlers, dispatch loop |
 | `audio_listener.py` | Mic capture, wake-word, STT pipeline |
-| `execution_manager.py` | Prompt builder, `agy` subprocess, stream relay |
-| `console_ui.py` | ANSI terminal UI, state banners, log lines |
+| `execution_manager.py` | Prompt builder, `agy` subprocess, background tasks |
+| `console_ui.py` | ANSI terminal UI, state banners, progress tracker |
+| `dashboard_server.py` | Flask server and SSE engine for the live browser UI |
 | `requirements.txt` | Python dependencies |
 | `.env.example` | Environment variable template |
 
 ---
 
-## Quick Start
+## Quick Start (Running Locally on PC)
 
 ### 1. Install dependencies
 
 ```bash
-# Windows — install PortAudio first (required by PyAudio)
-pip install pipwin && pipwin install pyaudio
+# 1. Install PortAudio (required for microphone access on Windows)
+pip install pipwin
+pipwin install pyaudio
 
-# Then install Python packages
+# 2. Install remaining Python packages
 pip install -r requirements.txt
 ```
 
-### 2. Configure workspace
+### 2. Configure Environment
 
+Create your `.env` file:
 ```bash
 copy .env.example .env
-# Edit .env — set AGY_WORKSPACE to your project path
 ```
+Open `.env` and set `AGY_WORKSPACE` to the folder where you want your projects built (e.g. `C:\Users\YourName\Desktop\AgyProjects`).
 
 ### 3. Run the bridge
 
 ```bash
 # Default — Google STT (requires internet)
-python main.py --workspace "D:\VS Code\am1t_builds\MyProject"
+python main.py
 
 # Fully offline — local faster-whisper
-pip install faster-whisper
-python main.py --workspace "D:\VS Code\am1t_builds\MyProject" --whisper --model small
+python main.py --whisper --model small
 ```
+
+> **Note:** Running `main.py` will automatically launch a beautifully designed, live UI dashboard in your web browser at `http://localhost:1337/`. As you speak, the dashboard will display your transcripts, microphone status, progress trackers, and a real-time iframe preview of your AI-generated website!
 
 ---
 
