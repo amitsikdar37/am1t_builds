@@ -27,6 +27,10 @@ async function harvestSite(url, bundleDir, onProgress = () => {}) {
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
       '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     ignoreHTTPSErrors: true,
+    recordVideo: {
+      dir: bundleDir,
+      size: { width: 1440, height: 900 }
+    }
   });
 
   const page = await context.newPage();
@@ -321,17 +325,7 @@ async function harvestSite(url, bundleDir, onProgress = () => {}) {
       screenshots: [
         'screenshot_full.png',
         'screenshot_viewport.png',
-        'scroll_0pct.png',
-        'scroll_10pct.png',
-        'scroll_20pct.png',
-        'scroll_30pct.png',
-        'scroll_40pct.png',
-        'scroll_50pct.png',
-        'scroll_60pct.png',
-        'scroll_70pct.png',
-        'scroll_80pct.png',
-        'scroll_90pct.png',
-        'scroll_100pct.png',
+        'scroll_video.webm',
       ],
       data: [
         'metadata.json',
@@ -362,7 +356,15 @@ async function harvestSite(url, bundleDir, onProgress = () => {}) {
 
   fs.writeFileSync(path.join(bundleDir, 'summary.json'), JSON.stringify(summary, null, 2), 'utf8');
 
+  // We need to wait for the video to finish saving, so we close the context first
+  const videoPath = await page.video().path();
+  await context.close();
   await browser.close();
+  
+  if (videoPath) {
+    fs.renameSync(videoPath, path.join(bundleDir, 'scroll_video.webm'));
+  }
+
   onProgress('✅ Phase 1 complete — bundle saved to disk!');
 
   return summary;
