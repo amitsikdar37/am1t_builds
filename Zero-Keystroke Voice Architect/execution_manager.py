@@ -178,6 +178,9 @@ class ExecutionManager:
         self._on_cooldown_change   = on_cooldown_change or (lambda active: None)
 
         self._active_proc: Optional[subprocess.Popen] = None  # type: ignore[type-arg]
+        self._is_first_command = True
+        self._last_real_log_time: float = 0.0
+        self._last_project_dir: Optional[str] = None
         self._exec_thread:  Optional[threading.Thread] = None
         self._busy          = threading.Event()
         self._bootstrapper  = None
@@ -279,31 +282,6 @@ class ExecutionManager:
                 f"✅  Agent lifecycle complete in {elapsed:.1f}s "
                 f"(exit code 0)."
             )
-
-            # Force dashboard to find the newly generated project since agy bypasses stdout pipes
-            if self._ui._dashboard:
-                import glob
-                search_paths = [
-                    str(self._workspace),
-                    os.path.expanduser("~/.gemini/antigravity-cli/scratch/*"),
-                    os.path.expanduser("~/.gemini/antigravity-cli/scratch")
-                ]
-                latest_dir = None
-                latest_time = 0
-                for path_pattern in search_paths:
-                    for d in glob.glob(path_pattern):
-                        if os.path.isdir(d):
-                            idx = os.path.join(d, "index.html")
-                            if os.path.exists(idx):
-                                mtime = os.path.getmtime(idx)
-                                if mtime > latest_time:
-                                    latest_time = mtime
-                                    latest_dir = d
-                
-                if latest_dir:
-                    self._ui._dashboard.set_preview_dir(latest_dir)
-                    self._ui.print_info(f"🌐  Auto-previewing latest project: {latest_dir}")
-            
             if self._ui._dashboard:
                 self._ui._dashboard.set_state("done")
         else:
@@ -314,6 +292,33 @@ class ExecutionManager:
             )
             if self._ui._dashboard:
                 self._ui._dashboard.set_state("error")
+
+        # Force dashboard to find the newly generated project since agy bypasses stdout pipes.
+        # We run this even if aborted, because the HTML/CSS is usually already written before the timeout!
+        if self._ui._dashboard:
+            import glob
+            search_paths = [
+                str(self._workspace),
+                os.path.join(str(self._workspace), "*"),
+                os.path.expanduser("~/.gemini/antigravity-cli/scratch/*"),
+                os.path.expanduser("~/.gemini/antigravity-cli/scratch")
+            ]
+            latest_dir = None
+            latest_time = 0
+            for path_pattern in search_paths:
+                for d in glob.glob(path_pattern):
+                    if os.path.isdir(d):
+                        idx = os.path.join(d, "index.html")
+                        if os.path.exists(idx):
+                            mtime = os.path.getmtime(idx)
+                            if mtime > latest_time:
+                                latest_time = mtime
+                                latest_dir = d
+            
+            if latest_dir:
+                self._ui._dashboard.set_preview_dir(latest_dir)
+                self._ui.print_info(f"🌐  Auto-previewing latest project: {latest_dir}")
+                self._last_project_dir = latest_dir
 
         self._ui.print_info(
             f"⏳  Cooldown — next command accepted in {COOLDOWN_SECONDS}s…"
@@ -329,11 +334,25 @@ class ExecutionManager:
         Launch `agy --print "<prompt>"` inside the workspace directory.
         Since CI=true and TERM=dumb are removed, --print will stream thoughts natively!
         """
-        cmd_args = ["agy", "--continue", "--print", prompt, "--print-timeout", "30m"]
+        actual_prompt = prompt
+        if not self._is_first_command and self._last_project_dir:
+            actual_prompt = (
+                f"CRITICAL CONTEXT: Your active project is located at exactly `{self._last_project_dir}`. "
+                "DO NOT search the scratch directory. Edit ONLY the files in this directory.\n\n"
+                f"User Request: {prompt}"
+            )
 
-        self._ui.print_info(
-            f"🔧  Launching: agy --continue --print \"...\" in {self._workspace}"
-        )
+        if self._is_first_command:
+            cmd_args = ["agy", "--new-project", "--print", actual_prompt, "--print-timeout", "30m"]
+            self._ui.print_info(
+                f"🔧  Launching: agy --new-project --print \"...\" in {self._workspace}"
+            )
+            self._is_first_command = False
+        else:
+            cmd_args = ["agy", "--continue", "--print", actual_prompt, "--print-timeout", "30m"]
+            self._ui.print_info(
+                f"🔧  Launching: agy --continue --print \"...\" in {self._workspace}"
+            )
 
         env = {
             **os.environ, 
@@ -370,7 +389,15 @@ class ExecutionManager:
             stdout_thread.start()
             stderr_thread.start()
 
-            proc.wait()
+            self._last_real_log_time = time.monotonic()
+            while proc.poll() is None:
+                if time.monotonic() - self._last_real_log_time > 180.0:
+                    self._ui.print_error("❌  Agent process timed out (no output for 180s). Aborting.")
+                    proc.kill()
+                    aborted = True
+                    break
+                time.sleep(1.0)
+
             stdout_thread.join(timeout=2.0)
             stderr_thread.join(timeout=2.0)
 
@@ -420,6 +447,7 @@ class ExecutionManager:
         
         start_time = time.monotonic()
         last_log_time = start_time
+        last_known_action = "analyzing prompt and mapping architecture..."
         
         while True:
             try:
@@ -429,6 +457,16 @@ class ExecutionManager:
                 line = raw_line.rstrip("\n\r")
                 if not line:
                     continue
+                
+                # Extract action dynamically
+                lower = line.lower()
+                if "i will " in lower:
+                    idx = lower.find("i will ")
+                    last_known_action = line[idx + 7:].strip().strip(".") + "..."
+                elif "i am " in lower:
+                    idx = lower.find("i am ")
+                    last_known_action = line[idx + 5:].strip().strip(".") + "..."
+                    
                 agent = (
                     "BROWSER"
                     if _BROWSER_KEYWORDS.search(line)
@@ -436,24 +474,13 @@ class ExecutionManager:
                 )
                 self._ui.print_agent_line(agent, line)
                 last_log_time = time.monotonic()
+                self._last_real_log_time = last_log_time
             except queue.Empty:
                 # Provide dynamic, reassuring progress updates for long-running AI tasks
                 if is_stdout and time.monotonic() - last_log_time >= 5.0:
                     elapsed = int(time.monotonic() - start_time)
-                    if elapsed < 15:
-                        msg = "🧠  Analyzing prompt and mapping architecture..."
-                    elif elapsed < 35:
-                        msg = "🔍  Planning component structure and defining UI..."
-                    elif elapsed < 75:
-                        msg = "⚡  Generating core HTML, CSS, and layout systems..."
-                    elif elapsed < 140:
-                        msg = "🔧  Writing JavaScript logic and interactive elements... (This takes a moment)"
-                    elif elapsed < 220:
-                        msg = "⏳  Finalizing assets and assembling the project... (Almost there)"
-                    elif elapsed < 300:
-                        msg = "🔄  Performing final code review and optimization... (Hold on!)"
-                    else:
-                        msg = "📦  Packaging files and ensuring zero-downtime deployment..."
-                        
-                    self._ui.print_info(f"⏳  [Elapsed: {elapsed}s] {msg}")
+                    msg = f"Working on: {last_known_action}"
+                    if elapsed > 30:
+                        msg += " (Press Ctrl+C if finished)"
+                    self._ui.print_info(f"⏳  [Elapsed: {elapsed}s] 🧠  {msg}")
                     last_log_time = time.monotonic()

@@ -1,0 +1,5 @@
+node_modules/
+harvested_bundle/
+output/
+.env
+*.log

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aetheris // Creative Developer Portfolio</title>
+  <meta name="description" content="Immersive 3D software developer portfolio showcasing full-stack capabilities, creative coding, and interactive design.">
+  
+  <!-- Premium Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Syne:wght@500;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Base Style Sheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Custom Cinematic Mouse Cursor -->
+  <div id="custom-cursor"></div>
+  <div id="custom-cursor-dot"></div>
+
+  <!-- Ambient WebGL Canvas Background -->
+  <div class="webgl-container">
+    <canvas id="webgl-canvas"></canvas>
+  </div>
+
+  <!-- Noise Overlay for Cinematic Texture -->
+  <div class="noise-overlay"></div>
+
+  <!-- Floating Nav Bar -->
+  <header>
+    <div class="nav-container glass">
+      <div class="logo">
+        <span class="logo-symbol">//</span> AETHERIS
+      </div>
+      <nav>
+        <ul>
+          <li><a href="#hero" class="nav-link active">Home</a></li>
+          <li><a href="#about" class="nav-link">About</a></li>
+          <li><a href="#projects" class="nav-link">Projects</a></li>
+          <li><a href="#experience" class="nav-link">Timeline</a></li>
+          <li><a href="#contact" class="nav-link">Contact</a></li>
+        </ul>
+      </nav>
+      <div class="nav-cta">
+        <a href="#contact" class="btn btn-sm btn-outline btn-magnetic">Get In Touch</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Scroll Container -->
+  <main id="smooth-scroll-wrapper">
+
+    <!-- HERO SECTION -->
+    <section id="hero" class="panel">
+      <div class="container hero-content">
+        <div class="badge-container animate-fade-in">
+          <span class="cyber-badge"><span class="pulse-dot"></span> AVAILABLE FOR PROJECTS</span>
+        </div>
+        
+        <h1 class="hero-title animate-title">
+          <span class="title-row">CREATING THE</span>
+          <span class="title-row gradient-text">FUTURE OF WEB</span>
+          <span class="title-row">INTERACTIONS</span>
+        </h1>
+        
+        <p class="hero-lead animate-fade-in-delayed">
+          I am a creative full-stack technologist who blends technical engineering with high-end visual design to build award-winning 3D user experiences.
+        </p>
+        
+        <div class="hero-actions animate-fade-in-delayed">
+          <a href="#projects" class="btn btn-primary btn-magnetic">Explore Projects <i class="fa-solid fa-arrow-down-long"></i></a>
+          <a href="#about" class="btn btn-secondary btn-magnetic">Learn More</a>
+        </div>
+      </div>
+      
+      <!-- Ambient Info Stats at Hero Bottom -->
+      <div class="hero-footer-stats container animate-fade-in-delayed">
+        <div class="stat-item">
+          <span class="stat-num">05+</span>
+          <span class="stat-lbl">Years Experience</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num">40+</span>
+          <span class="stat-lbl">Projects Completed</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num">12+</span>
+          <span class="stat-lbl">Technologies Mastered</span>
+        </div>
+      </div>
+
+      <div class="scroll-down-hint">
+        <span class="mouse-icon">
+          <span class="wheel"></span>
+        </span>
+        <span class="hint-text">Scroll to explore</span>
+      </div>
+    </section>
+
+    <!-- ABOUT SECTION -->
+    <section id="about" class="panel">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-tag">// IDENTITY</span>
+          <h2 class="section-title">About Me</h2>
+        </div>
+        
+        <div class="about-grid">
+          <!-- Text Biography -->
+          <div class="about-bio glass">
+            <h3>Philosophy</h3>
+            <p>
+              I believe web development is not just about logic and templates—it is about creating an environment that sparks curiosity. Through 3D web graphics, smooth transitions, and high-performance engineering, I make products feel tactile and responsive.
+            </p>
+            <p>
+              My stack ranges from setting up scalable backend clusters and databases to writing vertex shaders and custom WebGL render loops. I build for speed, clean structures, and responsiveness.
+            </p>
+            <div class="bio-footer">
+              <span class="signature">Alex Vance</span>
+              <span class="role">Creative Technologist, London</span>
+            </div>
+          </div>
+          
+          <!-- Interactive Tech Skill Groups -->
+          <div class="about-skills">
+            <div class="skill-category glass">
+              <div class="category-header">
+                <i class="fa-solid fa-layer-group"></i>
+                <h4>Frontend Stack</h4>
+              </div>
+              <div class="skill-tags">
+                <span class="skill-tag">HTML5/CSS3</span>
+                <span class="skill-tag">JavaScript ES6+</span>
+                <span class="skill-tag">TypeScript</span>
+                <span class="skill-tag">React / Next.js</span>
+                <span class="skill-tag">Vite</span>
+                <span class="skill-tag">SASS/SCSS</span>
+              </div>
+            </div>
+
+            <div class="skill-category glass">
+              <div class="category-header">
+                <i class="fa-solid fa-cubes"></i>
+                <h4>3D & Creative Coding</h4>
+              </div>
+              <div class="skill-tags">
+                <span class="skill-tag">Three.js</span>
+                <span class="skill-tag">WebGL</span>
+                <span class="skill-tag">GLSL Shaders</span>
+                <span class="skill-tag">GSAP / GreenSock</span>
+                <span class="skill-tag">Canvas 2D</span>
+                <span class="skill-tag">Blender 3D</span>
+              </div>
+            </div>
+
+            <div class="skill-category glass">
+              <div class="category-header">
+                <i class="fa-solid fa-server"></i>
+                <h4>Backend & DevOps</h4>
+              </div>
+              <div class="skill-tags">
+                <span class="skill-tag">Node.js / Express</span>
+                <span class="skill-tag">Python / FastAPI</span>
+                <span class="skill-tag">PostgreSQL / MongoDB</span>
+                <span class="skill-tag">Docker</span>
+                <span class="skill-tag">AWS Cloud</span>
+                <span class="skill-tag">CI/CD Pipelines</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROJECTS SECTION -->
+    <section id="projects" class="panel">
+      <div class="container">
+        <div class="section-header-split">
+          <div class="section-header">
+            <span class="section-tag">// PRODUCTION</span>
+            <h2 class="section-title">Selected Works</h2>
+          </div>
+          <!-- Project Category Filters -->
+          <div class="project-filters glass">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="creative">3D / Creative</button>
+            <button class="filter-btn" data-filter="fullstack">Full-Stack</button>
+            <button class="filter-btn" data-filter="system">Systems</button>
+          </div>
+        </div>
+        
+        <!-- Projects Responsive Grid -->
+        <div class="projects-grid" id="projects-container">
+          <!-- Projects are injected dynamically via JavaScript to ensure performance and flexibility -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TIMELINE & EXPERIENCE -->
+    <section id="experience" class="panel">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-tag">// JOURNEY</span>
+          <h2 class="section-title">Professional Path</h2>
+        </div>
+        
+        <div class="timeline">
+          <div class="timeline-line"></div>
+          
+          <div class="timeline-item glass">
+            <div class="timeline-dot"></div>
+            <div class="timeline-date">2024 - Present</div>
+            <div class="timeline-content">
+              <h3>Lead Creative Engineer</h3>
+              <h4 class="company">Vortex Labs</h4>
+              <p>Orchestrated the architectural design of a WebGL-based product customizer, boosting online configuration conversions by 42%. Guided a front-end engineering team using Three.js, React, and serverless Node.js infrastructure.</p>
+            </div>
+          </div>
+
+          <div class="timeline-item glass">
+            <div class="timeline-dot"></div>
+            <div class="timeline-date">2022 - 2024</div>
+            <div class="timeline-content">
+              <h3>Senior Full-Stack Developer</h3>
+              <h4 class="company">Aether Studio</h4>
+              <p>Engineered responsive web applications and dashboards utilizing Python/FastAPI and TypeScript. Constructed real-time WebSocket messaging systems and optimized heavy SQL queries to decrease application load times by 30%.</p>
+            </div>
+          </div>
+
+          <div class="timeline-item glass">
+            <div class="timeline-dot"></div>
+            <div class="timeline-date">2021 - 2022</div>
+            <div class="timeline-content">
+              <h3>Creative Web Developer</h3>
+              <h4 class="company">Hologram Digital</h4>
+              <p>Crafted interactive landing pages utilizing GSAP animations and vanilla WebGL shader components. Collaborated closely with creative designers to turn complex Blender assets into interactive, lightweight web scenes.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTACT SECTION -->
+    <section id="contact" class="panel">
+      <div class="container">
+        <div class="contact-card glass">
+          <div class="contact-grid">
+            
+            <div class="contact-info">
+              <span class="section-tag">// INQUIRY</span>
+              <h2 class="section-title">Let's build<br>something<br><span class="gradient-text">extraordinary</span></h2>
+              <p class="contact-desc">
+                Have an ambitious idea, a question, or a project that needs a mix of 3D aesthetics and full-stack performance? Drop a message and let's configure the solution.
+              </p>
+              
+              <div class="contact-channels">
+                <a href="mailto:alex@aetheris.dev" class="channel-link">
+                  <div class="channel-icon"><i class="fa-regular fa-envelope"></i></div>
+                  <div class="channel-text">
+                    <span class="channel-label">Email</span>
+                    <span class="channel-val">alex@aetheris.dev</span>
+                  </div>
+                </a>
+                <a href="https://github.com" target="_blank" class="channel-link">
+                  <div class="channel-icon"><i class="fa-brands fa-github"></i></div>
+                  <div class="channel-text">
+                    <span class="channel-label">Github</span>
+                    <span class="channel-val">github.com/aetheris-dev</span>
+                  </div>
+                </a>
+                <a href="https://linkedin.com" target="_blank" class="channel-link">
+                  <div class="channel-icon"><i class="fa-brands fa-linkedin-in"></i></div>
+                  <div class="channel-text">
+                    <span class="channel-label">LinkedIn</span>
+                    <span class="channel-val">linkedin.com/in/alex-aetheris</span>
+                  </div>
+                </a>
+              </div>
+            </div>
+            
+            <!-- Sleek Interactive Form -->
+            <div class="contact-form-container">
+              <form id="portfolio-contact-form">
+                <div class="form-group">
+                  <input type="text" id="name" required placeholder=" " class="form-input">
+                  <label for="name" class="form-label">Full Name</label>
+                  <span class="form-border"></span>
+                </div>
+                
+                <div class="form-group">
+                  <input type="email" id="email" required placeholder=" " class="form-input">
+                  <label for="email" class="form-label">Email Address</label>
+                  <span class="form-border"></span>
+                </div>
+                
+                <div class="form-group">
+                  <input type="text" id="subject" placeholder=" " class="form-input">
+                  <label for="subject" class="form-label">Subject</label>
+                  <span class="form-border"></span>
+                </div>
+                
+                <div class="form-group">
+                  <textarea id="message" required placeholder=" " class="form-textarea" rows="4"></textarea>
+                  <label for="message" class="form-label">Tell me about your project</label>
+                  <span class="form-border"></span>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-full btn-magnetic btn-submit">
+                  <span class="btn-text">Transmit Signal</span>
+                  <span class="btn-icon"><i class="fa-regular fa-paper-plane"></i></span>
+                </button>
+              </form>
+              
+              <!-- Success State Overlay -->
+              <div class="form-success-overlay" id="form-success">
+                <div class="success-icon">
+                  <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <h3>Signal Transmitted</h3>
+                <p>Thank you. Your message has been encrypted and routed. I will reply within 24 hours.</p>
+                <button class="btn btn-outline btn-sm btn-magnetic" id="reset-form-btn">Send Another Message</button>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+      <div class="container footer-content">
+        <p class="copyright">&copy; 2026 AETHERIS. All rights reserved. Created with Three.js & GSAP.</p>
+        <div class="footer-links">
+          <a href="#hero">Back to top</a>
+          <span class="separator">•</span>
+          <a href="https://github.com" target="_blank">Repository</a>
+        </div>
+      </div>
+    </footer>
+
+  </main>
+
+  <!-- Three.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  
+  <!-- GSAP Animation Core + ScrollTrigger plugin -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollToPlugin.min.js"></script>
+  
+  <!-- Dynamic Project Repository Data -->
+  <script src="projects.js"></script>
+  
+  <!-- Main Interactive Loop -->
+  <script src="main.js"></script>
+</body>
+</html>
