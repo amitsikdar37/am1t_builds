@@ -91,35 +91,33 @@
             </div>
             <div class="step-item" data-step="navigate">
               <span class="step-icon">🚀</span>
-              <span class="step-text">Navigate & render page</span>
+              <span class="step-text">Navigate &amp; render page</span>
               <span class="step-check"></span>
             </div>
             <div class="step-item" data-step="screenshot">
               <span class="step-icon">📸</span>
-              <span class="step-text">Full-page screenshot</span>
+              <span class="step-text">Take screenshot</span>
               <span class="step-check"></span>
             </div>
             <div class="step-item" data-step="html">
               <span class="step-icon">📄</span>
-              <span class="step-text">Extract rendered HTML</span>
+              <span class="step-text">Capture rendered DOM</span>
               <span class="step-check"></span>
             </div>
             <div class="step-item" data-step="css">
               <span class="step-icon">🎨</span>
-              <span class="step-text">Capture all CSS</span>
+              <span class="step-text">Intercept &amp; merge CSS</span>
               <span class="step-check"></span>
             </div>
-            <div class="step-item" data-step="tokens">
-              <span class="step-icon">🖌️</span>
-              <span class="step-text">Extract design tokens</span>
-              <span class="step-check"></span>
-            </div>
-            <div class="step-item" data-step="assets">
-              <span class="step-icon">📦</span>
-              <span class="step-text">Build asset inventory</span>
+            <div class="step-item" data-step="assemble">
+              <span class="step-icon">🏗️</span>
+              <span class="step-text">Assemble self-executing clone</span>
               <span class="step-check"></span>
             </div>
           </div>
+
+          <!-- Clone download bar injected here by JS -->
+          <div id="phase1Content"></div>
 
           <!-- Live terminal log -->
           <div class="terminal" id="phase1Terminal">
@@ -130,46 +128,6 @@
               <span class="terminal-title">phase1_harvest.log</span>
             </div>
             <div class="terminal-body" id="terminalBody"></div>
-          </div>
-        </div>
-
-        <!-- Phase 2 Card -->
-        <div class="phase-card phase-card--2" id="phase2Card">
-          <div class="phase-header">
-            <div class="phase-badge phase-badge--2">Phase 2</div>
-            <div class="phase-title">Antigravity AI Cloner</div>
-            <div class="phase-status" id="phase2Status">
-              <span class="status-dot status-dot--idle"></span>
-              <span class="status-label">Waiting for Phase 1...</span>
-            </div>
-          </div>
-
-          <div class="phase2-content" id="phase2Content">
-            <div class="ai-waiting" id="aiWaiting">
-              <div class="ai-brain-anim">
-                <div class="brain-ring"></div>
-                <div class="brain-ring brain-ring--2"></div>
-                <span class="brain-icon">🤖</span>
-              </div>
-              <p class="ai-waiting-text">
-                Antigravity AI will analyze the harvested bundle —<br/>
-                screenshots, HTML, CSS, design tokens — and reconstruct the site.
-              </p>
-            </div>
-
-            <!-- Bundle summary (shown after Phase 1) -->
-            <div class="bundle-summary" id="bundleSummary" style="display:none;">
-              <h3 class="bundle-title">📦 Harvested Bundle</h3>
-              <div class="bundle-stats" id="bundleStats"></div>
-              <div class="palette-row" id="paletteRow"></div>
-
-              <div class="phase2-actions">
-                <button class="action-btn action-btn--primary" id="generateCloneBtn" style="display:none;">
-                  <span>🤖</span> Generate Clone with Antigravity
-                </button>
-                <p class="action-hint" id="actionHint"></p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -188,16 +146,10 @@
             </div>
           </div>
           <div class="preview-pane" id="paneClone" style="display:none;">
-            <div class="preview-label">AI-Generated Clone</div>
-            <iframe id="cloneIframe" src="" title="Generated clone preview"></iframe>
+            <div class="preview-label">Self-Executing Clone</div>
+            <iframe id="cloneIframe" src="" title="Clone preview"></iframe>
           </div>
         </div>
-      </div>
-
-      <!-- Bundle file list -->
-      <div class="files-section" id="filesSection" style="display:none;">
-        <h3 class="files-title">📁 Harvested Files</h3>
-        <div class="files-grid" id="filesGrid"></div>
       </div>
     </section>
 
@@ -215,22 +167,22 @@
         <div class="step-card">
           <div class="step-num">02</div>
           <div class="step-card-icon">🕷️</div>
-          <h3>Phase 1 — Harvest</h3>
-          <p>Playwright browser crawls the site, captures screenshots, HTML, CSS, design tokens, fonts, colors, and assets.</p>
+          <h3>Harvest</h3>
+          <p>Playwright navigates to the site, intercepts all CSS, and captures the pristine initial HTML.</p>
         </div>
         <div class="step-arrow">→</div>
         <div class="step-card">
           <div class="step-num">03</div>
-          <div class="step-card-icon">🤖</div>
-          <h3>Phase 2 — Clone</h3>
-          <p>Antigravity AI analyzes everything — sees the layout visually + reads the code — and writes a clean, faithful clone.</p>
+          <div class="step-card-icon">🏗️</div>
+          <h3>Auto-Assemble</h3>
+          <p>A self-executing clone is built by injecting a &lt;base&gt; tag and merging the CSS, perfectly preserving loading animations.</p>
         </div>
         <div class="step-arrow">→</div>
         <div class="step-card">
           <div class="step-num">04</div>
           <div class="step-card-icon">⚡</div>
-          <h3>Preview & Download</h3>
-          <p>View the clone side-by-side with the original and download as a single portable HTML file.</p>
+          <h3>Preview &amp; Modify</h3>
+          <p>View the clone instantly. You can then ask Antigravity AI to modify the resulting code to add your own ideas!</p>
         </div>
       </div>
     </section>
@@ -246,7 +198,7 @@
 
   <!-- ── FOOTER ─────────────────────────────────────────────────────────── -->
   <footer class="site-footer">
-    <p>⚡ WebCloner · Powered by Antigravity AI · Phase 1: Playwright · Phase 2: Gemini Vision</p>
+    <p>⚡ WebCloner · Zero-AI Architecture · 100% Faithful Clones</p>
   </footer>
 
   <script src="app.js"></script>

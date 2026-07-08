@@ -1,11 +1,11 @@
-// app.js — Frontend logic for Website Cloner
-// Handles form submission, SSE progress streaming, UI state management
+// app.js — Frontend logic for Website Cloner (Zero-AI architecture)
+// Phase 1 = Playwright harvests + assembles the clone automatically.
+// No Phase 2. No AI prompt. The clone is ready as soon as Phase 1 finishes.
 
 /* ── State ─────────────────────────────────────────────────────────────────── */
 let currentSessionId = null;
 let currentBundleId  = null;
 let eventSource      = null;
-let clonePoller      = null;  // Interval that polls for generated clone
 
 /* ── DOM refs ──────────────────────────────────────────────────────────────── */
 const cloneForm       = document.getElementById('cloneForm');
@@ -14,35 +14,23 @@ const cloneBtn        = document.getElementById('cloneBtn');
 const pipelineSection = document.getElementById('pipelineSection');
 
 const phase1Card    = document.getElementById('phase1Card');
-const phase2Card    = document.getElementById('phase2Card');
 const phase1Status  = document.getElementById('phase1Status');
-const phase2Status  = document.getElementById('phase2Status');
 const terminalBody  = document.getElementById('terminalBody');
-
-const aiWaiting       = document.getElementById('aiWaiting');
-const bundleSummary   = document.getElementById('bundleSummary');
-const bundleStats     = document.getElementById('bundleStats');
-const paletteRow      = document.getElementById('paletteRow');
-const generateCloneBtn= document.getElementById('generateCloneBtn');
-const actionHint      = document.getElementById('actionHint');
 
 const previewSection  = document.getElementById('previewSection');
 const screenshotImg   = document.getElementById('screenshotImg');
 const cloneIframe     = document.getElementById('cloneIframe');
 const tabCloneBtn     = document.getElementById('tabClone');
-const filesSection    = document.getElementById('filesSection');
-const filesGrid       = document.getElementById('filesGrid');
 const historyGrid     = document.getElementById('historyGrid');
 
 /* ── Step tracking ─────────────────────────────────────────────────────────── */
 const stepKeywords = {
   browser:    ['chromium', 'browser', 'launching'],
-  navigate:   ['navigating', 'navigate', 'goto'],
+  navigate:   ['navigating', 'navigate'],
   screenshot: ['screenshot'],
-  html:       ['html', 'rendered'],
-  css:        ['css', 'stylesheet'],
-  tokens:     ['metadata', 'design token', 'computed', 'color', 'font'],
-  assets:     ['asset', 'inventory', 'javascript', 'palette', 'section'],
+  html:       ['dom', 'rendered', 'html'],
+  css:        ['css', 'stylesheet', 'merging'],
+  assemble:   ['assembling', 'self-executing', 'clone'],
 };
 
 function markStep(stepKey, state = 'done') {
@@ -56,7 +44,6 @@ function detectAndMarkStep(message) {
   const lc = message.toLowerCase();
   for (const [key, keywords] of Object.entries(stepKeywords)) {
     if (keywords.some(k => lc.includes(k))) {
-      // Mark previous steps done
       const keys = Object.keys(stepKeywords);
       const idx = keys.indexOf(key);
       keys.slice(0, idx).forEach(k => markStep(k, 'done'));
@@ -64,17 +51,14 @@ function detectAndMarkStep(message) {
       break;
     }
   }
-  // If phase 1 complete message
-  if (lc.includes('phase 1 complete') || lc.includes('bundle saved')) {
+  if (lc.includes('clone complete') || lc.includes('phase 1 complete')) {
     Object.keys(stepKeywords).forEach(k => markStep(k, 'done'));
   }
 }
 
 /* ── Terminal logger ───────────────────────────────────────────────────────── */
 function logToTerminal(message, type = 'normal') {
-  const now = new Date();
-  const time = now.toTimeString().slice(0, 8);
-
+  const time = new Date().toTimeString().slice(0, 8);
   const line = document.createElement('div');
   line.className = `log-line ${type}`;
   line.innerHTML = `<span class="log-time">${time}</span><span>${escapeHtml(message)}</span>`;
@@ -100,16 +84,13 @@ cloneForm.addEventListener('submit', async (e) => {
   const url = urlInput.value.trim();
   if (!url) return;
 
-  // Reset UI
   resetUI();
   pipelineSection.style.display = 'block';
   pipelineSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  // Disable form
   cloneBtn.disabled = true;
   cloneBtn.querySelector('.btn-text').textContent = 'Cloning...';
 
-  // Start clone request
   try {
     const resp = await fetch('/api/clone', {
       method: 'POST',
@@ -117,15 +98,12 @@ cloneForm.addEventListener('submit', async (e) => {
       body: JSON.stringify({ url }),
     });
     const data = await resp.json();
-
     if (!resp.ok) throw new Error(data.error || 'Server error');
 
     currentSessionId = data.sessionId;
     currentBundleId  = data.bundleId;
 
-    // Subscribe to SSE
     subscribeToProgress(currentSessionId);
-
   } catch (err) {
     logToTerminal(`❌ Failed to start: ${err.message}`, 'error');
     resetFormBtn();
@@ -135,23 +113,13 @@ cloneForm.addEventListener('submit', async (e) => {
 /* ── SSE subscription ──────────────────────────────────────────────────────── */
 function subscribeToProgress(sessionId) {
   if (eventSource) eventSource.close();
-
   eventSource = new EventSource(`/api/progress/${sessionId}`);
-
-  eventSource.onmessage = (e) => {
-    const data = JSON.parse(e.data);
-    handleEvent(data);
-  };
-
-  eventSource.onerror = () => {
-    // SSE closed after completion — normal
-    eventSource.close();
-  };
+  eventSource.onmessage = (e) => handleEvent(JSON.parse(e.data));
+  eventSource.onerror = () => eventSource.close();
 }
 
 function handleEvent(data) {
   switch (data.type) {
-
     case 'connected':
       logToTerminal('Connected to progress stream...', 'normal');
       phase1Card.classList.add('active');
@@ -159,9 +127,6 @@ function handleEvent(data) {
       break;
 
     case 'phase':
-      logToTerminal(data.message, 'normal');
-      break;
-
     case 'progress':
       logToTerminal(data.message, 'normal');
       detectAndMarkStep(data.message);
@@ -180,226 +145,59 @@ function handleEvent(data) {
   }
 }
 
-/* ── Phase 1 complete ──────────────────────────────────────────────────────── */
+/* ── Phase 1 complete → show clone instantly ───────────────────────────────── */
 async function handlePhase1Complete(data) {
-  logToTerminal('✅ Phase 1 complete!', 'success');
+  logToTerminal('✅ Clone assembled! Loading preview...', 'success');
   setStatus(phase1Status, 'done', 'Done');
   phase1Card.classList.remove('active');
   Object.keys(stepKeywords).forEach(k => markStep(k, 'done'));
 
-  // Show screenshot
+  // Show screenshot thumbnail
   if (data.screenshotUrl) {
     screenshotImg.src = data.screenshotUrl;
     previewSection.style.display = 'block';
   }
 
-  // Fetch bundle info
-  try {
-    const resp = await fetch(`/api/bundle/${currentBundleId}`);
-    const bundle = await resp.json();
-    renderBundleSummary(bundle, data.summary);
-    renderFilesList(bundle.files);
-  } catch (_) {}
+  // Load the clone directly into the iframe — it's already ready in output/
+  const cloneUrl = `/output/${currentBundleId}/index.html`;
+  loadClonePreview(cloneUrl, null, data.summary?.harvestedAt);
 
-  // Activate Phase 2
-  phase2Card.classList.add('active');
-  setStatus(phase2Status, 'running', 'Ready for Antigravity');
-  aiWaiting.style.display = 'none';
-  bundleSummary.style.display = 'block';
-  generateCloneBtn.style.display = 'inline-flex';
-
-  actionHint.textContent =
-    '💬 Click above to copy context for Antigravity chat. ' +
-    'Once Antigravity generates the clone it will auto-appear here!';
-
-  filesSection.style.display = 'block';
   resetFormBtn();
-
-  // Start polling for the AI-generated clone
-  pollForClone(currentBundleId);
-
-  // Update history
   loadHistory();
 }
 
-/* ── Bundle Summary render ─────────────────────────────────────────────────── */
-function renderBundleSummary(bundle, summary) {
-  const stats = summary?.stats || {};
-  const palette = [];
-
-  bundleStats.innerHTML = [
-    { value: stats.cssFilesIntercepted || '—', label: 'CSS Files' },
-    { value: stats.imagesFound || '—',          label: 'Images' },
-    { value: stats.colorTokens || '—',          label: 'Colors' },
-    { value: stats.htmlSize || '—',             label: 'HTML Size' },
-    { value: stats.cssSize  || '—',             label: 'CSS Size' },
-    { value: bundle.files?.length || '—',       label: 'Files' },
-  ].map(s => `
-    <div class="stat-chip">
-      <div class="stat-value">${s.value}</div>
-      <div class="stat-label">${s.label}</div>
-    </div>
-  `).join('');
-
-  // Render palette
-  paletteRow.innerHTML = '';
-  if (summary?.stats?.fonts) {
-    // Palette is fetched below
-  }
-
-  // Try fetch palette.json
-  fetch(`/bundle/${currentBundleId}/palette.json`)
-    .then(r => r.json())
-    .then(p => {
-      paletteRow.innerHTML = (p.palette || []).map(hex =>
-        `<div class="palette-swatch" style="background:${hex}" title="${hex}"></div>`
-      ).join('');
-    })
-    .catch(() => {});
-}
-
-/* ── File list render ──────────────────────────────────────────────────────── */
-const FILE_ICONS = {
-  png: '🖼️', jpg: '🖼️', html: '📄', css: '🎨',
-  js: '⚡', json: '🗃️', log: '📝',
-};
-
-function renderFilesList(files) {
-  filesGrid.innerHTML = files.map(f => {
-    const ext = f.name.split('.').pop().toLowerCase();
-    const icon = FILE_ICONS[ext] || '📁';
-    return `
-      <div class="file-chip">
-        <span class="file-chip-icon">${icon}</span>
-        <div class="file-chip-info">
-          <div class="file-chip-name">${f.name}</div>
-          <div class="file-chip-size">${f.size}</div>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-/* ── Generate Clone button ─────────────────────────────────────────────────── */
-generateCloneBtn.addEventListener('click', () => {
-  // Copy bundle context to clipboard for Antigravity
-  const ctx = buildAntigravityContext();
-  navigator.clipboard.writeText(ctx).then(() => {
-    generateCloneBtn.textContent = '✅ Context copied — paste it in Antigravity chat!';
-    generateCloneBtn.disabled = true;
-    setTimeout(() => {
-      generateCloneBtn.innerHTML = '<span>🤖</span> Generate Clone with Antigravity';
-      generateCloneBtn.disabled = false;
-    }, 4000);
-  }).catch(() => {
-    alert('Bundle ID: ' + currentBundleId + '\n\nTell Antigravity: "Generate the clone for bundleId: ' + currentBundleId + '"');
-  });
-});
-
-/* ── Clone Polling ─────────────────────────────────────────────────────────── */
-function pollForClone(bundleId) {
-  if (clonePoller) clearInterval(clonePoller);
-
-  let attempts = 0;
-  const MAX_ATTEMPTS = 60; // Poll for up to ~5 minutes
-
-  clonePoller = setInterval(async () => {
-    attempts++;
-    if (attempts > MAX_ATTEMPTS) {
-      clearInterval(clonePoller);
-      clonePoller = null;
-      return;
-    }
-
-    try {
-      const resp = await fetch(`/api/output/${bundleId}/check`);
-      const data = await resp.json();
-
-      if (data.exists) {
-        clearInterval(clonePoller);
-        clonePoller = null;
-        loadClonePreview(data.url, data.size, data.generatedAt);
-      }
-    } catch (_) { /* network hiccup, keep polling */ }
-  }, 5000); // every 5 seconds
-}
-
+/* ── Clone preview ─────────────────────────────────────────────────────────── */
 function loadClonePreview(cloneUrl, size, generatedAt) {
-  // Load clone into iframe
   cloneIframe.src = cloneUrl;
 
-  // Activate the Clone tab with a success badge
   tabCloneBtn.innerHTML = `⚡ Generated Clone <span class="clone-ready-badge">Ready!</span>`;
   tabCloneBtn.disabled = false;
   tabCloneBtn.style.pointerEvents = 'auto';
 
-  // Update phase 2 status
-  setStatus(phase2Status, 'done', 'Clone Generated!');
-
-  // Add download + open link below the action hint
-  const downloadLink = document.createElement('div');
-  downloadLink.className = 'clone-download-bar';
-  downloadLink.innerHTML = `
-    <span class="clone-size-badge">📄 ${size || ''}</span>
-    <a href="${cloneUrl}" target="_blank" class="clone-open-btn">🔗 Open Clone</a>
+  // Add open + download links
+  const bar = document.createElement('div');
+  bar.className = 'clone-download-bar';
+  bar.innerHTML = `
+    <a href="${cloneUrl}" target="_blank" class="clone-open-btn">🔗 Open Clone in New Tab</a>
     <a href="${cloneUrl}" download="clone.html" class="clone-dl-btn">⬇️ Download HTML</a>
   `;
-  // Avoid duplicates
   const oldBar = document.querySelector('.clone-download-bar');
   if (oldBar) oldBar.remove();
-  actionHint.insertAdjacentElement('afterend', downloadLink);
 
-  actionHint.textContent = `✅ Clone generated by Antigravity${generatedAt ? ' · ' + new Date(generatedAt).toLocaleTimeString() : ''}. Click the "Generated Clone" tab to preview it.`;
+  const phase1Content = document.getElementById('phase1Content');
+  if (phase1Content) phase1Content.appendChild(bar);
 
-  // Auto-switch to clone tab
   switchTab('clone');
-
-  logToTerminal('⚡ Clone detected! Loading preview...', 'success');
+  logToTerminal('⚡ Clone ready!', 'success');
 }
-
-function buildAntigravityContext() {
-  return [
-    `Generate a complete website clone for the following harvested bundle.`,
-    `Bundle ID: ${currentBundleId}`,
-    `Bundle directory on server: harvested_bundle/${currentBundleId}`,
-    ``,
-    `Files available:`,
-    `  - raw.html                (full rendered HTML)`,
-    `  - styles.css              (all CSS merged including @keyframes)`,
-    `  - metadata.json           (colors, fonts, headings, images, DOM structure)`,
-    `  - computed_styles.json    (computed styles for key elements)`,
-    `  - sections.json           (page sections with bg colors)`,
-    `  - palette.json            (dominant color palette)`,
-    `  - animations.json         (⭐ NEW: GSAP configs, CSS keyframes, scroll triggers, Webflow IX2, animated elements, scroll-state snapshots)`,
-    `  - screenshot_full.png     (full-page screenshot)`,
-    `  - screenshot_viewport.png (above-the-fold screenshot)`,
-    `  - scroll_video.webm       (⭐ NEW: Video recording of the page scrolling down. Watch this to perfectly replicate animations!)`,
-    ``,
-    `CRITICAL INSTRUCTIONS:`,
-    `1. READ animations.json carefully — it contains the exact animation library stack (GSAP, Lenis, AOS, etc.), all CSS @keyframes, GSAP ScrollTrigger instances, and per-element computed states at multiple scroll positions.`,
-    `2. WATCH the scroll_video.webm carefully to perfectly recreate the scrolling interactions, parallax speeds, micro-animations, and stacked layouts.`,
-    `3. REPLICATE all scroll-triggered animations: if GSAP is detected, use GSAP + ScrollTrigger. If AOS is detected, use AOS. If Lenis is detected, add smooth scroll. If Webflow IX2 is detected, replicate the interactions with CSS+JS.`,
-    `4. RECONSTRUCT text reveal animations (split lines, fade-in, slide-up) for headings and body text.`,
-    `5. REPLICATE parallax effects for hero images and background elements.`,
-    `6. Use CDN links for detected libraries (e.g. gsap from cdnjs, aos from cdnjs).`,
-    ``,
-    `7. ALL generated files (HTML, CSS, JS) MUST be saved EXACTLY inside the output folder: output/${currentBundleId}/`,
-    `8. DO NOT write a Node.js script (like clone.js or build.js) to generate the clone. You must use your file editing tools to write the actual HTML, CSS, and JS code directly.`,
-    `9. IMPORTANT FOR GSAP: You MUST initialize ScrollTrigger inside window.addEventListener("load", ...) (NOT DOMContentLoaded) so trigger positions are calculated AFTER images/fonts load.`,
-    `10. IMPORTANT FOR LENIS: If using Lenis smooth scroll, you MUST include the Lenis CDN script and sync it with GSAP using: lenis.on('scroll', ScrollTrigger.update); gsap.ticker.add((time)=>{lenis.raf(time*1000)});`,
-    `Please read ALL these files and generate a self-contained clone. DO NOT save any files to the project root or public folder.`,
-  ].join('\n');
-}
-
 
 /* ── Preview tabs ──────────────────────────────────────────────────────────── */
 document.getElementById('tabOriginal').addEventListener('click', () => switchTab('original'));
-document.getElementById('tabClone').addEventListener('click',    () => {
-  // If clone not yet loaded, try checking now
+document.getElementById('tabClone').addEventListener('click', () => {
   if (currentBundleId && (!cloneIframe.src || cloneIframe.src === window.location.href)) {
     fetch(`/api/output/${currentBundleId}/check`)
       .then(r => r.json())
-      .then(data => { if (data.exists) loadClonePreview(data.url, data.size, data.generatedAt); })
+      .then(d => { if (d.exists) loadClonePreview(d.url, d.size, d.generatedAt); })
       .catch(() => {});
   }
   switchTab('clone');
@@ -408,7 +206,6 @@ document.getElementById('tabClone').addEventListener('click',    () => {
 function switchTab(tab) {
   document.querySelectorAll('.preview-tab').forEach(t => t.classList.remove('active'));
   document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
-
   document.getElementById('paneOriginal').style.display = tab === 'original' ? 'block' : 'none';
   document.getElementById('paneClone').style.display    = tab === 'clone'    ? 'block' : 'none';
 }
@@ -425,10 +222,9 @@ async function loadHistory() {
       return;
     }
 
-    // For each bundle, check if a clone exists
-    const bundleChecks = bundles.slice(-12).reverse().map(async b => {
+    const cards = bundles.slice(-12).reverse().map(async b => {
       const s = b.summary;
-      const thumb = `/bundle/${b.bundleId}/screenshot_viewport.png`;
+      const thumb = `/bundle/${b.bundleId}/screenshot.png`;
       let cloneLink = '';
       try {
         const chk = await fetch(`/api/output/${b.bundleId}/check`);
@@ -443,17 +239,17 @@ async function loadHistory() {
       } catch (_) {}
       return `
         <div class="history-card">
-          <img class="history-card-thumb" src="${thumb}" alt="${escapeHtml(s.title || '')}" loading="lazy" onerror="this.style.display='none'" onclick="window.open('/bundle/${b.bundleId}/screenshot_full.png','_blank')" style="cursor:pointer" />
+          <img class="history-card-thumb" src="${thumb}" alt="${escapeHtml(s.title || '')}" loading="lazy"
+               onerror="this.style.display='none'" onclick="window.open('${thumb}','_blank')" style="cursor:pointer" />
           <div class="history-card-body">
             <div class="history-card-title">${escapeHtml(s.title || 'Untitled')}</div>
             <div class="history-card-url">${escapeHtml(s.url || '')}</div>
             <div class="history-card-meta">Cloned ${formatDate(s.harvestedAt)}</div>
             ${cloneLink}
           </div>
-        </div>
-      `;
+        </div>`;
     });
-    historyGrid.innerHTML = (await Promise.all(bundleChecks)).join('');
+    historyGrid.innerHTML = (await Promise.all(cards)).join('');
   } catch (_) {}
 }
 
@@ -465,39 +261,18 @@ function formatDate(iso) {
 /* ── Reset helpers ─────────────────────────────────────────────────────────── */
 function resetUI() {
   terminalBody.innerHTML = '';
-  bundleStats.innerHTML  = '';
-  paletteRow.innerHTML   = '';
-  filesGrid.innerHTML    = '';
-  screenshotImg.src      = '';
-  cloneIframe.src        = '';
-
-  // Reset clone tab label
+  screenshotImg.src = '';
+  cloneIframe.src   = '';
   tabCloneBtn.innerHTML = '⚡ Generated Clone';
-
-  // Remove any download bar
   const oldBar = document.querySelector('.clone-download-bar');
   if (oldBar) oldBar.remove();
-
   phase1Card.classList.remove('active');
-  phase2Card.classList.remove('active');
-
   setStatus(phase1Status, 'idle', 'Waiting...');
-  setStatus(phase2Status, 'idle', 'Waiting for Phase 1...');
-
   document.querySelectorAll('.step-item').forEach(el => el.classList.remove('done', 'running'));
-
-  aiWaiting.style.display     = 'flex';
-  bundleSummary.style.display = 'none';
   previewSection.style.display = 'none';
-  filesSection.style.display  = 'none';
-  generateCloneBtn.style.display = 'none';
-  generateCloneBtn.disabled = false;
-  generateCloneBtn.innerHTML = '<span>🤖</span> Generate Clone with Antigravity';
-  actionHint.textContent = '';
   currentSessionId = null;
   currentBundleId  = null;
   if (eventSource) { eventSource.close(); eventSource = null; }
-  if (clonePoller) { clearInterval(clonePoller); clonePoller = null; }
 }
 
 function resetFormBtn() {

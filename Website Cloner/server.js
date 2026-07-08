@@ -84,11 +84,10 @@ app.post('/api/clone', async (req, res) => {
       sendEvent(sessionId, {
         type: 'phase1_complete',
         phase: 1,
-        message: '✅ Phase 1 complete! All site data harvested.',
+        message: '✅ Clone ready!',
         summary,
         bundleId: `${slug}_${sessionId}`,
-        screenshotUrl: `/bundle/${slug}_${sessionId}/screenshot_viewport.png`,
-        screenshotFullUrl: `/bundle/${slug}_${sessionId}/screenshot_full.png`,
+        screenshotUrl: `/bundle/${slug}_${sessionId}/screenshot.png`,
       });
 
     } catch (err) {
@@ -139,6 +138,7 @@ app.get('/api/bundle/:bundleId/:file', (req, res) => {
 // ── Check if clone output exists for a bundle ─────────────────────────────────
 app.get('/api/output/:bundleId/check', (req, res) => {
   const { bundleId } = req.params;
+  // Phase 1 now auto-saves output/<bundleId>/index.html at the end of harvest
   const outputPath = path.join(__dirname, 'output', bundleId, 'index.html');
 
   if (!fs.existsSync(outputPath)) {
@@ -153,24 +153,6 @@ app.get('/api/output/:bundleId/check', (req, res) => {
     sizeBytes: stat.size,
     size: formatSize(stat.size),
     generatedAt: stat.mtime.toISOString(),
-  });
-});
-
-// ── Save clone output (Antigravity posts the generated HTML) ──────────────────
-app.post('/api/output/:bundleId', (req, res) => {
-  const { bundleId } = req.params;
-  const { html, filename = 'index.html' } = req.body;
-
-  if (!html) return res.status(400).json({ error: 'HTML content is required.' });
-
-  const outputDir = path.join(__dirname, 'output', bundleId);
-  fs.mkdirSync(outputDir, { recursive: true });
-  fs.writeFileSync(path.join(outputDir, filename), html, 'utf8');
-
-  res.json({
-    status: 'saved',
-    url: `/output/${bundleId}/${filename}`,
-    previewUrl: `http://localhost:${PORT}/output/${bundleId}/${filename}`,
   });
 });
 
