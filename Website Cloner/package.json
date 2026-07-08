@@ -8,8 +8,10 @@
     "install:browsers": "npx playwright install chromium"
   },
   "dependencies": {
+    "adm-zip": "^0.5.18",
     "express": "^4.18.2",
-    "playwright": "^1.44.0"
+    "playwright": "^1.44.0",
+    "prettier": "^3.9.4"
   },
   "engines": {
     "node": ">=18.0.0"

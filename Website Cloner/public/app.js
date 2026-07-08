@@ -160,14 +160,15 @@ async function handlePhase1Complete(data) {
 
   // Load the clone directly into the iframe — it's already ready in output/
   const cloneUrl = `/output/${currentBundleId}/index.html`;
-  loadClonePreview(cloneUrl, null, data.summary?.harvestedAt);
+  const downloadUrl = `/output/${currentBundleId}/clone_project.zip`;
+  loadClonePreview(cloneUrl, downloadUrl, null, data.summary?.harvestedAt);
 
   resetFormBtn();
   loadHistory();
 }
 
 /* ── Clone preview ─────────────────────────────────────────────────────────── */
-function loadClonePreview(cloneUrl, size, generatedAt) {
+function loadClonePreview(cloneUrl, downloadUrl, size, generatedAt) {
   cloneIframe.src = cloneUrl;
 
   tabCloneBtn.innerHTML = `⚡ Generated Clone <span class="clone-ready-badge">Ready!</span>`;
@@ -179,7 +180,7 @@ function loadClonePreview(cloneUrl, size, generatedAt) {
   bar.className = 'clone-download-bar';
   bar.innerHTML = `
     <a href="${cloneUrl}" target="_blank" class="clone-open-btn">🔗 Open Clone in New Tab</a>
-    <a href="${cloneUrl}" download="clone.html" class="clone-dl-btn">⬇️ Download HTML</a>
+    <a href="${downloadUrl || cloneUrl}" download="clone_project.zip" class="clone-dl-btn">⬇️ Download ZIP Project</a>
   `;
   const oldBar = document.querySelector('.clone-download-bar');
   if (oldBar) oldBar.remove();
@@ -197,7 +198,7 @@ document.getElementById('tabClone').addEventListener('click', () => {
   if (currentBundleId && (!cloneIframe.src || cloneIframe.src === window.location.href)) {
     fetch(`/api/output/${currentBundleId}/check`)
       .then(r => r.json())
-      .then(d => { if (d.exists) loadClonePreview(d.url, d.size, d.generatedAt); })
+      .then(d => { if (d.exists) loadClonePreview(d.url, `/output/${currentBundleId}/clone_project.zip`, d.size, d.generatedAt); })
       .catch(() => {});
   }
   switchTab('clone');
@@ -232,8 +233,8 @@ async function loadHistory() {
         if (chkData.exists) {
           cloneLink = `
             <div class="history-card-clone">
-              <a href="${chkData.url}" target="_blank" class="history-clone-link">⚡ View Clone</a>
-              <a href="${chkData.url}" download="clone.html" class="history-clone-link history-clone-dl">⬇️ Download</a>
+              <a href="${chkData.url}" target="_blank" class="history-clone-link">⚡ View</a>
+              <a href="/output/${b.bundleId}/clone_project.zip" download="clone_project.zip" class="history-clone-link history-clone-dl">⬇️ Download ZIP</a>
             </div>`;
         }
       } catch (_) {}

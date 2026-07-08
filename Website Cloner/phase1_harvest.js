@@ -5,6 +5,8 @@
 const { chromium } = require('playwright');
 const fs   = require('fs');
 const path = require('path');
+const prettier = require('prettier');
+const AdmZip = require('adm-zip');
 
 /**
  * harvestSite(url, bundleDir, onProgress)
@@ -92,52 +94,80 @@ async function harvestSite(url, bundleDir, onProgress = () => {}) {
   await context.close();
   await browser.close();
 
-  // ── Assemble self-executing clone ─────────────────────────────────────────────
+  // ── Assemble self-executing clones ──────────────────────────────────────────
   onProgress('🏗️  Assembling self-executing clone (Initial HTML + Base)...');
 
   // We use the INITIAL HTML here, not the mutated DOM.
-  // This guarantees loading screens and GSAP start states are exactly as they were.
-  let cloneHTML = initialHTML;
+  let baseHTML = initialHTML;
 
-  // 1. Inject <base> tag so all relative paths (images, scripts, CSS) resolve to original site
+  // 1. Inject <base> tag so all relative paths resolve to original site
   const baseTag = `<base href="${finalUrl}">`;
-  if (cloneHTML.match(/<head[^>]*>/i)) {
-    cloneHTML = cloneHTML.replace(/(<head[^>]*>)/i, `$1\n${baseTag}`);
+  if (baseHTML.match(/<head[^>]*>/i)) {
+    baseHTML = baseHTML.replace(/(<head[^>]*>)/i, `$1\n${baseTag}`);
   } else {
-    cloneHTML = `<head>\n${baseTag}\n</head>\n` + cloneHTML;
+    baseHTML = `<head>\n${baseTag}\n</head>\n` + baseHTML;
   }
 
-  // 2. Inject all intercepted CSS into <head> (makes clone fully self-contained)
-  const styleTag = `\n<style id="website-cloner-css">\n${mergedCSS}\n</style>\n`;
-  if (cloneHTML.includes('</head>')) {
-    cloneHTML = cloneHTML.replace('</head>', `${styleTag}</head>`);
-  } else {
-    cloneHTML = cloneHTML.replace(/(<body[^>]*>)/i, `<head>${styleTag}</head>\n$1`);
-  }
-
-  // Strip ONLY dev-server / hot-reload inline scripts (they break locally)
-  cloneHTML = cloneHTML.replace(/<script([^>]*)>([\s\S]*?)<\/script>/gi, (match, attrs, code) => {
+  // Strip dev-server scripts
+  baseHTML = baseHTML.replace(/<script([^>]*)>([\s\S]*?)<\/script>/gi, (match, attrs, code) => {
     if (
-      code.includes('localhost') ||
-      code.includes('127.0.0.1') ||
-      code.includes('webpack-dev-server') ||
-      code.includes('__webpack_hmr') ||
-      code.includes('sockjs') ||
-      code.includes('hot-reload')
-    ) {
-      return ''; // remove only dev-only scripts
-    }
-    return match; // keep ALL other scripts (CDN libs, GSAP, Webflow, etc.)
+      code.includes('localhost') || code.includes('127.0.0.1') ||
+      code.includes('webpack-dev-server') || code.includes('__webpack_hmr') ||
+      code.includes('sockjs') || code.includes('hot-reload')
+    ) return '';
+    return match;
   });
 
-  // Save the finished clone to output/ so the UI preview works instantly
+  // 2. Create the split, maintainable version (index.html + styles.css)
+  const linkTag = `\n<link rel="stylesheet" href="styles.css" id="website-cloner-css">\n`;
+  let splitHTML = baseHTML;
+  if (splitHTML.includes('</head>')) {
+    splitHTML = splitHTML.replace('</head>', `${linkTag}</head>`);
+  } else {
+    splitHTML = splitHTML.replace(/(<body[^>]*>)/i, `<head>${linkTag}</head>\n$1`);
+  }
+
+  // 3. Create the single-file standalone version (for easy downloading)
+  const styleTag = `\n<style id="website-cloner-css">\n${mergedCSS}\n</style>\n`;
+  let standaloneHTML = baseHTML;
+  if (standaloneHTML.includes('</head>')) {
+    standaloneHTML = standaloneHTML.replace('</head>', `${styleTag}</head>`);
+  } else {
+    standaloneHTML = standaloneHTML.replace(/(<body[^>]*>)/i, `<head>${styleTag}</head>\n$1`);
+  }
+
+  // 4. Format the split, maintainable code using Prettier
+  onProgress('✨ Formatting code to be highly maintainable...');
+  let formattedHTML = splitHTML;
+  let formattedCSS = mergedCSS;
+  try {
+    formattedHTML = await prettier.format(splitHTML, { parser: 'html', printWidth: 100, htmlWhitespaceSensitivity: 'ignore' });
+    formattedCSS = await prettier.format(mergedCSS, { parser: 'css' });
+  } catch (e) {
+    onProgress('⚠️ Formatting failed (possibly due to syntax errors in scraped code) — continuing with raw code.');
+  }
+
+  // 5. Save to output/
   const bundleId = path.basename(bundleDir);
   const outputDir = path.join(__dirname, 'output', bundleId);
   fs.mkdirSync(outputDir, { recursive: true });
-  fs.writeFileSync(path.join(outputDir, 'index.html'), cloneHTML, 'utf8');
+  
+  // Save formatted files for maintainability
+  fs.writeFileSync(path.join(outputDir, 'styles.css'), formattedCSS, 'utf8');
+  fs.writeFileSync(path.join(outputDir, 'index.html'), formattedHTML, 'utf8');
+  
+  // Save standalone version (unformatted to save space, used mostly for iframe UI)
+  fs.writeFileSync(path.join(outputDir, 'clone_standalone.html'), standaloneHTML, 'utf8');
+
+  // 6. Create ZIP project
+  onProgress('📦 Zipping project...');
+  const zip = new AdmZip();
+  zip.addFile('index.html', Buffer.from(formattedHTML, 'utf8'));
+  zip.addFile('styles.css', Buffer.from(formattedCSS, 'utf8'));
+  zip.writeZip(path.join(outputDir, 'clone_project.zip'));
 
   // Also keep a copy in the bundle for reference
-  fs.writeFileSync(path.join(bundleDir, 'clone.html'), cloneHTML, 'utf8');
+  fs.writeFileSync(path.join(bundleDir, 'clone.html'), standaloneHTML, 'utf8');
 
   // ── Summary ───────────────────────────────────────────────────────────────────
   const summary = {
