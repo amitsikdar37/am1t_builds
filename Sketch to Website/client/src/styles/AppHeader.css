@@ -1,0 +1,175 @@
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: rgba(7, 7, 15, 0.82);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.app-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 var(--s-6);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-6);
+}
+
+/* ── Logo ─────────────────────────────────────────────── */
+.app-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  background: none;
+  border: none;
+  cursor: default;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-md);
+  transition: opacity var(--t-base);
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.app-logo:not(:disabled) { cursor: pointer; }
+.app-logo:not(:disabled):hover { opacity: 0.75; }
+
+.logo-icon-wrap {
+  width: 34px;
+  height: 34px;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.logo-word {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text-primary);
+}
+
+.logo-word-accent {
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.logo-arrow {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 300;
+  margin: 0 1px;
+}
+
+/* ── Step Progress ─────────────────────────────────────── */
+.header-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+}
+
+.step-line {
+  width: 32px;
+  height: 1px;
+  background: var(--glass-border-2);
+  transition: background var(--t-slow);
+  margin: 0 var(--s-1);
+}
+
+.step-line.done {
+  background: rgba(139, 92, 246, 0.5);
+}
+
+.step-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 5px 12px;
+  border-radius: var(--r-full);
+  opacity: 0.35;
+  transition: all var(--t-slow);
+}
+
+.step-pill.active {
+  opacity: 1;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+.step-pill.done {
+  opacity: 0.65;
+}
+
+.step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: all var(--t-base);
+}
+
+.step-pill.active .step-num {
+  background: var(--grad-brand);
+  border: none;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
+}
+
+.step-pill.done .step-num {
+  background: rgba(139, 92, 246, 0.25);
+  border-color: rgba(139, 92, 246, 0.4);
+  color: var(--purple-400);
+}
+
+.step-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.step-pill.active .step-label {
+  color: var(--text-primary);
+}
+
+/* ── Actions ───────────────────────────────────────────── */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-shrink: 0;
+}
+
+.header-action-btn {
+  font-size: 12.5px;
+  padding: 7px 13px;
+  height: 34px;
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .header-steps { display: none; }
+  .logo-word, .logo-arrow { font-size: 13px; }
+}

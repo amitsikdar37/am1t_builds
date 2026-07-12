@@ -1,0 +1,304 @@
+.gen-page {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-12) var(--s-6);
+  position: relative;
+  overflow: hidden;
+  min-height: calc(100vh - 60px);
+}
+
+.gen-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.gen-orb-1 {
+  width: 600px; height: 600px;
+  top: -150px; right: -100px;
+  background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 65%);
+  animation: float 10s ease-in-out infinite;
+}
+.gen-orb-2 {
+  width: 400px; height: 400px;
+  bottom: -100px; left: -80px;
+  background: radial-gradient(circle, rgba(6,182,212,0.1) 0%, transparent 65%);
+  animation: float 8s ease-in-out infinite reverse;
+}
+
+/* ── Container ────────────────────────────────────────── */
+.gen-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-10);
+  max-width: 1000px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .gen-container { grid-template-columns: 1fr; }
+}
+
+/* ── Sketch Panel ─────────────────────────────────────── */
+.gen-sketch-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  align-items: center;
+}
+
+.gen-sketch-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.gen-sketch-frame {
+  position: relative;
+  width: 100%;
+  max-height: 380px;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  border: 1px solid var(--glass-border-2);
+  background: rgba(0,0,0,0.4);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.gen-sketch-img {
+  width: 100%;
+  height: 100%;
+  max-height: 380px;
+  object-fit: contain;
+  display: block;
+  filter: brightness(0.9);
+}
+
+/* Scanning animation */
+.gen-scan-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(139,92,246,0.8), rgba(6,182,212,0.8), transparent);
+  animation: scan-move 2s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(139,92,246,0.5);
+}
+
+@keyframes scan-move {
+  0%   { top: 0%; opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.gen-sketch-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 8px 16px;
+  background: rgba(139,92,246,0.1);
+  border: 1px solid rgba(139,92,246,0.2);
+  border-radius: var(--r-full);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--purple-400);
+}
+
+/* ── Progress Panel ───────────────────────────────────── */
+.gen-progress-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+  justify-content: center;
+}
+
+.gen-progress-header {}
+
+.gen-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  margin-bottom: var(--s-2);
+}
+
+.gen-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  min-height: 20px;
+  transition: all var(--t-base);
+}
+
+/* ── Steps ────────────────────────────────────────────── */
+.gen-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+
+.gen-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+  padding: var(--s-3) 0;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity var(--t-slow), transform var(--t-slow);
+  position: relative;
+}
+
+.gen-step.visible {
+  opacity: 0.35;
+  transform: translateX(0);
+}
+
+.gen-step.active {
+  opacity: 1;
+}
+
+.gen-step.done {
+  opacity: 0.7;
+}
+
+.gen-step-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  transition: all var(--t-base);
+}
+
+.gen-step.active .gen-step-icon-wrap {
+  background: rgba(139,92,246,0.15);
+  border-color: rgba(139,92,246,0.35);
+  box-shadow: 0 0 16px rgba(139,92,246,0.3);
+}
+
+.gen-step.done .gen-step-icon-wrap {
+  background: rgba(16,185,129,0.12);
+  border-color: rgba(16,185,129,0.3);
+  color: #34d399;
+}
+
+.step-spin-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(139,92,246,0.3);
+  border-top-color: var(--purple-400);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+.gen-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 4px;
+}
+
+.gen-step-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gen-step-status {
+  font-size: 11.5px;
+  color: var(--purple-400);
+}
+
+.gen-step-status.done {
+  color: #34d399;
+}
+
+.gen-step-connector {
+  position: absolute;
+  left: 15px;
+  top: 40px;
+  bottom: -8px;
+  width: 1px;
+  background: var(--glass-border-2);
+  transition: background var(--t-slow);
+}
+
+.gen-step-connector.done {
+  background: rgba(16,185,129,0.3);
+}
+
+/* ── Layout card ──────────────────────────────────────── */
+.gen-layout-card {
+  background: var(--glass-bg);
+  border: 1px solid rgba(139,92,246,0.2);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.layout-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-4);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--purple-400);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(139,92,246,0.05);
+}
+
+.layout-card-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--glass-border);
+}
+
+.layout-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-3) var(--s-4);
+  background: var(--bg-surface);
+}
+
+.meta-key {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.meta-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+/* ── Tip ──────────────────────────────────────────────── */
+.gen-tip {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: var(--s-3) var(--s-4);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+}

@@ -1,0 +1,14 @@
+{
+  "name": "sketch-to-website",
+  "version": "1.0.0",
+  "description": "AI-powered sketch to website generator using Gemini Vision",
+  "scripts": {
+    "dev": "npx kill-port 3001 5173 5174 5175 --silent & concurrently \"npm run dev:server\" \"npm run dev:client\" --names \"SERVER,CLIENT\" --prefix-colors \"magenta,cyan\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

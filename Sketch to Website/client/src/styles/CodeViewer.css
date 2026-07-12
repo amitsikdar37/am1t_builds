@@ -1,0 +1,153 @@
+.code-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: #0d0d1a;
+}
+
+/* ── Empty State ──────────────────────────────────────── */
+.code-viewer.empty-state {
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-4);
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.empty-icon {
+  opacity: 0.3;
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ── Toolbar ──────────────────────────────────────────── */
+.cv-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: 0 var(--s-4);
+  height: 40px;
+  background: rgba(10,10,20,0.95);
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.cv-file-info {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.cv-filename {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cv-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.cv-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-shrink: 0;
+}
+
+.cv-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--t-fast);
+  white-space: nowrap;
+}
+
+.cv-action-btn:hover { color: var(--text-primary); background: var(--glass-bg-hover); }
+
+.cv-action-btn.active {
+  background: rgba(139,92,246,0.15);
+  border-color: rgba(139,92,246,0.3);
+  color: var(--purple-400);
+}
+
+.cv-action-btn.copied {
+  background: rgba(16,185,129,0.12);
+  border-color: rgba(16,185,129,0.3);
+  color: #34d399;
+}
+
+/* ── Code Wrap ─────────────────────────────────────────── */
+.cv-code-wrap {
+  display: flex;
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+/* Line numbers */
+.cv-line-numbers {
+  display: flex;
+  flex-direction: column;
+  padding: var(--s-4) 0;
+  min-width: 48px;
+  text-align: right;
+  border-right: 1px solid var(--glass-border);
+  background: rgba(0,0,0,0.2);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.cv-line-num {
+  display: block;
+  padding: 0 var(--s-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.18);
+}
+
+/* Code pre */
+.cv-pre {
+  flex: 1;
+  margin: 0;
+  padding: var(--s-4);
+  overflow: visible; /* parent handles scroll */
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.cv-pre.wrap {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.cv-pre code {
+  font-family: inherit;
+  font-size: inherit;
+  background: transparent !important;
+  padding: 0 !important;
+  display: block;
+}
+
+/* Override highlight.js background */
+.hljs { background: transparent !important; }
