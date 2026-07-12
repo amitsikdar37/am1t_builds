@@ -2,3 +2,6 @@ chrome_profile/
 __pycache__/
 *.pyc
 .env
+node_modules/
+**/node_modules/
+.DS_Store

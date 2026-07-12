@@ -1,21 +1,21 @@
-# Website Cloner (Powered by Antigravity AI)
+# Website Cloner
 
-This is an advanced, two-phase AI website cloning tool. It uses Playwright to harvest a target website's raw data (HTML, CSS, computed styles, animations, and a smooth-scrolling video), and then prepares an ultra-detailed prompt for an Agentic AI (like Antigravity) to accurately reconstruct the site into a single, self-contained frontend.
+An incredibly fast, highly-accurate website cloning tool that uses a **Zero-AI, Auto-Assembly Architecture**. 
 
-## Features
+It uses Playwright to harvest a target website's raw data (pristine initial HTML, all CSS stylesheets, and design assets) and automatically bundles them into a perfectly formatted, highly-maintainable clone project.
 
-- **Phase 1: Automated Harvesting**
-  - Uses Playwright to navigate to the target URL.
-  - Extracts the fully rendered DOM (`raw.html`).
-  - Downloads and merges all stylesheets (`styles.css`).
-  - Records a buttery-smooth scrolling video (`scroll_video.webm`) of the webpage so the AI can physically see the animations.
-  - Extracts computed styles, color palettes, and structural metadata.
-  - Generates an `animations.json` map of GSAP timelines, Webflow interactions, and CSS keyframes.
+## How it works (Zero-AI Architecture)
 
-- **Phase 2: AI Generation**
-  - Generates a tightly-constrained, highly specific prompt.
-  - Enforces GSAP/Lenis best practices (waiting for `window.onload`, syncing ScrollTrigger).
-  - You hand the prompt and the harvested bundle to an AI, and it writes the pixel-perfect clone directly into the `output/` directory!
+Previously, this tool relied on LLMs to write code based on scraped data, which often resulted in hallucinated code, broken animations, or failed generation. 
+
+The new pipeline is **100% deterministic** and perfectly preserves complex Webflow and GSAP animations:
+
+1. **Harvest:** Playwright navigates to the target URL. It intercepts all CSS stylesheets and captures the pristine `initialHTML` exactly as the server sent it—*before* any JavaScript mutates the DOM. This preserves the pre-loaders and exact starting states for animations.
+2. **Auto-Assemble:** It injects a `<base href="...">` tag into the HTML. This magic tag forces the browser to resolve all relative links (images, fonts, APIs, and scripts) against the original live website. 
+3. **Format:** It uses `prettier` to un-minify the massive chunks of code, extracting the CSS into a beautifully formatted `styles.css` file and creating a highly readable `index.html`.
+4. **ZIP Project:** It bundles the split, formatted files into a `clone_project.zip` file ready for you to download and modify.
+
+Because the clone borrows the original scripts directly from the live site via the `<base>` tag, all scrolling effects, GSAP timelines, and interactions work flawlessly out of the box.
 
 ## Prerequisites
 
@@ -38,24 +38,17 @@ You need [Node.js](https://nodejs.org/) installed on your machine (v18 or higher
 
 ## How to Run
 
-1. Start the local server:
+1. Start the local Express server:
    ```bash
    npm start
    ```
-2. Open your browser and go to: **[http://localhost:3000](http://localhost:3000)**
+2. Open your browser and navigate to: **[http://localhost:3000](http://localhost:3000)**
 
 ## Usage Guide
 
 1. Enter the URL of the website you want to clone into the input field in the UI.
-2. Click **Start Harvesting**. The server will launch a headless browser to record the site.
-3. Once Phase 1 is complete, you will see a **"Copy AI Prompt"** button. Click it.
-4. Open a **new chat** with your AI Assistant (like Antigravity).
-5. Paste the prompt. The AI will read the `harvested_bundle` files and generate the HTML/CSS/JS directly into the `output/` folder.
-6. Once the AI is finished, switch to the **"Generated Clone"** tab in the UI to preview your pixel-perfect site!
-
-## Troubleshooting
-
-- **Animations breaking in a new tab?**
-  The AI prompt strictly enforces `window.addEventListener("load", ...)` for GSAP ScrollTrigger to ensure images are loaded before trigger calculations. If an animation still breaks, verify that the AI followed the GSAP rules and didn't use `DOMContentLoaded`.
-- **AI writing Node.js scripts instead of HTML?**
-  The prompt now bans the AI from writing `build.js` or `clone.js` scripts, forcing it to act as a pure frontend developer.
+2. Click **Start Cloning**. The server will launch a headless browser in the background to harvest the site.
+3. You will see a live terminal streaming the progress (Navigating, Intercepting CSS, Assembling...).
+4. Once complete, the UI will switch to the **Generated Clone** tab, showing an instant live preview.
+5. Click **⬇️ Download ZIP Project** to download the clean, heavily formatted `index.html` and `styles.css` workspace. 
+6. Open the extracted folder in VS Code to modify the text, HTML structure, or CSS styles however you want!

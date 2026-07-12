@@ -123,17 +123,6 @@ app.get('/api/bundle/:bundleId', (req, res) => {
   res.json({ bundleId, files, summary });
 });
 
-// ── Serve bundle files directly (for Antigravity to read) ─────────────────────
-app.get('/api/bundle/:bundleId/:file', (req, res) => {
-  const { bundleId, file } = req.params;
-  const filePath = path.join(__dirname, 'harvested_bundle', bundleId, file);
-
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: 'File not found.' });
-  }
-
-  res.sendFile(filePath);
-});
 
 // ── Check if clone output exists for a bundle ─────────────────────────────────
 app.get('/api/output/:bundleId/check', (req, res) => {
