@@ -36,7 +36,7 @@ pyautogui.FAILSAFE = False
 # ══════════════════════════════════════════════════
 #   CONFIG
 # ══════════════════════════════════════════════════
-TIMER_SECONDS = 10          # change to 600 for 10 minutes
+TIMER_SECONDS = 600          # change to 600 for 10 minutes
 POSTS_TO_LIKE = 3           # how many posts to like
 COOKIES_FILE  = "cookies.json"   # created by setup.py
 TARGET_FILE   = "target.txt"
@@ -251,9 +251,10 @@ class Saboteur:
         self.frame.pack(fill="both", expand=True)
 
         # ── Row 1: skull + big timer ─────────────────────────────
+        # Pre-populate with the longest text so initial width is correct
         self.timer_label = tk.Label(
             self.frame,
-            text="",
+            text=" DOOMSCROLL LIMIT: 00:00 ",
             font=("Courier New", 32, "bold"),
             fg=self.RED,
             bg=self.BG,
@@ -289,7 +290,8 @@ class Saboteur:
         self.root.update_idletasks()
         w = self.frame.winfo_reqwidth()
         h = self.frame.winfo_reqheight()
-        self.root.geometry(f"{max(w, 440)}x{h}+50+50")
+        # Force a larger minimum width to ensure no clipping
+        self.root.geometry(f"{max(w, 620)}x{h}+50+50")
 
         # ── Draggable ────────────────────────────────────────────
         for widget in (self.frame, self.timer_label, self.sub_label):
@@ -331,7 +333,7 @@ class Saboteur:
                 fg = self.RED
 
             self.timer_label.config(
-                text=f"  \U0001f480  DOOMSCROLL LIMIT: {m:02d}:{s:02d}  ",
+                text=f" DOOMSCROLL LIMIT: {m:02d}:{s:02d} ",
                 fg=fg,
             )
             self._update_bar()
@@ -341,12 +343,21 @@ class Saboteur:
             self._punish()
 
     def _punish(self):
-        # Flash white
-        self.timer_label.config(text="  \u26a1  TIME'S UP. CAUGHT YOU.  \u26a1", fg="#000", bg=self.WHITE)
-        self.sub_label.config(text="Liking posts now...", fg="#000", bg=self.WHITE)
+        # Flash white, lock timer at 00:00
+        self.timer_label.config(text=" DOOMSCROLL LIMIT: 00:00 ", fg="#000", bg=self.WHITE)
+        self.sub_label.config(
+            text="TIME'S UP. CAUGHT YOU. Liking posts now...",
+            fg="#000", bg=self.WHITE, font=("Courier New", 11, "bold")
+        )
         self.frame.config(bg=self.WHITE, highlightbackground=self.WHITE)
         self.root.configure(bg=self.WHITE)
         self.bar_canvas.config(bg="#ff2200")
+        
+        # Auto-resize just in case the new subtitle is wider
+        self.root.update_idletasks()
+        w = self.frame.winfo_reqwidth()
+        h = self.frame.winfo_reqheight()
+        self.root.geometry(f"{max(w, 440)}x{h}")
         self.root.update()
 
         # Violent mouse jerk

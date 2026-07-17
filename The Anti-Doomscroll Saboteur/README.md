@@ -61,7 +61,7 @@ The red countdown widget will appear at the top-left of your screen.
 When the timer hits `00:00`:
 - Widget flashes white ⚡
 - Mouse jerks violently across your screen 🖱️
-- Chrome opens `instagram.com/_egoist.1/` in the background 🌐
+- Chrome opens `instagram.com/examples/` in the background 🌐
 - 3 posts get liked automatically ❤️
 - Widget self-destructs 💥
 
