@@ -36,7 +36,7 @@ pyautogui.FAILSAFE = False
 # ══════════════════════════════════════════════════
 #   CONFIG
 # ══════════════════════════════════════════════════
-TIMER_SECONDS = 600          # change to 600 for 10 minutes
+TIMER_SECONDS = 20          # change to 600 for 10 minutes
 POSTS_TO_LIKE = 3           # how many posts to like
 COOKIES_FILE  = "cookies.json"   # created by setup.py
 TARGET_FILE   = "target.txt"

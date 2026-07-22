@@ -1,0 +1,11 @@
+# Hand Gesture PC Controller — Dependencies
+# Install with: pip install -r requirements.txt
+
+mediapipe>=0.10.0
+opencv-python>=4.9.0,<5.0
+pyautogui>=0.9.54
+numpy>=1.24.0
+
+# Windows-only (volume control)
+pycaw>=20181226
+comtypes>=1.2.0
