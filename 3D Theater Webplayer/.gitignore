@@ -1,5 +1,6 @@
 node_modules/
 movies/
+thumbnails/
 .env
 .DS_Store
 npm-debug.log*

@@ -18,8 +18,13 @@ app.use(express.static(path.join(__dirname, '')));
 
 // Create the movies directory if it doesn't exist
 const MOVIES_DIR = path.join(__dirname, 'movies');
+const THUMBNAILS_DIR = path.join(__dirname, 'thumbnails');
+
 if (!fs.existsSync(MOVIES_DIR)) {
   fs.mkdirSync(MOVIES_DIR);
+}
+if (!fs.existsSync(THUMBNAILS_DIR)) {
+  fs.mkdirSync(THUMBNAILS_DIR);
 }
 
 // 1. Get Library (List all movies in the movies directory)
@@ -161,6 +166,39 @@ app.get('/audio/:filename/:trackIndex', (req, res) => {
   req.on('close', () => {
     command.kill('SIGKILL');
   });
+});
+
+// 6. Generate and Serve Movie Thumbnail
+app.get('/thumbnail/:filename', (req, res) => {
+  const file = path.join(MOVIES_DIR, req.params.filename);
+  if (!fs.existsSync(file)) return res.status(404).send('Not Found');
+
+  const thumbName = `${req.params.filename}.jpg`;
+  const thumbPath = path.join(THUMBNAILS_DIR, thumbName);
+
+  if (fs.existsSync(thumbPath)) {
+    return res.sendFile(thumbPath);
+  }
+
+  // Extract a thumbnail using FFmpeg at the 10-minute mark (or 10% if short)
+  ffmpeg(file)
+    .screenshots({
+      timestamps: ['00:10:00.000'],
+      filename: thumbName,
+      folder: THUMBNAILS_DIR,
+      size: '320x180'
+    })
+    .on('end', () => {
+      if (fs.existsSync(thumbPath)) {
+        res.sendFile(thumbPath);
+      } else {
+        res.status(500).send('Error generating thumbnail');
+      }
+    })
+    .on('error', (err) => {
+      console.error('Thumbnail error:', err.message);
+      if (!res.headersSent) res.status(500).send('Error generating thumbnail');
+    });
 });
 
 const PORT = process.env.PORT || 3000;

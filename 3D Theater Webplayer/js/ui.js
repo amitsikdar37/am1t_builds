@@ -231,7 +231,12 @@ export function initUI(deps) {
         movies.forEach(m => {
           const div = document.createElement('div');
           div.className = 'movie-card';
-          div.innerHTML = `<div class="movie-card-icon">🎬</div><div class="movie-card-title">${m}</div>`;
+          div.innerHTML = `
+            <div class="movie-card-thumb-container">
+              <img class="movie-card-thumb" src="http://localhost:3000/thumbnail/${encodeURIComponent(m)}" alt="${m}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiMzMyMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZmlsbD0iIzk5OSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+'" />
+            </div>
+            <div class="movie-card-title" title="${m}">${m.replace(/\.(mkv|mp4|webm|mov|m4v|ogv)$/i, '')}</div>
+          `;
           div.addEventListener('click', () => {
             initAudio(camera, scene, video);
             loadVideoUrl(`http://localhost:3000/stream/${encodeURIComponent(m)}`, m, showHUD);
