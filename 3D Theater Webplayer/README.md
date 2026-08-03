@@ -12,7 +12,18 @@ This WebPlayer uses a local Node.js media server to instantly extract and proces
 
 ---
 
+## 📺 Video Tutorial
+
+Not sure how to set it up? Watch the full step-by-step setup guide on YouTube!
+
+[![Watch the Setup Tutorial on YouTube](https://img.shields.io/badge/YouTube-Watch%20Tutorial-red?style=for-the-badge&logo=youtube)](https://youtu.be/c6N1C23bfd8)
+
+> 🔗 https://youtu.be/c6N1C23bfd8
+
+---
+
 ## 🛠️ Step-by-Step Installation Tutorial
+
 
 Because this player performs advanced media processing (like live FFmpeg audio track transcoding for MKV files), it requires a lightweight local server to run on your PC.
 
