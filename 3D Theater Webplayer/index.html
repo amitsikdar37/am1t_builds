@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Mobile & Notch Support Fix -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="description" content="Immersive 3D IMAX Theatre Web Video Player - local cinema experience">
+  <meta name="theme-color" content="#000000">
   <title>IMAX Theatre - WebPlayer</title>
+
   <script type="importmap">
   {
     "imports": {
@@ -15,7 +18,8 @@
   </script>
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body style="touch-action: none; overscroll-behavior: none;">
+
 <!-- LOADING SCREEN -->
 <div id="loading-screen">
   <div id="curtain-left"></div>
@@ -31,16 +35,29 @@
 <div id="welcome-screen" style="display:none">
   <div id="drop-zone">
     <h1 class="welcome-title">IMAX Media Library</h1>
-    <p class="welcome-subtitle">Select a movie from your local server</p>
-    <div id="movie-grid" class="movie-grid">
+    <p class="welcome-subtitle">Select a movie from your device</p>
+    
+    <!-- Mobile Storage Button -->
+    <div style="margin-top: 15px;">
+      <button id="mobile-file-btn" class="ctrl-btn" style="padding: 10px 20px; width: auto; font-size: 16px;">
+        📁 Choose Video from Phone
+      </button>
+    </div>
+
+    <div id="movie-grid" class="movie-grid" style="margin-top:20px;">
       <div class="loading-spinner">Loading movies...</div>
     </div>
   </div>
 </div>
 
+<!-- HIDDEN FILE INPUT FOR MOBILE STORAGE -->
+<input type="file" id="local-video-input" accept="video/*" style="display: none;">
+
 <!-- CANVAS -->
 <canvas id="theatre-canvas"></canvas>
-<video id="cinema-video" preload="metadata" playsinline></video>
+
+<!-- VIDEO ELEMENT (Mobile inline playback enabled) -->
+<video id="cinema-video" preload="metadata" playsinline webkit-playsinline x5-playsinline></video>
 
 <!-- BUFFERING -->
 <div id="buffering-overlay" style="display:none">
@@ -87,12 +104,12 @@
       <button id="seek-back-btn" class="ctrl-btn" title="Back 10s">
         <svg viewBox="0 0 24 24"><path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
       </button>
-      <button id="play-btn" class="ctrl-btn play-btn" title="Play/Pause (Space)">
+      <button id="play-btn" class="ctrl-btn play-btn" title="Play/Pause">
         <svg id="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
         <svg id="pause-icon" viewBox="0 0 24 24" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
       </button>
       <button id="seek-fwd-btn" class="ctrl-btn" title="Forward 10s">
-        <svg viewBox="0 0 24 24"><path d="M12.01 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M12.01 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42 3.58 8 8 8s-8-3.58-8-8 3.58-8 8-8z"/></svg>
       </button>
       <div class="time-display">
         <span id="current-time">0:00:00</span>
@@ -101,7 +118,7 @@
       </div>
     </div>
     <div class="hud-center">
-      <button id="mute-btn" class="ctrl-btn" title="Mute (M)">
+      <button id="mute-btn" class="ctrl-btn" title="Mute">
         <svg id="vol-icon" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
         <svg id="muted-icon" viewBox="0 0 24 24" style="display:none"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
       </button>
@@ -123,10 +140,10 @@
         <option value="1.25">1.25x</option><option value="1.5">1.5x</option>
         <option value="2">2x</option>
       </select>
-      <button id="lights-btn" class="ctrl-btn" title="Theatre lights (L)">
+      <button id="lights-btn" class="ctrl-btn" title="Theatre lights">
         <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm2 14h-4v-1h4v1zm0-3H10v-1.5c-1.19-.45-2-1.6-2-2.5 0-1.66 1.34-3 3-3s3 1.34 3 3c0 .9-.81 2.05-2 2.5V13z"/></svg>
       </button>
-      <button id="fullscreen-btn" class="ctrl-btn" title="Fullscreen (F)">
+      <button id="fullscreen-btn" class="ctrl-btn" title="Fullscreen">
         <svg id="fs-expand" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
         <svg id="fs-collapse" viewBox="0 0 24 24" style="display:none"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
       </button>
@@ -141,7 +158,7 @@
   <div id="sub-list"></div>
 </div>
 
-<div id="drag-hint">Drag to look around the cinema</div>
+<div id="drag-hint">Touch & Drag to look around the cinema</div>
 
 <script type="module" src="js/main.js?v=16"></script>
 </body>
