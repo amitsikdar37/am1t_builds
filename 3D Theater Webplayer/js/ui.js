@@ -55,10 +55,14 @@ export function initUI(deps) {
   document.addEventListener('touchstart',()=>{ if(state.hasVideo) showHUD(); },{passive:true});
 
   function togglePlay(){ 
-    if(!state.hasVideo)return; 
+    if(!state.hasVideo) return; 
     initAudio(camera, scene, video);
     resumeAudio();
-    if(video.paused)video.play(); else video.pause(); 
+    if(video.paused) {
+      video.play();
+    } else {
+      video.pause(); 
+    }
   }
 
   video.addEventListener('play',()=>{
@@ -131,6 +135,10 @@ export function initUI(deps) {
   document.getElementById('mute-btn').addEventListener('click',toggleMute);
   document.getElementById('lights-btn').addEventListener('click',toggleLights);
   document.getElementById('fullscreen-btn').addEventListener('click',toggleFS);
+  document.getElementById('open-btn').addEventListener('click', () => {
+    const ws = document.getElementById('welcome-screen');
+    ws.style.display = ws.style.display === 'none' ? 'flex' : 'none';
+  });
 
   document.getElementById('seat-select').addEventListener('change', (e) => {
     const val = e.target.value;
@@ -170,13 +178,23 @@ export function initUI(deps) {
     fetch(`http://localhost:3000/api/metadata/${encodeURIComponent(filename)}`)
       .then(r => r.json())
       .then(data => {
+        window.audioAutoStarted = false;
+        window.defaultAudioUrl = null;
         const aList = document.getElementById('audio-list');
         const sList = document.getElementById('sub-list');
         if(!aList || !sList) return;
         
         aList.innerHTML = ''; sList.innerHTML = '';
         
-        if(data.audioTracks.length === 0) aList.innerHTML = '<div class="track-option">Default Audio</div>';
+        if(data.audioTracks.length === 0) {
+          aList.innerHTML = '<div class="track-option">Default Audio</div>';
+        } else {
+          const defaultUrl = `http://localhost:3000/audio/${encodeURIComponent(filename)}/${data.audioTracks[0].index}`;
+          // Auto-start the default audio track immediately — the video is already playing by now
+          // so the audio will start, sync via the play event listener, and play together.
+          switchAudioTrack(defaultUrl);
+        }
+        
         data.audioTracks.forEach((t, i) => {
           const btn = document.createElement('button');
           btn.className = 'track-option' + (i === 0 ? ' active' : '');
@@ -184,14 +202,8 @@ export function initUI(deps) {
           btn.onclick = () => { 
             Array.from(aList.children).forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
-            
-            if (i === 0) {
-              // The first track is usually the default one loaded by the HTML video element natively
-              switchAudioTrack(null);
-            } else {
-              // Fetch alternative tracks via our live FFmpeg transcode endpoint
-              switchAudioTrack(`http://localhost:3000/audio/${encodeURIComponent(filename)}/${t.index}`);
-            }
+            // ALWAYS use FFmpeg to transcode to ensure 5.1 support and cross-platform compatibility!
+            switchAudioTrack(`http://localhost:3000/audio/${encodeURIComponent(filename)}/${t.index}`);
           };
           aList.appendChild(btn);
         });
@@ -260,7 +272,10 @@ export function initUI(deps) {
       case 'f':case 'F': toggleFS(); break;
       case 'l':case 'L': toggleLights(); break;
       case 'm':case 'M': toggleMute(); break;
-      case 'o':case 'O': document.getElementById('file-input').click(); break;
+      case 'o':case 'O': 
+        const ws = document.getElementById('welcome-screen');
+        ws.style.display = ws.style.display === 'none' ? 'flex' : 'none';
+        break;
     }
   });
 

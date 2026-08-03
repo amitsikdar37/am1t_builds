@@ -49,19 +49,24 @@ const currentColor = new THREE.Color(0,0,0);
 let targetIntensity = 0;
 let currentIntensity = 0;
 
+let lastGlowTime = 0;
+
 export function updateScreenGlow(glowLight) {
   if (!state.hasVideo || video.paused || video.ended || !glowLight) return;
 
-  sampleCtx.drawImage(video, 0, 0, 16, 16);
-  const frame = sampleCtx.getImageData(0, 0, 16, 16).data;
-  
-  let r=0, g=0, b=0;
-  for(let i=0; i<frame.length; i+=4) {
-    r += frame[i];
-    g += frame[i+1];
-    b += frame[i+2];
-  }
-  const count = frame.length / 4;
+  const now = performance.now();
+  if (now - lastGlowTime > 100) { // Throttle pixel extraction to 10 fps
+    lastGlowTime = now;
+    sampleCtx.drawImage(video, 0, 0, 16, 16);
+    const frame = sampleCtx.getImageData(0, 0, 16, 16).data;
+    
+    let r=0, g=0, b=0;
+    for(let i=0; i<frame.length; i+=4) {
+      r += frame[i];
+      g += frame[i+1];
+      b += frame[i+2];
+    }
+    const count = frame.length / 4;
   
   // Three.js colors require setting from sRGB if source is sRGB
   targetColor.setRGB(r/255/count, g/255/count, b/255/count, THREE.SRGBColorSpace);
@@ -69,19 +74,20 @@ export function updateScreenGlow(glowLight) {
   // Get true luminance of the scene before modifying the color
   const luminance = 0.2126 * targetColor.r + 0.7152 * targetColor.g + 0.0722 * targetColor.b;
 
-  // Extract HSL to boost saturation and normalize lightness.
-  // This ensures bright daylight scenes don't just emit pure white,
-  // but instead emit the beautiful true dominant hue of the scene.
-  const hsl = {h: 0, s: 0, l: 0};
-  targetColor.getHSL(hsl);
-  
-  // Boost saturation by 50% for a more cinematic lighting feel, cap at 1.0
-  // Normalize lightness to 0.5 so the color itself doesn't influence brightness
-  targetColor.setHSL(hsl.h, Math.min(1.0, hsl.s * 1.5), 0.5);
+    // Extract HSL to boost saturation and normalize lightness.
+    // This ensures bright daylight scenes don't just emit pure white,
+    // but instead emit the beautiful true dominant hue of the scene.
+    const hsl = {h: 0, s: 0, l: 0};
+    targetColor.getHSL(hsl);
+    
+    // Boost saturation by 50% for a more cinematic lighting feel, cap at 1.0
+    // Normalize lightness to 0.5 so the color itself doesn't influence brightness
+    targetColor.setHSL(hsl.h, Math.min(1.0, hsl.s * 1.5), 0.5);
 
-  // Intensity is now purely driven by the true luminance. 
-  // Lowered the multiplier so it doesn't overexpose the front stage.
-  targetIntensity = luminance * 20.0;
+    // Intensity is now purely driven by the true luminance. 
+    // Lowered the multiplier so it doesn't overexpose the front stage.
+    targetIntensity = luminance * 20.0;
+  }
 
   currentColor.lerp(targetColor, 0.08); // Smooth color transition
   currentIntensity += (targetIntensity - currentIntensity) * 0.08; // Smooth intensity transition

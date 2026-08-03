@@ -153,6 +153,7 @@ app.get('/audio/:filename/:trackIndex', (req, res) => {
       `-map 0:${trackIndex}`,
       '-c:a libopus',
       '-b:a 320k',
+      '-ac 6',
       '-f webm'
     ])
     .on('error', (err) => {

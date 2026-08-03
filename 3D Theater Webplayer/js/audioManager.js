@@ -65,9 +65,11 @@ export function initAudio(camera, scene, video) {
   audioSplitter = ctx.createChannelSplitter(6);
   videoGainNode.connect(audioSplitter);
   
+  let isBufferingSync = false;
+  
   // Sync logic for external audio tracks
-  mainVideo.addEventListener('play', () => { if (currentExternalAudio) currentExternalAudio.play(); });
-  mainVideo.addEventListener('pause', () => { if (currentExternalAudio) currentExternalAudio.pause(); });
+  mainVideo.addEventListener('play', () => { if (currentExternalAudio && !isBufferingSync) currentExternalAudio.play(); });
+  mainVideo.addEventListener('pause', () => { if (currentExternalAudio && !isBufferingSync) currentExternalAudio.pause(); });
   mainVideo.addEventListener('seeking', () => {
     if (currentExternalAudio) {
       // Just pause it so it doesn't play old audio while dragging the seek bar
@@ -81,15 +83,8 @@ export function initAudio(camera, scene, video) {
       switchAudioTrack(currentExternalAudio.dataset.rawUrl);
     }
   });
-  mainVideo.addEventListener('timeupdate', () => {
-    if (currentExternalAudio && !currentExternalAudio.paused) {
-      const expected = mainVideo.currentTime - currentExternalStartTime;
-      // If audio drifts by more than 300ms, snap it back
-      if (Math.abs(currentExternalAudio.currentTime - expected) > 0.3) {
-        currentExternalAudio.currentTime = expected;
-      }
-    }
-  });
+  // Removed toxic timeupdate sync for external audio.
+  // The FFmpeg stream is a live pipe, attempting to set .currentTime on it will abort the HTTP connection!
 
   // 2. Global Theatre Reverb (Convolver)
   const convolver = ctx.createConvolver();
@@ -213,8 +208,14 @@ export function switchAudioTrack(url) {
   
   currentExternalAudio.dataset.rawUrl = url;
   currentExternalAudio.src = `${url}?start=${currentExternalStartTime}`;
+  currentExternalAudio.oncanplay = null;
+  currentExternalAudio.onerror = (e) => {
+    console.error("External audio failed to load!", e);
+  };
   
+  // If video is already playing, start audio right away.
+  // The canplay event will naturally fire once FFmpeg has buffered enough.
   if (!mainVideo.paused) {
-    currentExternalAudio.play().catch(()=>{});
+    currentExternalAudio.play().catch(err => console.error('Audio play failed:', err));
   }
 }
