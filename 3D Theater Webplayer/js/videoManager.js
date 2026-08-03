@@ -125,14 +125,20 @@ export function loadSubtitleTrack(url) {
     track.kind = 'subtitles';
     track.default = true;
     
-    // Crucial: Set track to 'hidden' so it parses cues but DOES NOT render them via the browser.
-    // This prevents "double" subtitles (browser + our 3D custom mesh).
+    video.appendChild(track);
+    
+    // Immediately set mode to 'hidden' AFTER appending so the browser parses cues
+    // but does NOT render the default browser subtitle UI (we use our own 3D mesh).
+    // Doing this BEFORE appendChild has no effect, so order matters here.
+    if (video.textTracks && video.textTracks.length > 0) {
+      video.textTracks[video.textTracks.length - 1].mode = 'hidden';
+    }
+    
+    // Also set on load as a safety net in case the track isn't ready yet
     track.addEventListener('load', () => {
       if (video.textTracks && video.textTracks.length > 0) {
-        video.textTracks[0].mode = 'hidden';
+        video.textTracks[video.textTracks.length - 1].mode = 'hidden';
       }
     });
-    
-    video.appendChild(track);
   }
 }
