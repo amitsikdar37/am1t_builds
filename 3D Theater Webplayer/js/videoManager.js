@@ -17,7 +17,39 @@ export function scheduleVRFC() {
     if (!video.paused && !video.ended) scheduleVRFC();
   });
 }
-video.addEventListener('play', () => { if (vrfc) scheduleVRFC(); });
+
+// Screen Wake Lock API to prevent laptop screen from sleeping while watching a movie
+let wakeLock = null;
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+    } catch (err) {
+      console.error('WakeLock Error:', err);
+    }
+  }
+}
+function releaseWakeLock() {
+  if (wakeLock !== null) {
+    wakeLock.release();
+    wakeLock = null;
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !video.paused) {
+    requestWakeLock();
+  }
+});
+
+video.addEventListener('play', () => { 
+  requestWakeLock();
+  if (vrfc) scheduleVRFC(); 
+});
+
+video.addEventListener('pause', () => {
+  releaseWakeLock();
+});
 
 export const state = { hasVideo: false };
 let lastVT = -1;
