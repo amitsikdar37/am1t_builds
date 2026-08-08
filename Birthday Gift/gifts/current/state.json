@@ -1,0 +1,116 @@
+{
+  "name": "Rahul",
+  "letter": "Glad you're part of the story. Here's to the memories we've made, and the ones still loading.",
+  "candles": 21,
+  "musicVolume": 0.5,
+  "frames": [
+    {
+      "id": "mmsh3k2ap",
+      "caption": "Main character energy",
+      "wall": "L",
+      "type": "photo",
+      "src": "mmsh3k2ap.webp",
+      "src512": "mmsh3k2ap_mid.webp",
+      "lqip": "mmsh3k2ap_lqip.webp",
+      "w": 605,
+      "h": 1024,
+      "origW": 944,
+      "origH": 1599
+    },
+    {
+      "id": "mmsh3k2ar",
+      "caption": "The most genuine guy",
+      "wall": "R",
+      "type": "photo",
+      "src": "mmsh3k2ar.webp",
+      "src512": "mmsh3k2ar_mid.webp",
+      "lqip": "mmsh3k2ar_lqip.webp",
+      "w": 769,
+      "h": 1024,
+      "origW": 3127,
+      "origH": 4160
+    },
+    {
+      "id": "mmshf146t",
+      "caption": "Tripling memory",
+      "wall": "L",
+      "type": "video",
+      "src": "mmshf146t.mp4",
+      "poster": "mmshf146t_poster.webp",
+      "lqip": "mmshf146t_lqip.webp",
+      "w": 720,
+      "h": 404,
+      "duration": 5.1,
+      "bytes": 378314
+    },
+    {
+      "id": "mmshf146s",
+      "caption": "Rajgir Trip",
+      "wall": "R",
+      "type": "video",
+      "src": "mmshf146s.mp4",
+      "poster": "mmshf146s_poster.webp",
+      "lqip": "mmshf146s_lqip.webp",
+      "w": 720,
+      "h": 406,
+      "duration": 4.57,
+      "bytes": 388163
+    },
+    {
+      "id": "mmsh3k2as",
+      "caption": "The realest one",
+      "wall": "L",
+      "type": "photo",
+      "src": "mmsh3k2as.webp",
+      "src512": "mmsh3k2as_mid.webp",
+      "lqip": "mmsh3k2as_lqip.webp",
+      "w": 1024,
+      "h": 576,
+      "origW": 1599,
+      "origH": 899
+    },
+    {
+      "id": "mmshf146r",
+      "caption": "Digha Beach",
+      "wall": "R",
+      "type": "video",
+      "src": "mmshf146r.mp4",
+      "poster": "mmshf146r_poster.webp",
+      "lqip": "mmshf146r_lqip.webp",
+      "w": 720,
+      "h": 406,
+      "duration": 10.05,
+      "bytes": 716368
+    },
+    {
+      "id": "mmsh3k2at",
+      "caption": "Top tier friend",
+      "wall": "L",
+      "type": "photo",
+      "src": "mmsh3k2at.webp",
+      "src512": "mmsh3k2at_mid.webp",
+      "lqip": "mmsh3k2at_lqip.webp",
+      "w": 768,
+      "h": 1024,
+      "origW": 3119,
+      "origH": 4160
+    },
+    {
+      "id": "mmsh3k2av",
+      "caption": "Always keeping it real",
+      "wall": "R",
+      "type": "photo",
+      "src": "mmsh3k2av.webp",
+      "src512": "mmsh3k2av_mid.webp",
+      "lqip": "mmsh3k2av_lqip.webp",
+      "w": 576,
+      "h": 1024,
+      "origW": 900,
+      "origH": 1600
+    }
+  ],
+  "music": {
+    "src": "music_mmsj1qt4n.mp3",
+    "bytes": 2161508
+  }
+}

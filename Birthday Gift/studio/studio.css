@@ -1,0 +1,335 @@
+/* Birthday Gift Studio — the sender's authoring tool.
+   Deliberately plain: this never ships to the recipient, so every byte of
+   effort belongs in the museum instead. */
+
+:root {
+  --bg: #14101f;
+  --panel: #1b1630;
+  --panel-2: #221c3c;
+  --line: #2f2850;
+  --ink: #e9e6f4;
+  --ink-dim: #a49cc4;
+  --gold: #d4a24c;
+  --gold-lit: #f0c070;
+  --danger: #e0685f;
+  --ok: #6fca8f;
+  --radius: 10px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  height: 100vh;
+  overflow: hidden;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  height: 100vh;
+}
+
+/* ── Panel ────────────────────────────────────────────────────────────── */
+
+#panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  min-height: 0;
+}
+
+#panel-head {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--line);
+}
+#panel-head h1 { font-size: 17px; font-weight: 600; letter-spacing: .2px; }
+#panel-head .sub { color: var(--ink-dim); font-size: 12.5px; margin-top: 2px; }
+
+#panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 20px 20px;
+  min-height: 0;
+}
+
+.block { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.block:last-child { border-bottom: 0; }
+.block h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .9px;
+  color: var(--gold);
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+.hint { color: var(--ink-dim); font-size: 12px; margin: -4px 0 8px; }
+
+.field { display: block; margin-bottom: 10px; }
+.field > span {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin-bottom: 5px;
+}
+
+input[type=text], input[type=number], textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 9px 11px;
+  font: inherit;
+  outline: none;
+}
+input[type=text]:focus, input[type=number]:focus, textarea:focus {
+  border-color: var(--gold);
+}
+textarea { resize: vertical; line-height: 1.5; }
+
+input[type=range] { width: 100%; accent-color: var(--gold); }
+
+.counter { text-align: right; font-size: 11px; color: var(--ink-dim); margin-top: 4px; }
+
+/* ── Dropzone ─────────────────────────────────────────────────────────── */
+
+#dropzone {
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 20px 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+#dropzone:hover, #dropzone.over {
+  border-color: var(--gold);
+  background: rgba(212, 162, 76, .07);
+}
+.dz-inner strong { display: block; font-size: 13.5px; margin-bottom: 3px; }
+.dz-inner span { display: block; font-size: 12px; color: var(--ink-dim); }
+.dz-inner small {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--ink-dim);
+  opacity: .8;
+  line-height: 1.4;
+}
+
+.status {
+  margin-top: 10px;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--ink-dim);
+}
+.status.err { color: var(--danger); }
+.status.ok { color: var(--ok); }
+
+/* ── Frame list ───────────────────────────────────────────────────────── */
+
+#frame-list { list-style: none; margin-top: 12px; }
+
+.frame-item {
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  background: var(--panel-2);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 8px;
+  margin-bottom: 7px;
+  cursor: grab;
+}
+.frame-item.dragging { opacity: .4; }
+.frame-item.drop-target { border-color: var(--gold); }
+
+.frame-item .thumb {
+  width: 46px; height: 46px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--bg);
+  display: block;
+}
+.frame-item .meta { min-width: 0; }
+.frame-item .cap {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  padding: 2px 0;
+  outline: none;
+}
+.frame-item .cap:focus { border-bottom-color: var(--gold); }
+.frame-item .cap::placeholder { color: #6d6494; }
+.frame-item .tag {
+  font-size: 10.5px;
+  color: var(--ink-dim);
+  margin-top: 3px;
+  display: block;
+}
+.frame-item .actions { display: flex; gap: 4px; align-items: center; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+
+.btn {
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 9px 14px;
+  color: #1a1428;
+  background: var(--gold);
+  transition: filter .15s, opacity .15s;
+}
+.btn:hover:not(:disabled) { filter: brightness(1.1); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.primary { width: 100%; padding: 12px; font-size: 14.5px; }
+.btn.ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.btn.ghost:hover:not(:disabled) { border-color: var(--gold); color: var(--gold-lit); }
+.btn.tiny { padding: 4px 9px; font-size: 11.5px; font-weight: 500; }
+.btn.danger { background: transparent; color: var(--danger); border: 1px solid transparent; }
+.btn.danger:hover { border-color: var(--danger); }
+
+.btn.wall {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  min-width: 30px;
+}
+.btn.wall.on { border-color: var(--gold); color: var(--gold-lit); }
+
+/* ── Segmented controls ───────────────────────────────────────────────── */
+
+.segmented {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 3px;
+  margin-bottom: 8px;
+}
+.seg {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 11.5px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.seg.active { background: var(--gold); color: #1a1428; font-weight: 600; }
+
+/* ── Music ────────────────────────────────────────────────────────────── */
+
+#music-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 7px 8px 7px 11px;
+  margin-top: 8px;
+  font-size: 12.5px;
+}
+#music-current[hidden] { display: none; }
+#music-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+
+#panel-foot {
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+.problems {
+  background: rgba(224, 104, 95, .1);
+  border: 1px solid rgba(224, 104, 95, .3);
+  border-radius: 8px;
+  padding: 9px 11px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #f0a49d;
+}
+.problems ul { list-style: none; }
+.problems li + li { margin-top: 4px; }
+
+/* ── Stage ────────────────────────────────────────────────────────────── */
+
+#stage {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: #0d0a16;
+}
+#stage-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+#stage-frame {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  min-height: 0;
+  overflow: hidden;
+}
+#preview {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: var(--radius);
+  background: #000;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .5);
+}
+/* Phone simulation: a real 390x844 box, so layout bugs surface here rather
+   than on the recipient's actual handset. Capped at 844px but free to shrink
+   on a short window — a fixed height would overflow the stage and clip the
+   preview, and a clipped preview reports a viewport no real phone has. The
+   aspect ratio is what must stay honest, not the pixel count.
+
+   Sized off the viewport rather than the parent: a percentage height inside a
+   centred flex container has no definite basis to resolve against, so it
+   silently falls back to the intrinsic 844px and overflows anyway. The 88px is
+   the stage bar plus this block's own padding. */
+#stage-frame.phone {
+  padding: 10px;
+}
+#stage-frame.phone #preview {
+  width: auto;
+  height: min(844px, calc(100dvh - 88px));
+  aspect-ratio: 390 / 844;
+  border-radius: 22px;
+  border: 6px solid #2a2340;
+}
+
+@media (max-width: 900px) {
+  #app { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  #panel { border-right: 0; border-bottom: 1px solid var(--line); }
+}

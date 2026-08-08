@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Birthday Gift Studio</title>
+  <link rel="stylesheet" href="./studio.css">
+</head>
+<body>
+  <div id="app">
+    <!-- ── Left: controls ─────────────────────────────────────────────── -->
+    <aside id="panel">
+      <header id="panel-head">
+        <h1>Birthday Gift Studio</h1>
+        <p class="sub">Build the museum, then publish one link.</p>
+      </header>
+
+      <div id="panel-scroll">
+        <section class="block">
+          <h2>Who is it for?</h2>
+          <label class="field">
+            <span>Their name</span>
+            <input id="f-name" type="text" placeholder="Ananya" maxlength="40">
+          </label>
+          <label class="field">
+            <span>Candles on the cake</span>
+            <input id="f-candles" type="number" min="1" max="12" value="5">
+          </label>
+        </section>
+
+        <section class="block">
+          <h2>Photos &amp; videos</h2>
+          <div id="dropzone">
+            <div class="dz-inner">
+              <strong>Drop photos here</strong>
+              <span>or click to choose &middot; up to <b id="max-frames">16</b> frames</span>
+              <small id="video-note">Videos are capped at 3 — more than that and phones
+                start dropping frames across the whole page.</small>
+            </div>
+            <input id="file-input" type="file" multiple
+                   accept="image/*,video/*" hidden>
+          </div>
+          <div id="upload-status" class="status" hidden></div>
+          <ol id="frame-list"></ol>
+        </section>
+
+        <section class="block">
+          <h2>Background music</h2>
+          <div id="music-row">
+            <button id="music-pick" class="btn ghost" type="button">Choose a track</button>
+            <input id="music-input" type="file" accept="audio/*" hidden>
+          </div>
+          <div id="music-current" hidden>
+            <span id="music-name">music.mp3</span>
+            <button id="music-remove" class="btn tiny danger" type="button">Remove</button>
+          </div>
+          <label class="field">
+            <span>Volume <output id="vol-out">45%</output></span>
+            <input id="f-volume" type="range" min="0" max="100" value="45">
+          </label>
+        </section>
+
+        <section class="block">
+          <h2>The letter</h2>
+          <p class="hint">Shown once the candles are blown out.</p>
+          <textarea id="f-letter" rows="5" maxlength="1200"
+                    placeholder="Happy birthday! Here's a room full of us..."></textarea>
+          <div class="counter"><span id="letter-count">0</span> / 1200</div>
+        </section>
+
+        <section class="block">
+          <h2>Preview as</h2>
+          <div id="tier-switch" class="segmented">
+            <button class="seg active" data-tier="auto" type="button">Auto</button>
+            <button class="seg" data-tier="low" type="button">Low-end phone</button>
+            <button class="seg" data-tier="mid" type="button">Mid phone</button>
+            <button class="seg" data-tier="high" type="button">Desktop</button>
+          </div>
+          <div id="viewport-switch" class="segmented">
+            <button class="seg active" data-vp="desktop" type="button">Desktop</button>
+            <button class="seg" data-vp="phone" type="button">Phone</button>
+          </div>
+        </section>
+      </div>
+
+      <footer id="panel-foot">
+        <div id="problems" class="problems" hidden></div>
+        <button id="publish-btn" class="btn primary" type="button">Export &amp; Publish</button>
+      </footer>
+    </aside>
+
+    <!-- ── Right: live preview ────────────────────────────────────────── -->
+    <main id="stage">
+      <div id="stage-bar">
+        <span id="stage-label">Live preview</span>
+        <button id="reload-btn" class="btn tiny ghost" type="button">Reload</button>
+      </div>
+      <div id="stage-frame">
+        <iframe id="preview" title="Museum preview"
+                allow="microphone; autoplay"></iframe>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="./studio.js"></script>
+</body>
+</html>

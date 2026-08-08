@@ -1,0 +1,93 @@
+{
+  "v": 1,
+  "name": "Rahul",
+  "theme": "midnight-gold",
+  "letter": "Glad you're part of the story. Here's to the memories we've made, and the ones still loading.",
+  "candles": 12,
+  "frames": [
+    {
+      "type": "photo",
+      "src": "a/mmsh3k2ap.webp",
+      "caption": "Main character energy",
+      "wall": "L",
+      "w": 605,
+      "h": 1024,
+      "lqip": "a/mmsh3k2ap_lqip.webp",
+      "src512": "a/mmsh3k2ap_mid.webp"
+    },
+    {
+      "type": "photo",
+      "src": "a/mmsh3k2ar.webp",
+      "caption": "The most genuine guy",
+      "wall": "R",
+      "w": 769,
+      "h": 1024,
+      "lqip": "a/mmsh3k2ar_lqip.webp",
+      "src512": "a/mmsh3k2ar_mid.webp"
+    },
+    {
+      "type": "video",
+      "src": "a/mmshf146t.mp4",
+      "caption": "Tripling memory",
+      "wall": "L",
+      "w": 720,
+      "h": 404,
+      "lqip": "a/mmshf146t_lqip.webp",
+      "poster": "a/mmshf146t_poster.webp"
+    },
+    {
+      "type": "video",
+      "src": "a/mmshf146s.mp4",
+      "caption": "Rajgir Trip",
+      "wall": "R",
+      "w": 720,
+      "h": 406,
+      "lqip": "a/mmshf146s_lqip.webp",
+      "poster": "a/mmshf146s_poster.webp"
+    },
+    {
+      "type": "photo",
+      "src": "a/mmsh3k2as.webp",
+      "caption": "The realest one",
+      "wall": "L",
+      "w": 1024,
+      "h": 576,
+      "lqip": "a/mmsh3k2as_lqip.webp",
+      "src512": "a/mmsh3k2as_mid.webp"
+    },
+    {
+      "type": "video",
+      "src": "a/mmshf146r.mp4",
+      "caption": "Digha Beach",
+      "wall": "R",
+      "w": 720,
+      "h": 406,
+      "lqip": "a/mmshf146r_lqip.webp",
+      "poster": "a/mmshf146r_poster.webp"
+    },
+    {
+      "type": "photo",
+      "src": "a/mmsh3k2at.webp",
+      "caption": "Top tier friend",
+      "wall": "L",
+      "w": 768,
+      "h": 1024,
+      "lqip": "a/mmsh3k2at_lqip.webp",
+      "src512": "a/mmsh3k2at_mid.webp"
+    },
+    {
+      "type": "photo",
+      "src": "a/mmsh3k2av.webp",
+      "caption": "Always keeping it real",
+      "wall": "R",
+      "w": 576,
+      "h": 1024,
+      "lqip": "a/mmsh3k2av_lqip.webp",
+      "src512": "a/mmsh3k2av_mid.webp"
+    }
+  ],
+  "music": {
+    "src": "a/music_mmsj1qt4n.mp3",
+    "volume": 0.5
+  }
+}
