@@ -1,0 +1,765 @@
+/* ============================================================
+   Hologram Bay
+   Palette : instrument periwinkle on deep vacuum blue-black.
+             Coral is *reserved* for burst events — it appears
+             nowhere else, so any coral on screen means "a hit
+             just happened."
+   Type    : Archivo (wide grotesque, display) + Martian Mono
+             (utility/data). Body copy rides Archivo at low weight.
+   ============================================================ */
+
+:root {
+  --vacuum: #06070f;
+  --vacuum-lift: #0d1020;
+  --periwinkle: #c3b2ff;
+  --ion: #7de3ff;
+  --coral: #ff4d6d;
+  --bone: #eae7f5;
+  --dim: #6a6a8c;
+
+  --edge: rgba(195, 178, 255, 0.16);
+  --edge-strong: rgba(195, 178, 255, 0.34);
+
+  --display: 'Archivo', system-ui, sans-serif;
+  --mono: 'Martian Mono', ui-monospace, 'Cascadia Code', monospace;
+
+  --rail-h: 148px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--vacuum);
+  color: var(--bone);
+  font-family: var(--display);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  /* Faint off-axis glow so the void isn't flat black */
+  background-image: radial-gradient(
+      ellipse 70% 55% at 50% 42%,
+      rgba(122, 92, 255, 0.12),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 40% at 82% 88%,
+      rgba(125, 227, 255, 0.05),
+      transparent 70%
+    );
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+
+#stage:active {
+  cursor: grabbing;
+}
+
+/* Scanlines + vignette. Non-interactive. */
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0.16) 3px,
+      rgba(0, 0, 0, 0.16) 4px
+    ),
+    radial-gradient(
+      ellipse 78% 70% at 50% 45%,
+      transparent 55%,
+      rgba(6, 7, 15, 0.82) 100%
+    );
+  mix-blend-mode: multiply;
+}
+
+.shell {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto auto;
+  padding: 26px clamp(18px, 3.5vw, 44px) 20px;
+  pointer-events: none;
+}
+
+.shell > * {
+  pointer-events: auto;
+}
+
+/* ---------- Masthead ---------- */
+
+.masthead {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  flex-wrap: wrap;
+  pointer-events: none;
+}
+
+.wordmark {
+  margin: 0;
+  font-size: clamp(19px, 2.1vw, 27px);
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  line-height: 1;
+  display: flex;
+  gap: 0.34em;
+}
+
+.wordmark__line--alt {
+  color: var(--periwinkle);
+  -webkit-text-stroke: 0;
+  opacity: 0.9;
+}
+
+.tagline {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 300;
+  letter-spacing: 0.11em;
+  color: var(--dim);
+  max-width: 34ch;
+  line-height: 1.5;
+}
+
+/* ---------- Signature: the seismograph strip ---------- */
+
+.seismograph {
+  grid-row: 3;
+  margin-bottom: 14px;
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    rgba(13, 16, 32, 0.72),
+    rgba(6, 7, 15, 0.76)
+  );
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 10px 14px 8px;
+}
+
+.seismograph__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 7px;
+}
+
+.readout__key {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--periwinkle);
+  opacity: 0.75;
+}
+
+.seismograph__stats {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+/* The panel covers the lower third of the projection, so dismissing it is a
+   real need rather than a nicety. It reads as a quiet text control inside the
+   panel's own header — a full button here would compete with the control rail
+   below for attention. */
+
+.panel-toggle,
+.panel-restore {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: color 0.16s var(--ease), border-color 0.16s var(--ease),
+    background 0.16s var(--ease);
+}
+
+.panel-toggle:hover,
+.panel-restore:hover {
+  color: var(--bone);
+  border-color: var(--edge-strong);
+  background: rgba(195, 178, 255, 0.07);
+}
+
+.panel-toggle:focus-visible,
+.panel-restore:focus-visible {
+  outline: 2px solid var(--ion);
+  outline-offset: 2px;
+}
+
+/* Hidden state. The panel keeps its grid row but collapses to nothing, and the
+   restore control takes its place — the strip never leaves a dead gap. */
+.seismograph.is-collapsed {
+  display: none;
+}
+
+.panel-restore {
+  grid-row: 3;
+  justify-self: start;
+  margin-bottom: 14px;
+  color: var(--periwinkle);
+  border-color: var(--edge);
+  background: rgba(13, 16, 32, 0.66);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.panel-restore[hidden] {
+  display: none;
+}
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.stat__label {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.stat__value {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--bone);
+  font-variant-numeric: tabular-nums;
+  min-width: 3.4ch;
+}
+
+.stat__value--hot {
+  color: var(--coral);
+}
+
+.seismograph__canvas {
+  display: block;
+  width: 100%;
+  height: 58px;
+  border-radius: 2px;
+}
+
+.seismograph__legend {
+  margin: 6px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.swatch {
+  width: 13px;
+  height: 2px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.swatch:not(:first-child) {
+  margin-left: 11px;
+}
+
+.swatch--trace {
+  background: var(--periwinkle);
+}
+
+.swatch--gate {
+  background: var(--ion);
+}
+
+.swatch--hit {
+  background: var(--coral);
+}
+
+/* ---------- Control rail ---------- */
+
+.rail {
+  grid-row: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px 26px;
+  flex-wrap: wrap;
+  padding: 13px 16px;
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    rgba(13, 16, 32, 0.72),
+    rgba(6, 7, 15, 0.76)
+  );
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.rail__group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rail__group--sliders {
+  gap: 20px;
+  flex: 1 1 340px;
+  flex-wrap: wrap;
+}
+
+.rail__group--toggles {
+  gap: 14px;
+}
+
+.btn {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bone);
+  background: rgba(195, 178, 255, 0.06);
+  border: 1px solid var(--edge-strong);
+  border-radius: 2px;
+  padding: 9px 15px;
+  cursor: pointer;
+  transition: background 0.16s var(--ease), color 0.16s var(--ease),
+    border-color 0.16s var(--ease), transform 0.1s var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  background: rgba(195, 178, 255, 0.14);
+  border-color: var(--periwinkle);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--periwinkle);
+  color: var(--vacuum);
+  border-color: var(--periwinkle);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: #d5c8ff;
+  border-color: #d5c8ff;
+}
+
+.btn:focus-visible,
+.toggle input:focus-visible,
+input[type='range']:focus-visible {
+  outline: 2px solid var(--ion);
+  outline-offset: 2px;
+}
+
+.mic-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dim);
+  flex: none;
+  transition: background 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.btn--mic.is-live {
+  border-color: var(--coral);
+  color: var(--coral);
+}
+
+.btn--mic.is-live .mic-dot {
+  background: var(--coral);
+  box-shadow: 0 0 8px var(--coral);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Sliders */
+
+.slider {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 116px;
+  flex: 1 1 116px;
+  max-width: 190px;
+}
+
+.slider__label {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--dim);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.slider__label output {
+  color: var(--periwinkle);
+  font-variant-numeric: tabular-nums;
+}
+
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 14px;
+  background: transparent;
+  cursor: pointer;
+  margin: 0;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--edge-strong);
+}
+
+input[type='range']::-moz-range-track {
+  height: 1px;
+  background: var(--edge-strong);
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 3px;
+  height: 13px;
+  border-radius: 0;
+  background: var(--periwinkle);
+  border: none;
+  margin-top: -6px;
+  transition: box-shadow 0.16s var(--ease);
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 3px;
+  height: 13px;
+  border-radius: 0;
+  background: var(--periwinkle);
+  border: none;
+}
+
+input[type='range']:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 9px var(--periwinkle);
+}
+
+/* Toggles */
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  cursor: pointer;
+  transition: color 0.16s var(--ease);
+  user-select: none;
+}
+
+.toggle:hover {
+  color: var(--bone);
+}
+
+.toggle input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 9px;
+  height: 9px;
+  margin: 0;
+  border: 1px solid var(--edge-strong);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.16s var(--ease), border-color 0.16s var(--ease);
+}
+
+.toggle input:checked {
+  background: var(--periwinkle);
+  border-color: var(--periwinkle);
+}
+
+.toggle:has(input:checked) {
+  color: var(--bone);
+}
+
+.hint {
+  grid-row: 5;
+  margin: 11px 0 0;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dim);
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 0.5s var(--ease);
+}
+
+/* ---------- Drop zone ---------- */
+
+.dropzone {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: rgba(6, 7, 15, 0.9);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s var(--ease);
+}
+
+.dropzone.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.dropzone__frame {
+  border: 1px dashed var(--periwinkle);
+  border-radius: 4px;
+  padding: clamp(40px, 8vw, 92px) clamp(48px, 12vw, 150px);
+  text-align: center;
+  background: rgba(195, 178, 255, 0.04);
+  transform: scale(0.97);
+  transition: transform 0.24s var(--ease);
+}
+
+.dropzone.is-active .dropzone__frame {
+  transform: scale(1);
+}
+
+.dropzone__title {
+  margin: 0 0 10px;
+  font-size: clamp(20px, 3vw, 32px);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bone);
+}
+
+.dropzone__sub {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--periwinkle);
+}
+
+/* ---------- Onboarding ---------- */
+
+.onboard {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(
+    ellipse 60% 60% at 50% 50%,
+    rgba(6, 7, 15, 0.72),
+    rgba(6, 7, 15, 0.94)
+  );
+  transition: opacity 0.4s var(--ease), visibility 0.4s var(--ease);
+}
+
+.onboard.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.onboard__card {
+  max-width: 430px;
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    rgba(13, 16, 32, 0.94),
+    rgba(6, 7, 15, 0.96)
+  );
+  padding: 34px 34px 30px;
+}
+
+.onboard__eyebrow {
+  margin: 0 0 12px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--periwinkle);
+}
+
+.onboard__title {
+  margin: 0 0 12px;
+  font-size: clamp(26px, 3.6vw, 36px);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.05;
+}
+
+.onboard__body {
+  margin: 0 0 24px;
+  font-size: 13.5px;
+  line-height: 1.62;
+  color: #a5a2bd;
+}
+
+.onboard__actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Toast ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--rail-h) + 76px);
+  transform: translate(-50%, 12px);
+  z-index: 30;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bone);
+  background: rgba(13, 16, 32, 0.96);
+  border: 1px solid var(--edge-strong);
+  border-radius: 2px;
+  padding: 11px 18px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.24s var(--ease), transform 0.24s var(--ease);
+  max-width: min(88vw, 480px);
+  text-align: center;
+}
+
+.toast.is-shown {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.toast.is-error {
+  border-color: var(--coral);
+  color: var(--coral);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 860px) {
+  .shell {
+    padding: 18px 14px 14px;
+  }
+
+  .tagline {
+    display: none;
+  }
+
+  .rail {
+    gap: 10px 16px;
+    padding: 11px 12px;
+  }
+
+  .rail__group--sliders {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .seismograph__canvas {
+    height: 44px;
+  }
+
+  .seismograph__stats {
+    gap: 12px;
+  }
+
+  .hint {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .wordmark {
+    font-size: 15px;
+    letter-spacing: 0.26em;
+  }
+
+  .seismograph__legend {
+    display: none;
+  }
+
+  .slider {
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

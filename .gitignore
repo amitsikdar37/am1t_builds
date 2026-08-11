@@ -5,3 +5,11 @@ __pycache__/
 node_modules/
 **/node_modules/
 .DS_Store
+dist/
+build/
+*.zip
+.venv/
+venv/
+env/
+.vscode/
+.idea/

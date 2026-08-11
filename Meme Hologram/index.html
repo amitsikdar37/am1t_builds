@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hologram Bay — particle video projector</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700&family=Martian+Mono:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- Projection surface -->
+    <canvas id="stage"></canvas>
+
+    <!-- Vignette + scanline atmosphere, purely decorative -->
+    <div class="atmosphere" aria-hidden="true"></div>
+
+    <main class="shell">
+      <header class="masthead">
+        <h1 class="wordmark">
+          <span class="wordmark__line">Hologram</span>
+          <span class="wordmark__line wordmark__line--alt">Bay</span>
+        </h1>
+        <p class="tagline">
+          Video as 300,000 suspended points. Sharp sounds shatter it.
+        </p>
+      </header>
+
+      <!-- Signature element: live audio envelope + trigger threshold -->
+      <section class="seismograph" id="seismograph" aria-label="Audio envelope monitor">
+        <div class="seismograph__head">
+          <span class="readout__key">envelope</span>
+          <div class="seismograph__stats">
+            <span class="stat">
+              <span class="stat__label">level</span>
+              <span class="stat__value" id="statLevel">—</span>
+            </span>
+            <span class="stat">
+              <span class="stat__label">bursts</span>
+              <span class="stat__value" id="statBursts">0</span>
+            </span>
+            <span class="stat">
+              <span class="stat__label">fps</span>
+              <span class="stat__value" id="statFps">—</span>
+            </span>
+            <span class="stat">
+              <span class="stat__label">points</span>
+              <span class="stat__value" id="statPoints">—</span>
+            </span>
+            <button
+              class="panel-toggle"
+              id="btnPanel"
+              type="button"
+              aria-controls="seismograph"
+              aria-expanded="true"
+              title="Hide the envelope panel (H)"
+            >
+              Hide
+            </button>
+          </div>
+        </div>
+        <canvas id="scope" class="seismograph__canvas"></canvas>
+        <p class="seismograph__legend">
+          <span class="swatch swatch--trace"></span>loudness
+          <span class="swatch swatch--gate"></span>trigger point
+          <span class="swatch swatch--hit"></span>burst
+        </p>
+      </section>
+
+      <!-- Shown in the panel's place once it is hidden, so the way back is
+           never lost. -->
+      <button
+        class="panel-restore"
+        id="btnPanelShow"
+        type="button"
+        aria-controls="seismograph"
+        aria-expanded="false"
+        hidden
+      >
+        Show envelope
+      </button>
+
+      <!-- Control rail -->
+      <section class="rail" aria-label="Playback and input controls">
+        <div class="rail__group">
+          <button class="btn btn--primary" id="btnPlay" type="button" disabled>
+            <span id="btnPlayLabel">Play</span>
+          </button>
+          <button class="btn" id="btnLoad" type="button">Load clip</button>
+          <button class="btn" id="btnSample" type="button">Use test pattern</button>
+        </div>
+
+        <div class="rail__group">
+          <button class="btn btn--mic" id="btnMic" type="button">
+            <span class="mic-dot" aria-hidden="true"></span>
+            <span id="btnMicLabel">Arm mic</span>
+          </button>
+          <button class="btn" id="btnBurst" type="button">Burst now</button>
+        </div>
+
+        <div class="rail__group rail__group--sliders">
+          <label class="slider">
+            <span class="slider__label">
+              Sensitivity <output id="outSens">0.55</output>
+            </span>
+            <input
+              type="range"
+              id="ctlSens"
+              min="0.05"
+              max="1"
+              step="0.01"
+              value="0.55"
+            />
+          </label>
+          <label class="slider">
+            <span class="slider__label">
+              Blast force <output id="outForce">1.00</output>
+            </span>
+            <input
+              type="range"
+              id="ctlForce"
+              min="0.2"
+              max="2.5"
+              step="0.05"
+              value="1"
+            />
+          </label>
+          <label class="slider">
+            <span class="slider__label">
+              Depth <output id="outDepth">1.00</output>
+            </span>
+            <input
+              type="range"
+              id="ctlDepth"
+              min="0"
+              max="2.5"
+              step="0.05"
+              value="1"
+            />
+          </label>
+          <label class="slider">
+            <span class="slider__label">
+              Density <output id="outCount">200k</output>
+            </span>
+            <input
+              type="range"
+              id="ctlCount"
+              min="1"
+              max="6"
+              step="1"
+              value="5"
+            />
+          </label>
+        </div>
+
+        <div class="rail__group rail__group--toggles">
+          <label class="toggle">
+            <input type="checkbox" id="ctlSpin" checked />
+            <span>Drift</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="ctlLoop" checked />
+            <span>Loop</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="ctlMute" />
+            <span>Mute</span>
+          </label>
+        </div>
+      </section>
+
+      <p class="hint" id="hint">
+        Drag to orbit · scroll to push in · space to play · H to hide the panel
+      </p>
+    </main>
+
+    <!-- Drop zone: full-window target, shown on file drag -->
+    <div class="dropzone" id="dropzone" aria-hidden="true">
+      <div class="dropzone__frame">
+        <p class="dropzone__title">Drop to project</p>
+        <p class="dropzone__sub">MP4, WebM or MOV</p>
+      </div>
+    </div>
+
+    <!-- First-run panel -->
+    <div class="onboard" id="onboard">
+      <div class="onboard__card">
+        <p class="onboard__eyebrow">Projector empty</p>
+        <h2 class="onboard__title">Feed it a clip</h2>
+        <p class="onboard__body">
+          Drop an MP4 anywhere on this window, or pick a file. Everything stays
+          on your machine — nothing is uploaded.
+        </p>
+        <div class="onboard__actions">
+          <button class="btn btn--primary" id="btnLoad2" type="button">
+            Choose file
+          </button>
+          <button class="btn" id="btnSample2" type="button">
+            Use test pattern
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <input
+      type="file"
+      id="filePicker"
+      accept="video/mp4,video/webm,video/quicktime,video/*"
+      hidden
+    />
+
+    <video id="source" playsinline crossorigin="anonymous" hidden></video>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
