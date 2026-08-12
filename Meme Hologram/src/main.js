@@ -234,6 +234,19 @@ $('btnBurst').addEventListener('click', () => {
   fire(1.5)
 })
 
+/**
+ * Snap the projection back to a square, head-on framing. recenter() also stops
+ * the drift — otherwise the cloud would rotate straight back out of alignment —
+ * so the Drift toggle has to follow, or its checkbox would lie about the state.
+ */
+function align() {
+  field.recenter()
+  $('ctlSpin').checked = false
+  toast('Aligned — drift paused')
+}
+
+$('btnAlign').addEventListener('click', align)
+
 $('btnMic').addEventListener('click', async () => {
   const btn = $('btnMic')
 
@@ -360,6 +373,8 @@ window.addEventListener('keydown', (e) => {
     if (state.hasSource) video.paused ? play() : video.pause()
   } else if (e.code === 'KeyB') {
     fire(1.5)
+  } else if (e.code === 'KeyC') {
+    align()
   } else if (e.code === 'KeyM') {
     $('btnMic').click()
   } else if (e.code === 'KeyH') {

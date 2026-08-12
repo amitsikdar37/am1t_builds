@@ -257,6 +257,8 @@ const FRAG = /* glsl */ `
  */
 const SPRITE_PITCH = 1.81
 
+const TAU = Math.PI * 2
+
 export class HologramField {  constructor(canvas) {
     this.canvas = canvas
 
@@ -497,6 +499,38 @@ export class HologramField {  constructor(canvas) {
 
   setDepth(v) {
     this.uniforms.uDepth.value = v
+  }
+
+  /**
+   * Return the camera to the head-on framing the projection was built for.
+   *
+   * Orbiting by hand is easy to do and hard to undo: theta and phi have no
+   * detent at zero, so getting a face back to square means nudging a drag until
+   * it looks right, and the drift term is moving the target the whole time.
+   *
+   * Two things make this behave. First, theta accumulates without bound — drift
+   * adds to it every frame, so after a few idle minutes it sits several
+   * revolutions from zero. Targeting a literal 0 would unwind all of them as a
+   * long backwards spin, which looks like a bug. The target is instead the
+   * nearest multiple of a full turn, so the shortest way round is always the way
+   * taken, and the *current* value is rewritten into the same frame so the
+   * damped follow in render() sees a small delta rather than a huge one.
+   *
+   * Second, drift is switched off. Leaving it on would pull the cloud back out
+   * of square within a second, making the button look broken; the caller syncs
+   * its own toggle to match. Distance goes back to the fitted value from
+   * _buildGeometry, which is the framing that contains the whole plane — so this
+   * also undoes an over-zealous scroll.
+   */
+  recenter() {
+    const turns = Math.round(this.orbit.theta / TAU)
+
+    this.orbit.theta -= turns * TAU
+    this.orbit.tTheta = 0
+    this.orbit.tPhi = 0
+    this.orbit.tDist = this.fitDist ?? this.orbit.dist
+
+    this.drift = false
   }
 
   setSize(v) {

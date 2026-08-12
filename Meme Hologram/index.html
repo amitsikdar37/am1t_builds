@@ -51,17 +51,17 @@
               <span class="stat__label">points</span>
               <span class="stat__value" id="statPoints">—</span>
             </span>
-            <button
-              class="panel-toggle"
-              id="btnPanel"
-              type="button"
-              aria-controls="seismograph"
-              aria-expanded="true"
-              title="Hide the envelope panel (H)"
-            >
-              Hide
-            </button>
           </div>
+          <button
+            class="panel-toggle"
+            id="btnPanel"
+            type="button"
+            aria-controls="seismograph"
+            aria-expanded="true"
+            title="Hide the envelope panel (H)"
+          >
+            Hide
+          </button>
         </div>
         <canvas id="scope" class="seismograph__canvas"></canvas>
         <p class="seismograph__legend">
@@ -100,6 +100,14 @@
             <span id="btnMicLabel">Arm mic</span>
           </button>
           <button class="btn" id="btnBurst" type="button">Burst now</button>
+          <button
+            class="btn"
+            id="btnAlign"
+            type="button"
+            title="Face the projection square to the camera (C)"
+          >
+            Align
+          </button>
         </div>
 
         <div class="rail__group rail__group--sliders">
@@ -174,7 +182,7 @@
       </section>
 
       <p class="hint" id="hint">
-        Drag to orbit · scroll to push in · space to play · H to hide the panel
+        Drag to orbit · scroll to push in · space to play · C to align · H to hide the panel
       </p>
     </main>
 

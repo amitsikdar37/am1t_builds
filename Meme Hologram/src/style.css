@@ -214,6 +214,19 @@ body {
   background: rgba(195, 178, 255, 0.07);
 }
 
+/* The Hide control used to be a bare dim-grey text label tucked at the end of
+   the stats row. On a phone that is invisible: nothing marks it as a button and
+   there is no H-key fallback the way there is on desktop. It now carries a
+   visible outline everywhere and grows to a proper tap target on small screens
+   (see the responsive block). flex:none keeps it from being squeezed to a
+   sliver when the stats wrap beside it. */
+.panel-toggle {
+  color: var(--periwinkle);
+  border-color: var(--edge);
+  background: rgba(195, 178, 255, 0.05);
+  flex: none;
+}
+
 .panel-toggle:focus-visible,
 .panel-restore:focus-visible {
   outline: 2px solid var(--ion);
@@ -734,6 +747,17 @@ input[type='range']:hover::-webkit-slider-thumb {
 
   .seismograph__stats {
     gap: 12px;
+  }
+
+  /* Real thumb target on touch, and big enough to read as the primary way to
+     dismiss the panel now that the H shortcut isn't reachable. Both the Hide
+     control and the Show-envelope control that replaces it get the bump, so the
+     way back is as tappable as the way out. */
+  .panel-toggle,
+  .panel-restore {
+    font-size: 10px;
+    padding: 9px 16px;
+    letter-spacing: 0.18em;
   }
 
   .hint {
