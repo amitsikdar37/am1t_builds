@@ -26,80 +26,18 @@
           <span class="wordmark__line wordmark__line--alt">Bay</span>
         </h1>
         <p class="tagline">
-          Video as 300,000 suspended points. Sharp sounds shatter it.
+          Video as 300,000 suspended points, adrift in the dark.
         </p>
       </header>
 
-      <!-- Signature element: live audio envelope + trigger threshold -->
-      <section class="seismograph" id="seismograph" aria-label="Audio envelope monitor">
-        <div class="seismograph__head">
-          <span class="readout__key">envelope</span>
-          <div class="seismograph__stats">
-            <span class="stat">
-              <span class="stat__label">level</span>
-              <span class="stat__value" id="statLevel">—</span>
-            </span>
-            <span class="stat">
-              <span class="stat__label">bursts</span>
-              <span class="stat__value" id="statBursts">0</span>
-            </span>
-            <span class="stat">
-              <span class="stat__label">fps</span>
-              <span class="stat__value" id="statFps">—</span>
-            </span>
-            <span class="stat">
-              <span class="stat__label">points</span>
-              <span class="stat__value" id="statPoints">—</span>
-            </span>
-          </div>
-          <button
-            class="panel-toggle"
-            id="btnPanel"
-            type="button"
-            aria-controls="seismograph"
-            aria-expanded="true"
-            title="Hide the envelope panel (H)"
-          >
-            Hide
-          </button>
-        </div>
-        <canvas id="scope" class="seismograph__canvas"></canvas>
-        <p class="seismograph__legend">
-          <span class="swatch swatch--trace"></span>loudness
-          <span class="swatch swatch--gate"></span>trigger point
-          <span class="swatch swatch--hit"></span>burst
-        </p>
-      </section>
-
-      <!-- Shown in the panel's place once it is hidden, so the way back is
-           never lost. -->
-      <button
-        class="panel-restore"
-        id="btnPanelShow"
-        type="button"
-        aria-controls="seismograph"
-        aria-expanded="false"
-        hidden
-      >
-        Show envelope
-      </button>
-
       <!-- Control rail -->
-      <section class="rail" aria-label="Playback and input controls">
+      <section class="rail" aria-label="Playback and view controls">
         <div class="rail__group">
           <button class="btn btn--primary" id="btnPlay" type="button" disabled>
             <span id="btnPlayLabel">Play</span>
           </button>
           <button class="btn" id="btnLoad" type="button">Load clip</button>
           <button class="btn" id="btnSample" type="button">Use test pattern</button>
-        </div>
-
-        <div class="rail__group">
-          <button class="btn btn--mic" id="btnMic" type="button">
-            <span class="mic-dot" aria-hidden="true"></span>
-            <span id="btnMicLabel">Arm mic</span>
-          </button>
-          <button class="btn" id="btnBurst" type="button">Burst now</button>
           <button
             class="btn"
             id="btnAlign"
@@ -111,32 +49,6 @@
         </div>
 
         <div class="rail__group rail__group--sliders">
-          <label class="slider">
-            <span class="slider__label">
-              Sensitivity <output id="outSens">0.55</output>
-            </span>
-            <input
-              type="range"
-              id="ctlSens"
-              min="0.05"
-              max="1"
-              step="0.01"
-              value="0.55"
-            />
-          </label>
-          <label class="slider">
-            <span class="slider__label">
-              Blast force <output id="outForce">1.00</output>
-            </span>
-            <input
-              type="range"
-              id="ctlForce"
-              min="0.2"
-              max="2.5"
-              step="0.05"
-              value="1"
-            />
-          </label>
           <label class="slider">
             <span class="slider__label">
               Depth <output id="outDepth">1.00</output>
@@ -182,7 +94,7 @@
       </section>
 
       <p class="hint" id="hint">
-        Drag to orbit · scroll to push in · space to play · C to align · H to hide the panel
+        Drag to orbit · scroll to push in · space to play · C to align
       </p>
     </main>
 

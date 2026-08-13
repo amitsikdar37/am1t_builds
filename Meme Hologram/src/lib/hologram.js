@@ -6,18 +6,10 @@ import * as THREE from 'three'
  * Renders a video as a dense point cloud.
  *
  * Performance contract: the CPU never touches a particle. Every per-particle
- * behaviour (depth relief, idle vibration, explosion, colour, size, opacity)
- * is computed in the vertex shader from two static attributes plus a handful
- * of uniforms. Cost per frame on the CPU is O(1) regardless of particle count,
- * so 300k points cost the same to drive as 25k, and an explosion costs exactly
- * as much as the idle state.
- *
- * The one real GPU risk is overdraw: 300k sprites flying toward the camera
- * would each cover more screen area as they approach, and fill rate — not
- * vertex count — is what would drop frames. So point size is scaled *down*
- * over the course of a burst. It reads as the image shattering into finer
- * debris, and it keeps total covered area roughly flat while particles are
- * closest to the lens.
+ * behaviour (depth relief, idle vibration, colour, size, opacity) is computed
+ * in the vertex shader from two static attributes plus a handful of uniforms.
+ * Cost per frame on the CPU is O(1) regardless of particle count, so 300k
+ * points cost the same to drive as 25k.
  */
 
 const VERT = /* glsl */ `
@@ -29,24 +21,15 @@ const VERT = /* glsl */ `
   uniform sampler2D uMap;
   uniform float uTime;
   uniform float uDepth;      // how far luminance pushes a point back
-  uniform float uBurst;      // 0..1 progress through the current explosion
-  uniform float uPower;      // strength of the current explosion
   uniform float uSize;
   uniform float uPixelRatio;
   uniform float uCut;        // presence below this is treated as empty space
   uniform float uSat;        // >1 lifts saturation, 1.0 passes video through
   uniform float uJitter;     // idle vibration amplitude, in world units
   uniform float uPointScale; // grid pitch projected to pixels at unit depth
-  uniform float uSpan;       // largest plane dimension, sets burst travel
 
   varying vec3  vTint;
   varying float vAlpha;
-  varying float vHeat;
-
-  // Cheap hash for directional variety without a texture lookup.
-  float hash(vec3 p) {
-    return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
-  }
 
   void main() {
     vec3 rgb = texture2D(uMap, aUv).rgb;
@@ -76,57 +59,15 @@ const VERT = /* glsl */ `
     );
     pos += jitter * uJitter;
 
-    // --- Explosion ------------------------------------------------------
-    // Radially outward from the centre of the plane and forward toward the
-    // lens. uBurst is driven 0 -> 1 by the host and then dropped hard to 0,
-    // which is the instant snap back to formation.
-    float heat = 0.0;
-    if (uBurst > 0.0) {
-      // Travel curve. Full extension is ~4.3 units across a 4.6-unit plane, so
-      // the eye is very sensitive to how the first few frames are spent: any
-      // front-loaded curve (pow < 1) moves particles far enough on frame one
-      // that the face is gone before it has visibly broken, which reads as a
-      // hard cut to noise rather than an explosion.
-      //
-      // Smoothstep instead. Frames 1-3 barely translate, so the image cracks
-      // while still legible; the middle is where the violence lands; the tail
-      // eases into full extension. The instant response the trigger needs comes
-      // from heat and size, which peak on frame one — the cloud flashes coral
-      // and goes to fine debris before it has travelled anywhere.
-      float amp = uBurst * uBurst * (3.0 - 2.0 * uBurst);
-
-      float spread = hash(aSeed) * 0.65 + 0.35;
-      vec3 dir = normalize(vec3(
-        position.xy + (aSeed.xy - 0.5) * 0.55,
-        0.42 + aSeed.z * 0.75            // bias toward the camera
-      ));
-
-      // 0.34 of the plane span threw every particle clear of the frame, so the
-      // subject vanished completely on each hit. At 0.21 the cloud visibly
-      // ruptures and the silhouette survives inside the debris, which reads as
-      // the image being struck rather than replaced. Blast force still scales
-      // this up to 2.5x for anyone who wants the frame emptied.
-      pos += dir * amp * uPower * spread * uSpan * 0.21;
-
-      // Tumble, so debris does not travel on clean rails.
-      pos += jitter * amp * uPower * uSpan * 0.05;
-
-      heat = (1.0 - uBurst) * uPower;
-    }
-    vHeat = clamp(heat, 0.0, 1.0);
-
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
     gl_Position = projectionMatrix * mv;
 
     // --- Size -------------------------------------------------------------
-    // Perspective attenuation, then the overdraw guard described above.
-    //
-    // uPointScale ties sprite size to the grid pitch, so points stay just
-    // large enough to tile the frame with no gaps at any density. A fixed
-    // size left holes between particles at 100k — and holes in a face are
-    // what the eye reads as noise.
-    float shrink = 1.0 - uBurst * 0.62 * uPower;
-    gl_PointSize = uSize * uPointScale * uPixelRatio * shrink / max(-mv.z, 0.6);
+    // Perspective attenuation. uPointScale ties sprite size to the grid pitch,
+    // so points stay just large enough to tile the frame with no gaps at any
+    // density. A fixed size left holes between particles at 100k — and holes in
+    // a face are what the eye reads as noise.
+    gl_PointSize = uSize * uPointScale * uPixelRatio / max(-mv.z, 0.6);
 
     // --- Colour and opacity ------------------------------------------------
     // The particle carries the video's own RGB. An earlier version blended
@@ -168,17 +109,7 @@ const VERT = /* glsl */ `
     // squared the contrast, dragging every midtone toward black. Colour lives
     // in the tint; alpha only carves away true empty space.
     float body = smoothstep(uCut, uCut + 0.06, presence);
-    vAlpha = body * (1.0 - uBurst * 0.45);
-
-    // Hot particles run coral while a burst is in flight — but only as a
-    // glaze. Heat peaks on frame one, so a strong mix here repainted the whole
-    // cloud coral at the exact moment the image is meant to still be readable
-    // as it cracks: the same monochrome wash that made the resting state
-    // unrecognisable, just triggered by the trigger. At 0.32 the footage's own
-    // colour stays dominant and the heat reads as debris glowing through it.
-    // The energy of the hit comes from the fragment's bloom multiplier and the
-    // shrink-to-fine-debris, not from overwriting the subject.
-    vTint = mix(vTint, vec3(1.0, 0.30, 0.43), vHeat * 0.32);
+    vAlpha = body;
   }
 `
 
@@ -187,7 +118,6 @@ const FRAG = /* glsl */ `
 
   varying vec3  vTint;
   varying float vAlpha;
-  varying float vHeat;
 
   // The video texture is tagged sRGB, so the sampler hands the vertex shader
   // linear-light values and all the maths above happens in linear — which is
@@ -217,8 +147,7 @@ const FRAG = /* glsl */ `
     float alpha = vAlpha * falloff;
     if (alpha < 0.004) discard;
 
-    // Hot particles bloom brighter than their own colour during a burst.
-    gl_FragColor = vec4(toSRGB(vTint * (1.0 + vHeat * 0.9)), alpha);
+    gl_FragColor = vec4(toSRGB(vTint), alpha);
   }
 `
 
@@ -280,15 +209,12 @@ export class HologramField {  constructor(canvas) {
       uMap: { value: null },
       uTime: { value: 0 },
       uDepth: { value: 1.0 },
-      uBurst: { value: 0 },
-      uPower: { value: 1 },
       uSize: { value: 1.0 },
       uPixelRatio: { value: this.pixelRatio },
       uCut: { value: 0.055 },
       uSat: { value: 1.0 },
       uJitter: { value: 0.004 },
       uPointScale: { value: 14 },
-      uSpan: { value: 8.6 },
     }
 
     this.material = new THREE.ShaderMaterial({
@@ -300,9 +226,7 @@ export class HologramField {  constructor(canvas) {
       depthTest: false,
       // Normal alpha, not additive. Additive sums overlapping sprites toward
       // white, so any dense region of the cloud — which is to say a face —
-      // clipped to grey no matter what colour the footage was. Explosions get
-      // their glow from the heat term in the shader instead, which is where
-      // the brightness belongs: on the burst, not on the resting image.
+      // clipped to grey no matter what colour the footage was.
       blending: THREE.NormalBlending,
     })
 
@@ -310,11 +234,6 @@ export class HologramField {  constructor(canvas) {
     this.count = 200000
     this.aspect = 16 / 9
     this.texture = null
-
-    // Burst state (host-side, O(1))
-    this.burstT = 0
-    this.burstDur = 0.34
-    this.bursting = false
 
     // Camera orbit state. Distance is fitted to the frame in _buildGeometry.
     this.orbit = { theta: 0, phi: 0, dist: 11, tTheta: 0, tPhi: 0, tDist: 11 }
@@ -425,11 +344,6 @@ export class HologramField {  constructor(canvas) {
     this.uniforms.uPointScale.value = pitch * SPRITE_PITCH * this._pixelsPerUnit()
     this.uniforms.uJitter.value = pitch * 0.22
 
-    // Burst travel is expressed in plane heights so the explosion clears the
-    // frame by the same visual margin whatever shape the clip is.
-    this.planeSpan = Math.max(width, height)
-    this.uniforms.uSpan.value = this.planeSpan
-
     // Frame the plane: pull back far enough that the full height fits with a
     // small margin. Fixed at 9 before, which cropped tall clips.
     const fov = (this.camera.fov * Math.PI) / 180
@@ -488,13 +402,6 @@ export class HologramField {  constructor(canvas) {
       this._framed = false
       this._buildGeometry()
     }
-  }
-
-  /** Fire an explosion. `power` scales travel distance and heat. */
-  burst(power = 1) {
-    this.burstT = 0
-    this.bursting = true
-    this.uniforms.uPower.value = THREE.MathUtils.clamp(power, 0.15, 2.6)
   }
 
   setDepth(v) {
@@ -609,19 +516,6 @@ export class HologramField {  constructor(canvas) {
     const dt = Math.min((now - this.lastFrame) / 1000, 0.05)
     this.lastFrame = now
     this.uniforms.uTime.value += dt
-
-    // Burst envelope: ramp 0 -> 1 across the duration, then drop to exactly
-    // 0 on the same frame. That discontinuity *is* the snap back — the points
-    // are in formation on the very next frame, no easing, no settle.
-    if (this.bursting) {
-      this.burstT += dt
-      if (this.burstT >= this.burstDur) {
-        this.bursting = false
-        this.uniforms.uBurst.value = 0
-      } else {
-        this.uniforms.uBurst.value = this.burstT / this.burstDur
-      }
-    }
 
     // Slow drift so the projection reads as volumetric while untouched.
     if (this.drift && !this.dragging) {

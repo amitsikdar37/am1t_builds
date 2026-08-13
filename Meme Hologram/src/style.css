@@ -1,9 +1,9 @@
 /* ============================================================
    Hologram Bay
    Palette : instrument periwinkle on deep vacuum blue-black.
-             Coral is *reserved* for burst events — it appears
-             nowhere else, so any coral on screen means "a hit
-             just happened."
+             Coral is *reserved* for errors and alerts — it
+             appears nowhere else, so any coral on screen means
+             something needs attention.
    Type    : Archivo (wide grotesque, display) + Martian Mono
              (utility/data). Body copy rides Archivo at low weight.
    ============================================================ */
@@ -96,7 +96,7 @@ body {
   inset: 0;
   z-index: 3;
   display: grid;
-  grid-template-rows: auto 1fr auto auto auto;
+  grid-template-rows: auto 1fr auto auto;
   padding: 26px clamp(18px, 3.5vw, 44px) 20px;
   pointer-events: none;
 }
@@ -143,190 +143,10 @@ body {
   line-height: 1.5;
 }
 
-/* ---------- Signature: the seismograph strip ---------- */
-
-.seismograph {
-  grid-row: 3;
-  margin-bottom: 14px;
-  border: 1px solid var(--edge);
-  border-radius: 3px;
-  background: linear-gradient(
-    180deg,
-    rgba(13, 16, 32, 0.72),
-    rgba(6, 7, 15, 0.76)
-  );
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  padding: 10px 14px 8px;
-}
-
-.seismograph__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 7px;
-}
-
-.readout__key {
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--periwinkle);
-  opacity: 0.75;
-}
-
-.seismograph__stats {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-
-/* The panel covers the lower third of the projection, so dismissing it is a
-   real need rather than a nicety. It reads as a quiet text control inside the
-   panel's own header — a full button here would compete with the control rail
-   below for attention. */
-
-.panel-toggle,
-.panel-restore {
-  font-family: var(--mono);
-  font-size: 8.5px;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--dim);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 2px;
-  padding: 4px 8px;
-  cursor: pointer;
-  transition: color 0.16s var(--ease), border-color 0.16s var(--ease),
-    background 0.16s var(--ease);
-}
-
-.panel-toggle:hover,
-.panel-restore:hover {
-  color: var(--bone);
-  border-color: var(--edge-strong);
-  background: rgba(195, 178, 255, 0.07);
-}
-
-/* The Hide control used to be a bare dim-grey text label tucked at the end of
-   the stats row. On a phone that is invisible: nothing marks it as a button and
-   there is no H-key fallback the way there is on desktop. It now carries a
-   visible outline everywhere and grows to a proper tap target on small screens
-   (see the responsive block). flex:none keeps it from being squeezed to a
-   sliver when the stats wrap beside it. */
-.panel-toggle {
-  color: var(--periwinkle);
-  border-color: var(--edge);
-  background: rgba(195, 178, 255, 0.05);
-  flex: none;
-}
-
-.panel-toggle:focus-visible,
-.panel-restore:focus-visible {
-  outline: 2px solid var(--ion);
-  outline-offset: 2px;
-}
-
-/* Hidden state. The panel keeps its grid row but collapses to nothing, and the
-   restore control takes its place — the strip never leaves a dead gap. */
-.seismograph.is-collapsed {
-  display: none;
-}
-
-.panel-restore {
-  grid-row: 3;
-  justify-self: start;
-  margin-bottom: 14px;
-  color: var(--periwinkle);
-  border-color: var(--edge);
-  background: rgba(13, 16, 32, 0.66);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.panel-restore[hidden] {
-  display: none;
-}
-
-.stat {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.stat__label {
-  font-family: var(--mono);
-  font-size: 8.5px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--dim);
-}
-
-.stat__value {
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--bone);
-  font-variant-numeric: tabular-nums;
-  min-width: 3.4ch;
-}
-
-.stat__value--hot {
-  color: var(--coral);
-}
-
-.seismograph__canvas {
-  display: block;
-  width: 100%;
-  height: 58px;
-  border-radius: 2px;
-}
-
-.seismograph__legend {
-  margin: 6px 0 0;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-family: var(--mono);
-  font-size: 8.5px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--dim);
-}
-
-.swatch {
-  width: 13px;
-  height: 2px;
-  border-radius: 2px;
-  display: inline-block;
-}
-
-.swatch:not(:first-child) {
-  margin-left: 11px;
-}
-
-.swatch--trace {
-  background: var(--periwinkle);
-}
-
-.swatch--gate {
-  background: var(--ion);
-}
-
-.swatch--hit {
-  background: var(--coral);
-}
-
 /* ---------- Control rail ---------- */
 
 .rail {
-  grid-row: 4;
+  grid-row: 3;
   display: flex;
   align-items: center;
   gap: 12px 26px;
@@ -409,36 +229,6 @@ body {
 input[type='range']:focus-visible {
   outline: 2px solid var(--ion);
   outline-offset: 2px;
-}
-
-.mic-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--dim);
-  flex: none;
-  transition: background 0.2s var(--ease), box-shadow 0.2s var(--ease);
-}
-
-.btn--mic.is-live {
-  border-color: var(--coral);
-  color: var(--coral);
-}
-
-.btn--mic.is-live .mic-dot {
-  background: var(--coral);
-  box-shadow: 0 0 8px var(--coral);
-  animation: pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
 }
 
 /* Sliders */
@@ -555,7 +345,7 @@ input[type='range']:hover::-webkit-slider-thumb {
 }
 
 .hint {
-  grid-row: 5;
+  grid-row: 4;
   margin: 11px 0 0;
   font-family: var(--mono);
   font-size: 9px;
@@ -741,25 +531,6 @@ input[type='range']:hover::-webkit-slider-thumb {
     flex-basis: 100%;
   }
 
-  .seismograph__canvas {
-    height: 44px;
-  }
-
-  .seismograph__stats {
-    gap: 12px;
-  }
-
-  /* Real thumb target on touch, and big enough to read as the primary way to
-     dismiss the panel now that the H shortcut isn't reachable. Both the Hide
-     control and the Show-envelope control that replaces it get the bump, so the
-     way back is as tappable as the way out. */
-  .panel-toggle,
-  .panel-restore {
-    font-size: 10px;
-    padding: 9px 16px;
-    letter-spacing: 0.18em;
-  }
-
   .hint {
     display: none;
   }
@@ -769,10 +540,6 @@ input[type='range']:hover::-webkit-slider-thumb {
   .wordmark {
     font-size: 15px;
     letter-spacing: 0.26em;
-  }
-
-  .seismograph__legend {
-    display: none;
   }
 
   .slider {
