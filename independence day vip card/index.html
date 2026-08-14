@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futuristic Holographic 3D Tiranga Pass | Independence Day 2026</title>
+    <meta name="description" content="Generate your exclusive holographic 3D Independence Day commemorative pass - a premium digital collector's card with your name engraved.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Particle background -->
+    <canvas id="particleBg"></canvas>
+
+    <!-- Input Overlay -->
+    <div id="inputOverlay" class="overlay active">
+        <div class="input-card">
+            <div class="input-card-glow"></div>
+            <div class="emblem-container">
+                <div class="emblem-ring"></div>
+                <div class="emblem-ring ring-2"></div>
+                <div class="emblem-icon">🇮🇳</div>
+            </div>
+            <h1 class="title">TIRANGA PASS</h1>
+            <p class="subtitle">INDEPENDENCE DAY 2026 — EXCLUSIVE HOLOGRAPHIC EDITION</p>
+            <div class="input-group">
+                <label for="userInput">ENTER YOUR IDENTITY</label>
+                <input type="text" id="userInput" placeholder="Name | City  (e.g., Rahul Verma | Bengaluru)" autocomplete="off" spellcheck="false">
+                <div class="input-line"></div>
+            </div>
+            <div class="upload-group">
+                <label for="photoInput">YOUR PHOTO (OPTIONAL)</label>
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="photoInput" accept="image/*" hidden>
+                    <div class="upload-placeholder" id="uploadPlaceholder">
+                        <span class="upload-icon">📸</span>
+                        <span class="upload-text">TAP TO UPLOAD</span>
+                    </div>
+                    <img id="photoPreview" class="photo-preview" style="display:none" alt="Preview">
+                </div>
+            </div>
+            <button id="generateBtn" class="generate-btn" disabled>
+                <span class="btn-text">GENERATE YOUR PASS</span>
+                <span class="btn-glow"></span>
+            </button>
+            <p class="disclaimer">Your exclusive commemorative digital collector's card</p>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="overlay">
+        <div class="loader-container">
+            <div class="loader-ring"></div>
+            <div class="loader-ring ring-inner"></div>
+            <p class="loader-text">FORGING YOUR HOLOGRAPHIC PASS</p>
+            <div class="loader-bar">
+                <div class="loader-bar-fill" id="loaderFill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D Canvas -->
+    <canvas id="threeCanvas"></canvas>
+
+    <!-- HUD Overlay -->
+    <div id="hudOverlay" class="hud" style="display:none;">
+        <div class="hud-top">
+            <div class="hud-badge">HOLOGRAPHIC PASS — REPUBLIC OF INDIA</div>
+        </div>
+        <div class="hud-bottom">
+            <button id="recordBtn" class="record-btn">
+                <span class="rec-dot"></span>
+                <span>CAPTURE 5s VIDEO</span>
+            </button>
+            <button id="resetBtn" class="reset-btn">NEW PASS</button>
+        </div>
+        <div id="recordingIndicator" class="recording-indicator" style="display:none;">
+            <span class="rec-dot pulse"></span> REC
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
