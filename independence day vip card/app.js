@@ -671,7 +671,8 @@
             new THREE.MeshBasicMaterial({
                 map: frontTex, transparent: true,
                 depthWrite: false,
-                polygonOffset: true, polygonOffsetFactor: -1
+                polygonOffset: true, polygonOffsetFactor: -1,
+                toneMapped: false
             })
         );
         textPlane.position.z = CARD_DEPTH / 2 + 0.025;
@@ -701,7 +702,8 @@
             new THREE.MeshBasicMaterial({
                 map: backTex, transparent: true,
                 depthWrite: false,
-                polygonOffset: true, polygonOffsetFactor: -1
+                polygonOffset: true, polygonOffsetFactor: -1,
+                toneMapped: false
             })
         );
         backPlane.position.z = -CARD_DEPTH / 2 - 0.005;
