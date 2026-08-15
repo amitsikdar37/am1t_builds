@@ -459,90 +459,90 @@
     //        centred circular photo, letter-spaced name
     // ─────────────────────────────────────────────────────
     function buildTextElements() {
+
         const CW = 1024, CH = 1620;
         const front = document.createElement("canvas");
         front.width = CW; front.height = CH;
         const ctx = front.getContext("2d");
 
-        // Deep Obsidian backing
-        ctx.fillStyle = "rgba(10,11,16,0.85)";
+        // 1. Matte Obsidian Texture
+        const bgGrad = ctx.createRadialGradient(CW/2, CH/2, 0, CW/2, CH/2, 1200);
+        bgGrad.addColorStop(0, "#1a1b22");
+        bgGrad.addColorStop(1, "#050508");
+        ctx.fillStyle = bgGrad;
         ctx.beginPath();
         ctx.roundRect(14, 14, CW - 28, CH - 28, 26);
         ctx.fill();
 
-        // ── Header ──
-        ctx.fillStyle = "#D4AF37";
-        ctx.font = "800 36px 'Inter', sans-serif";
-        ctx.textAlign = "left";
-        ctx.letterSpacing = "2px";
-        ctx.fillText("TIRANGA PASS", 60, 85);
-        ctx.letterSpacing = "0px";
-
-        ctx.fillStyle = "rgba(255,255,255,0.65)";
-        ctx.font = "600 16px 'Inter', sans-serif";
-        ctx.letterSpacing = "1px";
-        ctx.fillText("REPUBLIC OF INDIA \u2014 INDEPENDENCE DAY 2026", 60, 118);
-        ctx.letterSpacing = "0px";
-
-        // Tricolour divider
-        const grad = ctx.createLinearGradient(60, 145, CW - 60, 145);
-        grad.addColorStop(0, "#FF9933");
-        grad.addColorStop(0.5, "#FFFFFF");
-        grad.addColorStop(1, "#138808");
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 2;
+        // 2. Giant Ashoka Chakra Watermark
+        ctx.save();
+        ctx.globalAlpha = 0.15; // Increased visibility!
+        ctx.strokeStyle = "#D4AF37";
+        ctx.lineWidth = 4;
+        const wkX = CW * 0.5; // Centered
+        const wkY = CH * 0.65; // Lower down to fill space
+        const wkR = 550; // Much larger
         ctx.beginPath();
-        ctx.moveTo(60, 145);
-        ctx.lineTo(CW - 60, 145);
+        ctx.arc(wkX, wkY, wkR, 0, Math.PI * 2);
         ctx.stroke();
+        for(let i=0; i<24; i++) {
+            const ang = (i/24) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(wkX + Math.cos(ang) * 40, wkY + Math.sin(ang) * 40);
+            ctx.lineTo(wkX + Math.cos(ang) * wkR, wkY + Math.sin(ang) * wkR);
+            ctx.stroke();
+        }
+        ctx.restore();
 
-        // Chip (top-right) - aligned strictly with TIRANGA PASS title
+        // Helper: Foil Gradient
+        function getFoilGrad(x, y, w) {
+            const g = ctx.createLinearGradient(x, y, x + w, y);
+            g.addColorStop(0, "#E8C44A");
+            g.addColorStop(0.3, "#FFF8DC");
+            g.addColorStop(0.6, "#D4AF37");
+            g.addColorStop(1, "#B8941F");
+            return g;
+        }
+
+        // 3. Header & EMV Chip
+        ctx.fillStyle = getFoilGrad(60, 60, 300);
+        ctx.font = "800 40px 'Inter', sans-serif";
+        ctx.textAlign = "left";
+        ctx.letterSpacing = "3px";
+        ctx.fillText("TIRANGA PASS", 60, 95);
+        ctx.letterSpacing = "0px";
+
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.font = "600 18px 'Inter', sans-serif";
+        ctx.letterSpacing = "2px";
+        ctx.fillText("REPUBLIC OF INDIA — INDEPENDENCE DAY 2026", 60, 130);
+        ctx.letterSpacing = "0px";
+
+        // EMV Chip
         const chipGrad = ctx.createLinearGradient(790, 48, 955, 156);
-        chipGrad.addColorStop(0, "rgba(212,175,55,0.7)");
-        chipGrad.addColorStop(0.5, "rgba(255,215,0,0.85)");
-        chipGrad.addColorStop(1, "rgba(184,148,31,0.7)");
+        chipGrad.addColorStop(0, "rgba(212,175,55,0.8)");
+        chipGrad.addColorStop(0.5, "rgba(255,215,0,0.9)");
+        chipGrad.addColorStop(1, "rgba(184,148,31,0.8)");
         ctx.fillStyle = chipGrad;
         ctx.beginPath();
-        ctx.roundRect(790, 48, 165, 108, 12);
+        ctx.roundRect(790, 48, 165, 108, 16);
         ctx.fill();
-        ctx.strokeStyle = "rgba(255,215,0,0.4)";
+        ctx.strokeStyle = "rgba(255,215,0,0.3)";
         ctx.lineWidth = 2;
         ctx.stroke();
         
-        // Darker gold stroke grid lines for microchip detail
-        ctx.strokeStyle = "rgba(80,60,10,0.6)"; // Darker contrast
+        ctx.strokeStyle = "rgba(60,40,10,0.4)";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        
-        // Horizontal divider
         ctx.moveTo(790, 102); ctx.lineTo(955, 102);
-        
-        // Vertical dividers
         ctx.moveTo(831, 48); ctx.lineTo(831, 156);
         ctx.moveTo(872, 48); ctx.lineTo(872, 156);
         ctx.moveTo(913, 48); ctx.lineTo(913, 156);
         ctx.stroke();
 
-        // ── HERO NAME with letter spacing ──
-        ctx.fillStyle = "#FFFFFF";
-        const nameText = userName.toUpperCase();
-        const spacing = 4;
-        const nameFontSize = fitTextSpaced(ctx, nameText, CW - 120, 78,
-                                           "'Inter', sans-serif", spacing);
-        drawSpacedText(ctx, nameText, 60, 255, spacing);
-
-        // City
-        ctx.fillStyle = "rgba(255,255,255,0.5)";
-        ctx.font = "500 24px 'Inter', sans-serif";
-        ctx.letterSpacing = "2px";
-        ctx.fillText(userCity.toUpperCase(), 60, 305);
-        ctx.letterSpacing = "0px";
-
-        // ── CENTRE: Photo or Decorative Chakra ──
-        const photoCX = CW / 2, photoCY = 560, photoR = 155;
-
+        // 4. Circular Photo (Left Aligned & Enriched)
+        const photoCX = 260, photoCY = 480, photoR = 190; // Larger & Lower
         if (userPhoto) {
-            // Circular clipped photo
             ctx.save();
             ctx.beginPath();
             ctx.arc(photoCX, photoCY, photoR, 0, Math.PI * 2);
@@ -560,116 +560,98 @@
             ctx.drawImage(userPhoto, dx, dy, dw, dh);
             ctx.restore();
 
-            // Tricolor ring (Saffron top, White middle, Emerald Green bottom)
-            const ringGrad = ctx.createLinearGradient(0, photoCY - photoR - 6, 0, photoCY + photoR + 6);
-            ringGrad.addColorStop(0, "#FF9933");
-            ringGrad.addColorStop(0.33, "#FF9933");
-            ringGrad.addColorStop(0.33, "#FFFFFF");
-            ringGrad.addColorStop(0.66, "#FFFFFF");
-            ringGrad.addColorStop(0.66, "#138808");
-            ringGrad.addColorStop(1, "#138808");
-            
-            ctx.strokeStyle = ringGrad;
-            ctx.lineWidth = 5;
+            // Minimalist Silver & Gold border
+            ctx.strokeStyle = "rgba(255,255,255,0.9)";
+            ctx.lineWidth = 4;
             ctx.beginPath();
-            ctx.arc(photoCX, photoCY, photoR + 5, 0, Math.PI * 2);
+            ctx.arc(photoCX, photoCY, photoR + 6, 0, Math.PI * 2);
             ctx.stroke();
-            // Outer glow ring
-            ctx.strokeStyle = "rgba(255,255,255,0.15)";
-            ctx.lineWidth = 1.5;
+
+            ctx.strokeStyle = "#D4AF37";
+            ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(photoCX, photoCY, photoR + 12, 0, Math.PI * 2);
             ctx.stroke();
-        } else {
-            // Decorative Ashoka Chakra watermark
-            ctx.save();
-            ctx.strokeStyle = "rgba(212,175,55,0.07)";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(photoCX, photoCY, 120, 0, Math.PI * 2);
-            ctx.stroke();
-            for (let i = 0; i < 24; i++) {
-                const ang = (i / 24) * Math.PI * 2;
-                ctx.beginPath();
-                ctx.moveTo(photoCX + Math.cos(ang) * 30,
-                           photoCY + Math.sin(ang) * 30);
-                ctx.lineTo(photoCX + Math.cos(ang) * 120,
-                           photoCY + Math.sin(ang) * 120);
-                ctx.stroke();
-            }
-            // Centre dot
-            ctx.beginPath();
-            ctx.arc(photoCX, photoCY, 8, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(212,175,55,0.06)";
-            ctx.fill();
-            ctx.restore();
         }
 
-        // ── Details (pulled up, larger text) ──
-        ctx.fillStyle = "#E8C44A";
-        ctx.font = "700 24px 'Inter', sans-serif";
-        ctx.textAlign = "left";
-        ctx.letterSpacing = "2px";
-        ctx.fillText(serialNumber, 60, 790);
+        // 5. User Metadata Grid (Right Side, larger and spaced out)
+        const textX = 500;
+        let ty = 360;
 
-        ctx.fillStyle = "rgba(255,215,0,0.45)";
-        ctx.font = "600 16px 'Inter', sans-serif";
-        ctx.fillText("CLASSIFICATION: PATRIOT  //  VIP ACCESS", 60, 835);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "800 52px 'Inter', sans-serif";
+        ctx.letterSpacing = "-1px";
+        ctx.fillText(userName.toUpperCase(), textX, ty);
+        ctx.letterSpacing = "0px";
+
+        ty += 50;
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.font = "500 28px 'Inter', sans-serif";
+        ctx.letterSpacing = "1px";
+        ctx.fillText(userCity.toUpperCase(), textX, ty);
+        ctx.letterSpacing = "0px";
+
+        ty += 110;
+        ctx.fillStyle = getFoilGrad(textX, ty-30, 400);
+        ctx.font = "700 38px 'Inter', sans-serif";
+        ctx.letterSpacing = "2px";
+        ctx.fillText(serialNumber, textX, ty);
+
+        ty += 55;
+        ctx.fillStyle = "rgba(212,175,55,0.7)";
+        ctx.font = "600 22px 'Inter', sans-serif";
+        ctx.letterSpacing = "1px";
+        ctx.fillText("CLASSIFICATION: VIP EXCLUSIVE", textX, ty);
         ctx.letterSpacing = "0px";
 
         const now = new Date();
-        const dateStr = now.toLocaleDateString("en-IN", {
-            day: "2-digit", month: "short", year: "numeric"
-        }).toUpperCase();
-        const timeStr = now.toLocaleTimeString("en-IN", {
-            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+        const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+        const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+        
+        ty += 70;
+        ctx.fillStyle = "rgba(255,255,255,0.4)";
+        ctx.font = "500 22px 'Inter', sans-serif";
+        ctx.fillText("ISSUED: " + dateStr + " " + timeStr + " IST", textX, ty);
+
+        ty += 45;
+        ctx.fillStyle = "rgba(40,220,80,0.85)";
+        ctx.font = "700 24px 'Inter', sans-serif";
+        ctx.fillText("✦ VALID: 15 AUG 2026 — ETERNAL ✦", textX, ty);
+
+        // 6. The Preamble (Filling the vertical space)
+        ctx.fillStyle = "rgba(255,255,255,0.35)";
+        ctx.font = "italic 400 22px 'Inter', sans-serif";
+        ctx.textAlign = "left";
+        ctx.letterSpacing = "1px";
+        const preambleLines = [
+            "WE, THE PEOPLE OF INDIA, having solemnly resolved to constitute",
+            "India into a SOVEREIGN SOCIALIST SECULAR DEMOCRATIC REPUBLIC",
+            "and to secure to all its citizens:",
+            "JUSTICE, social, economic and political;",
+            "LIBERTY of thought, expression, belief, faith and worship;",
+            "EQUALITY of status and of opportunity;"
+        ];
+        let pY = 880; // Starts neatly below the valid date
+        preambleLines.forEach(line => {
+            ctx.fillText(line.toUpperCase(), 80, pY);
+            pY += 38;
         });
-        ctx.fillStyle = "rgba(255,255,255,0.5)";
-        ctx.font = "600 18px 'Inter', sans-serif";
-        ctx.fillText(`ISSUED: ${dateStr}  ${timeStr} IST`, 60, 885);
 
-        ctx.fillStyle = "rgba(40,220,80,0.7)";
-        ctx.font = "700 20px 'Inter', sans-serif";
-        ctx.fillText("\u2726 VALID: 15 AUG 2026 \u2014 ETERNAL \u2726", 60, 930);
-
-        // Barcode
-        for (let i = 0; i < 55; i++) {
-            const bw = 2 + Math.random() * 5;
-            ctx.fillStyle = `rgba(212,175,55,${0.12 + Math.random() * 0.28})`;
-            ctx.fillRect(60 + i * 12, 1000, bw, 55);
+        // 7. Barcode (Bigger and lower)
+        const bcY = 1150;
+        for (let i = 0; i < 74; i++) {
+            const bw = 2 + Math.random() * 6;
+            ctx.fillStyle = "rgba(212,175,55," + (0.15 + Math.random() * 0.4) + ")";
+            ctx.fillRect(80 + i * 12, bcY, bw, 100);
         }
 
-        // Subtle Ashoka Chakra watermark to fill void
-        ctx.save();
-        const voidCY = 1250; // Shifted lower
-        ctx.strokeStyle = "rgba(212,175,55,0.25)"; // Increased visibility
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(CW / 2, voidCY, 75, 0, Math.PI * 2); // Made slightly larger
-        ctx.stroke();
-        for (let i = 0; i < 24; i++) {
-            const ang = (i / 24) * Math.PI * 2;
-            ctx.beginPath();
-            ctx.moveTo(CW / 2 + Math.cos(ang) * 14, voidCY + Math.sin(ang) * 14);
-            ctx.lineTo(CW / 2 + Math.cos(ang) * 75, voidCY + Math.sin(ang) * 75);
-            ctx.stroke();
-        }
-        ctx.beginPath();
-        ctx.arc(CW / 2, voidCY, 6, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(212,175,55,0.25)";
-        ctx.fill();
-        ctx.restore();
-
-        // JAI HIND — high contrast gold outline
-        ctx.save();
-        ctx.fillStyle = "rgba(212,175,55,0.4)";
-        ctx.strokeStyle = "rgba(212,175,55,0.7)";
-        ctx.lineWidth = 1.5;
-        ctx.font = "bold 70px 'Orbitron', sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("JAI HIND", CW / 2, 1420);
-        ctx.strokeText("JAI HIND", CW / 2, 1420);
-        ctx.restore();
+        // 8. Large Signature Logo
+        ctx.fillStyle = getFoilGrad(CW - 400, 1380, 400);
+        ctx.font = "800 100px 'Inter', sans-serif"; // Made it huge
+        ctx.textAlign = "right";
+        ctx.letterSpacing = "-2px";
+        ctx.fillText("JAI HIND", CW - 80, 1450);
+        ctx.letterSpacing = "0px";
 
         // ── Apply as texture ──
         const frontTex = new THREE.CanvasTexture(front);
@@ -990,3 +972,4 @@
     }
 
 })();
+
