@@ -860,12 +860,10 @@
         const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
                       || ('ontouchstart' in window && window.innerWidth < 1024);
 
-        // ── CRITICAL FIX 1: Downscale renderer on mobile ──
-        // 1080x1920 = 2M pixels per frame is too heavy for mobile GPUs
-        // to render AND encode simultaneously. Halve it to 540x960.
+        // ── HIGH QUALITY MOBILE FIX ──
+        // Do not downscale renderer on mobile to keep text perfectly crisp!
+        // We only hide 3D particles to save GPU cycles.
         if (isMobile) {
-            renderer.setSize(540, 960, false);
-            // Hide gold dust particles to free GPU cycles
             if (goldDust) goldDust.visible = false;
         }
 
@@ -900,7 +898,7 @@
                 mimeType = "video/webm";
         }
 
-        const bitrate = isMobile ? 4_000_000 : 24_000_000;
+        const bitrate = isMobile ? 8_000_000 : 24_000_000; // Bumped mobile bitrate to 8Mbps for crisp text
 
         mediaRecorder = new MediaRecorder(stream, {
             mimeType, videoBitsPerSecond: bitrate
@@ -964,9 +962,8 @@
         // Restore transparent scene background so the 2D particles show through again on the website
         if (scene) scene.background = null;
 
-        // ── Restore full resolution and particles ──
+        // ── Restore particles ──
         if (isMobile) {
-            renderer.setSize(RENDER_W, RENDER_H, false);
             if (goldDust) goldDust.visible = true;
         }
     }
