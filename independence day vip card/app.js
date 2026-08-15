@@ -879,12 +879,10 @@
 
         const canvas = renderer.domElement;
 
-        // ── CRITICAL FIX 2: captureStream(0) ──
-        // captureStream(30) creates a TIMER that demands frames at 30fps
-        // regardless of whether the GPU has finished rendering.
-        // captureStream(0) = "capture a frame only when the canvas actually
-        // paints a new frame". This prevents encoder queue overflow.
-        const stream = canvas.captureStream(0);
+        // ── CRITICAL FIX 2: captureStream FPS ──
+        // Mobile uses 30fps to avoid encoder queue overflow while maintaining smooth video.
+        // The downscaled resolution makes 30fps completely viable on mobile GPUs.
+        const stream = canvas.captureStream(isMobile ? 30 : 60);
 
         const indicator = document.getElementById("recordingIndicator");
         const recordBtn = document.getElementById("recordBtn");
