@@ -59,8 +59,8 @@
                 vx: (Math.random() - 0.5) * 0.25,
                 vy: (Math.random() - 0.5) * 0.25,
                 r: Math.random() * 1.5 + 0.3,
-                color: ["#FF9933", "#FFFFFF", "#138808", "#D4AF37"][Math.floor(Math.random() * 4)],
-                alpha: Math.random() * 0.35 + 0.08
+                color: ["#d4af37", "#1d1d1f", "#86868b"][Math.floor(Math.random() * 3)],
+                alpha: Math.random() * 0.2 + 0.05
             });
         }
 
@@ -472,13 +472,17 @@
 
         // ── Header ──
         ctx.fillStyle = "#D4AF37";
-        ctx.font = "bold 38px 'Orbitron', monospace";
+        ctx.font = "800 36px 'Inter', sans-serif";
         ctx.textAlign = "left";
+        ctx.letterSpacing = "2px";
         ctx.fillText("TIRANGA PASS", 60, 85);
+        ctx.letterSpacing = "0px";
 
         ctx.fillStyle = "rgba(255,255,255,0.65)";
-        ctx.font = "700 18px 'Rajdhani', sans-serif";
+        ctx.font = "600 16px 'Inter', sans-serif";
+        ctx.letterSpacing = "1px";
         ctx.fillText("REPUBLIC OF INDIA \u2014 INDEPENDENCE DAY 2026", 60, 118);
+        ctx.letterSpacing = "0px";
 
         // Tricolour divider
         const grad = ctx.createLinearGradient(60, 145, CW - 60, 145);
@@ -522,15 +526,17 @@
         // ── HERO NAME with letter spacing ──
         ctx.fillStyle = "#FFFFFF";
         const nameText = userName.toUpperCase();
-        const spacing = 10;
+        const spacing = 4;
         const nameFontSize = fitTextSpaced(ctx, nameText, CW - 120, 78,
-                                           "'Rajdhani', sans-serif", spacing);
+                                           "'Inter', sans-serif", spacing);
         drawSpacedText(ctx, nameText, 60, 255, spacing);
 
         // City
-        ctx.fillStyle = "rgba(255,255,255,0.6)";
-        ctx.font = "500 30px 'Rajdhani', sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.font = "500 24px 'Inter', sans-serif";
+        ctx.letterSpacing = "2px";
         ctx.fillText(userCity.toUpperCase(), 60, 305);
+        ctx.letterSpacing = "0px";
 
         // ── CENTRE: Photo or Decorative Chakra ──
         const photoCX = CW / 2, photoCY = 560, photoR = 155;
@@ -601,13 +607,15 @@
 
         // ── Details (pulled up, larger text) ──
         ctx.fillStyle = "#E8C44A";
-        ctx.font = "bold 28px 'Orbitron', monospace";
+        ctx.font = "700 24px 'Inter', sans-serif";
         ctx.textAlign = "left";
+        ctx.letterSpacing = "2px";
         ctx.fillText(serialNumber, 60, 790);
 
         ctx.fillStyle = "rgba(255,215,0,0.45)";
-        ctx.font = "600 22px 'Orbitron', monospace";
+        ctx.font = "600 16px 'Inter', sans-serif";
         ctx.fillText("CLASSIFICATION: PATRIOT  //  VIP ACCESS", 60, 835);
+        ctx.letterSpacing = "0px";
 
         const now = new Date();
         const dateStr = now.toLocaleDateString("en-IN", {
@@ -617,11 +625,11 @@
             hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
         });
         ctx.fillStyle = "rgba(255,255,255,0.5)";
-        ctx.font = "600 22px 'Rajdhani', sans-serif";
+        ctx.font = "600 18px 'Inter', sans-serif";
         ctx.fillText(`ISSUED: ${dateStr}  ${timeStr} IST`, 60, 885);
 
         ctx.fillStyle = "rgba(40,220,80,0.7)";
-        ctx.font = "bold 24px 'Rajdhani', sans-serif";
+        ctx.font = "700 20px 'Inter', sans-serif";
         ctx.fillText("\u2726 VALID: 15 AUG 2026 \u2014 ETERNAL \u2726", 60, 930);
 
         // Barcode
@@ -687,13 +695,15 @@
             bx.fillStyle = `rgba(212,175,55,${0.015 + Math.sin(y * 0.08) * 0.008})`;
             bx.fillRect(0, y, CW, 2);
         }
-        bx.fillStyle = "rgba(212,175,55,0.12)";
-        bx.font = "bold 24px 'Orbitron', monospace";
+        bx.fillStyle = "rgba(212,175,55,0.15)";
+        bx.font = "700 24px 'Inter', sans-serif";
         bx.textAlign = "center";
+        bx.letterSpacing = "2px";
         bx.fillText("GOVERNMENT OF INDIA", CW / 2, CH / 2 - 30);
         bx.fillText("DIGITAL COMMEMORATIVE PASS", CW / 2, CH / 2 + 10);
-        bx.fillStyle = "rgba(212,175,55,0.08)";
-        bx.font = "14px 'Orbitron', monospace";
+        bx.fillStyle = "rgba(212,175,55,0.1)";
+        bx.font = "500 14px 'Inter', sans-serif";
+        bx.letterSpacing = "4px";
         bx.fillText("SATYAMEVA JAYATE", CW / 2, CH / 2 + 80);
 
         const backTex = new THREE.CanvasTexture(back);
@@ -877,6 +887,9 @@
             if (goldDust) goldDust.visible = false;
         }
 
+        // Force a solid white/pearl background in the exported video to match the Light Theme
+        scene.background = new THREE.Color(0xf5f5f7);
+
         const canvas = renderer.domElement;
 
         // ── CRITICAL FIX 2: captureStream FPS ──
@@ -965,6 +978,9 @@
         indicator.style.display = "none";
         recordBtn.innerHTML = '<span class="rec-dot"></span><span>CAPTURE 5s VIDEO</span>';
         recordBtn.disabled = false;
+
+        // Restore transparent scene background so the 2D particles show through again on the website
+        if (scene) scene.background = null;
 
         // ── Restore full resolution and particles ──
         if (isMobile) {
