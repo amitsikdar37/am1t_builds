@@ -925,6 +925,18 @@
 
             const ext = mimeType.includes("mp4") ? "mp4" : "webm";
             const blob = new Blob(recordedChunks, { type: mimeType });
+            
+            // Fix WebM 0-second duration bug for Android Gallery
+            if (ext === "webm" && typeof ysFixWebmDuration !== "undefined") {
+                ysFixWebmDuration(blob, 5000, (fixedBlob) => {
+                    triggerDownload(fixedBlob, ext);
+                });
+            } else {
+                triggerDownload(blob, ext);
+            }
+        };
+
+        function triggerDownload(blob, ext) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -933,7 +945,7 @@
             a.click();
             document.body.removeChild(a);
             setTimeout(() => URL.revokeObjectURL(url), 1000);
-        };
+        }
 
         recordBtn.disabled = true;
         // Larger timeslice = fewer encoding interruptions
