@@ -4,49 +4,7 @@
    Fixed flag · Balanced layout · Legible micro-text
    ========================================================== */
 
-/**
- * patchWebMDuration — Inline WebM EBML duration fixer.
- * No CDN dependency. Reads the ArrayBuffer, locates the EBML
- * Duration element (ID 0x4489) and overwrites it with the
- * correct value so Android Gallery / iOS Photos shows the
- * proper duration instead of "0s" or "1s".
- *
- * @param {Blob}     blob        - Raw WebM blob from MediaRecorder
- * @param {number}   durationMs  - Actual recording duration in milliseconds
- * @param {Function} callback    - Called with the fixed Blob
- */
-function patchWebMDuration(blob, durationMs, callback) {
-    const reader = new FileReader();
-    reader.onload = function () {
-        const bytes = new Uint8Array(this.result);
-        const dv = new DataView(bytes.buffer);
 
-        // Scan for EBML Duration element ID: [0x44, 0x89]
-        // Chrome's MediaRecorder writes it as:
-        //   [0x44][0x89][0x88][...8 bytes Float64 big-endian...]
-        //   where 0x88 = VINT "8 bytes follow"
-        // or occasionally Float32:
-        //   [0x44][0x89][0x84][...4 bytes Float32 big-endian...]
-        //   where 0x84 = VINT "4 bytes follow"
-        for (let i = 0; i < bytes.length - 12; i++) {
-            if (bytes[i] === 0x44 && bytes[i + 1] === 0x89) {
-                const sizeVint = bytes[i + 2];
-                if (sizeVint === 0x88) {
-                    // Float64 — most common on Android Chrome
-                    dv.setFloat64(i + 3, durationMs, false); // big-endian
-                    break;
-                } else if (sizeVint === 0x84) {
-                    // Float32
-                    dv.setFloat32(i + 3, durationMs, false); // big-endian
-                    break;
-                }
-            }
-        }
-
-        callback(new Blob([bytes], { type: blob.type }));
-    };
-    reader.readAsArrayBuffer(blob);
-}
 
 (() => {
     "use strict";
@@ -64,11 +22,7 @@ function patchWebMDuration(blob, durationMs, callback) {
     let userName = "", userCity = "";
     let serialNumber = "";
     let userPhoto = null;          // Image object (or null)
-    let isRecording = false;
-    let recordingStartTime = 0;
-    let mediaRecorder = null;
-    let recordedChunks = [];
-
+                
     // Drag
     let isDragging = false;
     let dragPrevX = 0, dragPrevY = 0;
@@ -250,7 +204,7 @@ function patchWebMDuration(blob, durationMs, callback) {
         buildFlag();
         buildTextElements();
         buildGoldDust();
-        initRecordButton();
+        initSnapshotButton();
         initDragControls();
 
         fitCanvasToViewport();
@@ -847,29 +801,16 @@ function patchWebMDuration(blob, durationMs, callback) {
         const t = clock.getElapsedTime();
 
         if (cardGroup) {
-            if (isRecording) {
-                // Cinematic seamless loop for video export
-                // Starts off-center (-0.5 rad), sweeps across Y-axis (+0.5 rad) to catch light, returns to -0.5 rad for clean loop
-                const recTime = (performance.now() - recordingStartTime) / 1000;
-                dragRotY = Math.cos((recTime / 5.0) * Math.PI * 2 + Math.PI) * 0.5;
-                dragRotX = Math.sin((recTime / 5.0) * Math.PI * 2) * 0.15; // Subtle looping tilt
-                targetDragRotY = dragRotY;
-                targetDragRotX = dragRotX;
-                
-                cardGroup.rotation.y = dragRotY;
-                cardGroup.rotation.x = dragRotX;
-                cardGroup.rotation.z = 0;
-            } else {
-                dragRotX += (targetDragRotX - dragRotX) * 0.1;
-                dragRotY += (targetDragRotY - dragRotY) * 0.1;
+            dragRotX += (targetDragRotX - dragRotX) * 0.1;
+            dragRotY += (targetDragRotY - dragRotY) * 0.1;
 
-                const idle = (performance.now() - lastDragTime) / 1000;
-                const auto = Math.min(1, Math.max(0, (idle - 1.0) / 1.5));
+            const idle = (performance.now() - lastDragTime) / 1000;
+            const auto = Math.min(1, Math.max(0, (idle - 1.0) / 1.5));
 
-                cardGroup.rotation.y = dragRotY + (Math.sin(t * 0.35) * 0.45 + t * 0.08) * auto;
-                cardGroup.rotation.x = dragRotX + Math.sin(t * 0.25) * 0.05 * auto;
-                cardGroup.rotation.z = Math.sin(t * 0.2) * 0.018 * auto;
-            }
+            cardGroup.rotation.y = dragRotY + (Math.sin(t * 0.35) * 0.45 + t * 0.08) * auto;
+            cardGroup.rotation.x = dragRotX + Math.sin(t * 0.25) * 0.05 * auto;
+            cardGroup.rotation.z = Math.sin(t * 0.2) * 0.018 * auto;
+            
             cardGroup.position.y = Math.sin(t * 0.6) * 0.06;
         }
 
@@ -900,147 +841,53 @@ function patchWebMDuration(blob, durationMs, callback) {
     // ─────────────────────────────────────────────────────
     // VIDEO RECORDING
     // ─────────────────────────────────────────────────────
-    function initRecordButton() {
-        document.getElementById("recordBtn").addEventListener("click", startRecording);
+    function initSnapshotButton() {
+        document.getElementById("snapshotBtn").addEventListener("click", takeSnapshot);
     }
 
-    function startRecording() {
-        if (isRecording) return;
-        isRecording = true;
-        recordingStartTime = performance.now();
-        recordedChunks = [];
+    function takeSnapshot() {
+        const btn = document.getElementById("snapshotBtn");
+        btn.disabled = true;
+        btn.innerHTML = '<span>📸</span><span>SAVING...</span>';
 
-        const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
-                      || ('ontouchstart' in window && window.innerWidth < 1024);
-
-        // ─────────────────────────────────────────────────────────────────────
-        // MOBILE RECORDING STRATEGY
-        // ─────────────────────────────────────────────────────────────────────
-        // 1080p = GPU stalls. 540p = blurry text. 720p (720x1280) is the sweet spot:
-        //   - Text is perfectly crisp and sharp on all phone screens.
-        //   - Instagram/WhatsApp Stories max at 720p anyway.
-        //   - 1/2 the encoding workload vs 1080p — no frame drops, smooth playback.
-        if (isMobile) {
-            renderer.setSize(720, 1280, false);     // 720p portrait
-            if (goldDust) goldDust.visible = false; // Free GPU cycles
-        }
-
-        // Force solid white/pearl background in the exported video
+        // 1. Set the background to solid pearl (for the story image)
         scene.background = new THREE.Color(0xf5f5f7);
 
+        // 2. Temporarily adjust rotation to look very premium and 3D
+        const oldY = cardGroup.rotation.y;
+        const oldX = cardGroup.rotation.x;
+        cardGroup.rotation.y = 0.25; // Nice 3D angle
+        cardGroup.rotation.x = 0.15;
+
+        // 3. Force render a single high-quality frame
+        renderer.render(scene, camera);
+
+        // 4. Capture the frame directly from canvas
         const canvas = renderer.domElement;
-
-        // ── CRITICAL FIX 2: captureStream FPS ──
-        // Mobile uses 30fps to avoid encoder queue overflow while maintaining smooth video.
-        // The downscaled resolution makes 30fps completely viable on mobile GPUs.
-        const stream = canvas.captureStream(isMobile ? 30 : 60);
-
-        const indicator = document.getElementById("recordingIndicator");
-        const recordBtn = document.getElementById("recordBtn");
-
-        // ─────────────────────────────────────────────────────────────────────
-        // CODEC SELECTION — ALWAYS WEBM
-        // ─────────────────────────────────────────────────────────────────────
-        // CRITICAL: We use WebM ONLY on all platforms.
-        //
-        // MP4 from MediaRecorder creates "fragmented MP4" (fMP4) with a zero/broken
-        // duration in the moov atom. Fixing fMP4 duration requires a full MP4 remuxer
-        // (like FFmpeg). We do NOT have that.
-        //
-        // WebM duration CAN be fixed with the ysFixWebmDuration library (23KB) which
-        // we now bundle locally (no CDN). This is the proven, correct solution.
-        //
-        // WebM plays natively in Chrome (Android + Desktop), Firefox, and modern Samsung
-        // Internet. It is the right format for MediaRecorder output.
-        const webmPriority = [
-            "video/webm;codecs=vp9",  // Best quality
-            "video/webm;codecs=vp8",  // Wide support fallback
-            "video/webm"              // Final fallback
-        ];
-        const mimeType = webmPriority.find(t => MediaRecorder.isTypeSupported(t)) || "video/webm";
-
-        // 6Mbps for mobile 720p, 16Mbps for desktop 1080p — quality without overloading encoder
-        const bitrate = isMobile ? 6_000_000 : 16_000_000;
-
-        mediaRecorder = new MediaRecorder(stream, {
-            mimeType, videoBitsPerSecond: bitrate
-        });
-
-        let recordingActualStartMs = 0; // Tracks actual encoder start time
-
-        mediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) recordedChunks.push(e.data);
-        };
-
-        mediaRecorder.onerror = (e) => {
-            console.error("MediaRecorder error:", e);
-            cleanupRecording(indicator, recordBtn, isMobile);
-        };
-
-        mediaRecorder.onstop = () => {
-            // Measure exact elapsed time from encoder start to stop
-            const actualDurationMs = performance.now() - recordingActualStartMs;
-            cleanupRecording(indicator, recordBtn, isMobile);
-
-            const blob = new Blob(recordedChunks, { type: mimeType });
-
-            // ysFixWebmDuration (local file) properly parses the EBML tree and
-            // INSERTS the Duration element if missing, or overwrites it if present.
-            // This is what makes Android Gallery and iOS Photos show the correct duration.
-            if (typeof ysFixWebmDuration !== "undefined") {
-                ysFixWebmDuration(blob, actualDurationMs, (fixedBlob) => {
-                    triggerDownload(fixedBlob, "webm");
-                });
-            } else {
-                // Fallback: use our inline EBML patcher
-                patchWebMDuration(blob, actualDurationMs, (fixedBlob) => {
-                    triggerDownload(fixedBlob, "webm");
-                });
-            }
-        };
-
-        function triggerDownload(blob, ext) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `Tiranga_Pass_${userName.replace(/\s+/g, "_")}_${serialNumber.replace("#", "")}.${ext}`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }
-
-        recordBtn.disabled = true;
-        // NO timeslice. Chunking causes the encoder to flush repeatedly, leading to dropped frames
-        // and stuttering videos. We encode continuously until stop() is called.
-        mediaRecorder.start();
-        recordingActualStartMs = performance.now(); // Start clock AFTER encoder starts
-        indicator.style.display = "flex";
-        recordBtn.innerHTML = '<span class="rec-dot pulse"></span><span>RECORDING\u2026</span>';
-
-        // 5 second recording + 0.5 second safety buffer
+        
+        // Use a slight timeout to let the UI update the "SAVING..." text
         setTimeout(() => {
-            if (mediaRecorder && mediaRecorder.state === "recording")
-                mediaRecorder.stop();
-        }, 5500);
-    }
+            canvas.toBlob((blob) => {
+                // Restore background and rotation
+                scene.background = null;
+                cardGroup.rotation.y = oldY;
+                cardGroup.rotation.x = oldX;
 
-    function cleanupRecording(indicator, recordBtn, isMobile) {
-        isRecording = false;
-        indicator.style.display = "none";
-        recordBtn.innerHTML = '<span class="rec-dot"></span><span>CAPTURE 5s VIDEO</span>';
-        recordBtn.disabled = false;
+                // Download the image
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `Tiranga_Pass_${userName.replace(/\s+/g, "_")}_${serialNumber.replace("#", "")}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-        // Restore transparent scene background so the 2D particles show through again on the website
-        if (scene) scene.background = null;
-
-        // ── Restore full resolution & particles ──
-        if (isMobile) {
-            renderer.setSize(RENDER_W, RENDER_H, false); // Back to full display resolution
-            if (goldDust) goldDust.visible = true;
-        }
+                // Restore button
+                btn.disabled = false;
+                btn.innerHTML = '<span style="font-size: 16px; margin-right: 4px;">📸</span><span>SAVE FOR STORY</span>';
+            }, "image/png", 1.0);
+        }, 50);
     }
 
 })();
-
-

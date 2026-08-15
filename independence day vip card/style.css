@@ -1,6 +1,6 @@
-/* =============================================
+ï»¿/* =============================================
    FUTURISTIC HOLOGRAPHIC 3D TIRANGA PASS
-   Premium CSS — Glass, Gold & Minimalist Light
+   Premium CSS ï¿½ Glass, Gold & Minimalist Light
    ============================================= */
 
 :root {
@@ -42,7 +42,7 @@ html, body {
     pointer-events: none;
 }
 
-/* ---- THREE CANVAS (9:16 — sized by JS) ---- */
+/* ---- THREE CANVAS (9:16 ï¿½ sized by JS) ---- */
 #threeCanvas {
     z-index: 1;
     background: var(--bg-deep);
@@ -340,7 +340,7 @@ html, body {
     background: linear-gradient(to top, var(--bg-deep) 70%, transparent);
 }
 
-.record-btn, .reset-btn {
+.snapshot-btn, .reset-btn {
     display: flex; align-items: center; gap: 8px;
     padding: 12px 24px;
     border-radius: 100px;
@@ -352,15 +352,15 @@ html, body {
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
-.record-btn {
-    background: #ff3b30;
+.snapshot-btn {
+    background: #007aff;
     border: none;
     color: #fff;
-    box-shadow: 0 4px 12px rgba(255,59,48,0.2);
+    box-shadow: 0 4px 12px rgba(0,122,255,0.3);
 }
-.record-btn:hover {
-    background: #ff453a;
-    box-shadow: 0 6px 16px rgba(255,59,48,0.3);
+.snapshot-btn:hover {
+    background: #005bb5;
+    box-shadow: 0 6px 16px rgba(0,122,255,0.4);
     transform: translateY(-1px);
 }
 .reset-btn {
@@ -373,35 +373,11 @@ html, body {
     background: #fff;
     transform: translateY(-1px);
 }
-.rec-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: #fff;
-    display: inline-block;
-}
-.rec-dot.pulse {
-    animation: recPulse 0.8s ease-in-out infinite;
-}
 
-.recording-indicator {
-    position: fixed;
-    top: 24px; right: 24px;
-    z-index: 100;
-    display: flex; align-items: center; gap: 8px;
-    font-family: 'Inter', sans-serif;
-    font-weight: 600;
-    font-size: 11px;
-    color: #ff3b30;
-    padding: 8px 16px;
-    background: rgba(255,255,255,0.9);
-    border: 1px solid rgba(255,59,48,0.2);
-    border-radius: 100px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    pointer-events: none;
-}
-.recording-indicator .rec-dot {
-    background: #ff3b30;
-}
+
+
+
+.recording-indicator 
 
 /* ---- RESPONSIVE ---- */
 @media (max-width: 520px) {
