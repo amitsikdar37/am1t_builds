@@ -916,6 +916,8 @@
             mimeType, videoBitsPerSecond: bitrate
         });
 
+        let recordingActualStartMs = 0; // Tracks actual encoder start time
+
         mediaRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) recordedChunks.push(e.data);
         };
@@ -926,14 +928,17 @@
         };
 
         mediaRecorder.onstop = () => {
+            // Measure actual recording duration so the metadata is pixel-perfect
+            const actualDurationMs = performance.now() - recordingActualStartMs;
             cleanupRecording(indicator, recordBtn, isMobile);
 
             const ext = mimeType.includes("mp4") ? "mp4" : "webm";
             const blob = new Blob(recordedChunks, { type: mimeType });
             
-            // Fix WebM 0-second duration bug for Android Gallery
+            // Fix WebM 0-second duration bug for Android Gallery.
+            // IMPORTANT: Pass the real measured duration, not a hardcoded value!
             if (ext === "webm" && typeof ysFixWebmDuration !== "undefined") {
-                ysFixWebmDuration(blob, 5000, (fixedBlob) => {
+                ysFixWebmDuration(blob, actualDurationMs, (fixedBlob) => {
                     triggerDownload(fixedBlob, ext);
                 });
             } else {
@@ -953,16 +958,17 @@
         }
 
         recordBtn.disabled = true;
-        // Larger timeslice = fewer encoding interruptions
-        mediaRecorder.start(1000);
+        // Timeslice of 500ms keeps chunk boundaries tight for accurate duration measurement
+        mediaRecorder.start(500);
+        recordingActualStartMs = performance.now(); // Start clock AFTER encoder starts
         indicator.style.display = "flex";
         recordBtn.innerHTML = '<span class="rec-dot pulse"></span><span>RECORDING\u2026</span>';
 
-        // 5 second recording + 1 second safety buffer for mobile encoder flush
+        // 5 second recording + 0.5 second safety buffer
         setTimeout(() => {
             if (mediaRecorder && mediaRecorder.state === "recording")
                 mediaRecorder.stop();
-        }, 6000);
+        }, 5500);
     }
 
     function cleanupRecording(indicator, recordBtn, isMobile) {
