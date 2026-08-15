@@ -263,14 +263,23 @@ function patchWebMDuration(blob, durationMs, callback) {
     function fitCanvasToViewport() {
         const c = renderer.domElement;
         const vw = window.innerWidth, vh = window.innerHeight;
-        const ar = RENDER_W / RENDER_H;
+        const ar = RENDER_W / RENDER_H; // 9:16
+
+        // Reserve space at top for badge and bottom for buttons so they never overlap the card.
+        const TOP_RESERVE = 56;   // px — badge height + gap
+        const BTM_RESERVE = 100;  // px — buttons bar height + gap
+        const availH = vh - TOP_RESERVE - BTM_RESERVE;
+        const availW = vw;
+
         let dw, dh;
-        if (vw / vh > ar) { dh = vh; dw = vh * ar; }
-        else { dw = vw; dh = vw / ar; }
+        if (availW / availH > ar) { dh = availH; dw = availH * ar; }
+        else { dw = availW; dh = availW / ar; }
+
         c.style.position = "fixed";
         c.style.width = dw + "px";
         c.style.height = dh + "px";
-        c.style.top = ((vh - dh) / 2) + "px";
+        // Centre horizontally, place just below the top badge
+        c.style.top = (TOP_RESERVE + (availH - dh) / 2) + "px";
         c.style.left = ((vw - dw) / 2) + "px";
     }
 
@@ -1032,4 +1041,5 @@ function patchWebMDuration(blob, durationMs, callback) {
     }
 
 })();
+
 
