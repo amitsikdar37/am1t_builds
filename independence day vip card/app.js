@@ -4,6 +4,50 @@
    Fixed flag · Balanced layout · Legible micro-text
    ========================================================== */
 
+/**
+ * patchWebMDuration — Inline WebM EBML duration fixer.
+ * No CDN dependency. Reads the ArrayBuffer, locates the EBML
+ * Duration element (ID 0x4489) and overwrites it with the
+ * correct value so Android Gallery / iOS Photos shows the
+ * proper duration instead of "0s" or "1s".
+ *
+ * @param {Blob}     blob        - Raw WebM blob from MediaRecorder
+ * @param {number}   durationMs  - Actual recording duration in milliseconds
+ * @param {Function} callback    - Called with the fixed Blob
+ */
+function patchWebMDuration(blob, durationMs, callback) {
+    const reader = new FileReader();
+    reader.onload = function () {
+        const bytes = new Uint8Array(this.result);
+        const dv = new DataView(bytes.buffer);
+
+        // Scan for EBML Duration element ID: [0x44, 0x89]
+        // Chrome's MediaRecorder writes it as:
+        //   [0x44][0x89][0x88][...8 bytes Float64 big-endian...]
+        //   where 0x88 = VINT "8 bytes follow"
+        // or occasionally Float32:
+        //   [0x44][0x89][0x84][...4 bytes Float32 big-endian...]
+        //   where 0x84 = VINT "4 bytes follow"
+        for (let i = 0; i < bytes.length - 12; i++) {
+            if (bytes[i] === 0x44 && bytes[i + 1] === 0x89) {
+                const sizeVint = bytes[i + 2];
+                if (sizeVint === 0x88) {
+                    // Float64 — most common on Android Chrome
+                    dv.setFloat64(i + 3, durationMs, false); // big-endian
+                    break;
+                } else if (sizeVint === 0x84) {
+                    // Float32
+                    dv.setFloat32(i + 3, durationMs, false); // big-endian
+                    break;
+                }
+            }
+        }
+
+        callback(new Blob([bytes], { type: blob.type }));
+    };
+    reader.readAsArrayBuffer(blob);
+}
+
 (() => {
     "use strict";
 
@@ -928,17 +972,17 @@
         };
 
         mediaRecorder.onstop = () => {
-            // Measure actual recording duration so the metadata is pixel-perfect
+            // Measure exact recording duration for accurate metadata patching
             const actualDurationMs = performance.now() - recordingActualStartMs;
             cleanupRecording(indicator, recordBtn, isMobile);
 
             const ext = mimeType.includes("mp4") ? "mp4" : "webm";
             const blob = new Blob(recordedChunks, { type: mimeType });
             
-            // Fix WebM 0-second duration bug for Android Gallery.
-            // IMPORTANT: Pass the real measured duration, not a hardcoded value!
-            if (ext === "webm" && typeof ysFixWebmDuration !== "undefined") {
-                ysFixWebmDuration(blob, actualDurationMs, (fixedBlob) => {
+            // Always patch WebM duration using our inlined EBML fixer.
+            // This guarantees Android Gallery / iOS Photos shows the correct 5s duration.
+            if (ext === "webm") {
+                patchWebMDuration(blob, actualDurationMs, (fixedBlob) => {
                     triggerDownload(fixedBlob, ext);
                 });
             } else {
