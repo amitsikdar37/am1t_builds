@@ -865,40 +865,67 @@
         recordingStartTime = performance.now();
         recordedChunks = [];
 
-        // Detect mobile for adaptive quality
         const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
                       || ('ontouchstart' in window && window.innerWidth < 1024);
 
-        const captureFPS = isMobile ? 30 : 60;
-        const bitrate = isMobile ? 8_000_000 : 24_000_000;
-        const RECORD_DURATION = 5000;
+        // ── CRITICAL FIX 1: Downscale renderer on mobile ──
+        // 1080x1920 = 2M pixels per frame is too heavy for mobile GPUs
+        // to render AND encode simultaneously. Halve it to 540x960.
+        if (isMobile) {
+            renderer.setSize(540, 960, false);
+            // Hide gold dust particles to free GPU cycles
+            if (goldDust) goldDust.visible = false;
+        }
 
         const canvas = renderer.domElement;
-        const stream = canvas.captureStream(captureFPS);
+
+        // ── CRITICAL FIX 2: captureStream(0) ──
+        // captureStream(30) creates a TIMER that demands frames at 30fps
+        // regardless of whether the GPU has finished rendering.
+        // captureStream(0) = "capture a frame only when the canvas actually
+        // paints a new frame". This prevents encoder queue overflow.
+        const stream = canvas.captureStream(0);
+
         const indicator = document.getElementById("recordingIndicator");
         const recordBtn = document.getElementById("recordBtn");
 
-        let mimeType = "video/mp4";
-        if (!MediaRecorder.isTypeSupported(mimeType))
-            mimeType = "video/webm;codecs=vp9";
-        if (!MediaRecorder.isTypeSupported(mimeType))
+        // ── CRITICAL FIX 3: Use vp8 on mobile (lighter encoder) ──
+        // vp9 produces better quality but uses 3-5x more CPU to encode.
+        // On mobile, the encoder literally cannot keep up with vp9.
+        let mimeType;
+        if (isMobile) {
             mimeType = "video/webm;codecs=vp8";
-        if (!MediaRecorder.isTypeSupported(mimeType))
-            mimeType = "video/webm";
+            if (!MediaRecorder.isTypeSupported(mimeType))
+                mimeType = "video/webm";
+        } else {
+            mimeType = "video/mp4";
+            if (!MediaRecorder.isTypeSupported(mimeType))
+                mimeType = "video/webm;codecs=vp9";
+            if (!MediaRecorder.isTypeSupported(mimeType))
+                mimeType = "video/webm;codecs=vp8";
+            if (!MediaRecorder.isTypeSupported(mimeType))
+                mimeType = "video/webm";
+        }
+
+        const bitrate = isMobile ? 4_000_000 : 24_000_000;
 
         mediaRecorder = new MediaRecorder(stream, {
             mimeType, videoBitsPerSecond: bitrate
         });
+
         mediaRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) recordedChunks.push(e.data);
         };
-        mediaRecorder.onstop = () => {
-            isRecording = false;
-            indicator.style.display = "none";
-            recordBtn.innerHTML = '<span class="rec-dot"></span><span>CAPTURE 5s VIDEO</span>';
-            recordBtn.disabled = false;
 
-            const ext = mimeType.startsWith("video/mp4") ? "mp4" : "webm";
+        mediaRecorder.onerror = (e) => {
+            console.error("MediaRecorder error:", e);
+            cleanupRecording(indicator, recordBtn, isMobile);
+        };
+
+        mediaRecorder.onstop = () => {
+            cleanupRecording(indicator, recordBtn, isMobile);
+
+            const ext = mimeType.includes("mp4") ? "mp4" : "webm";
             const blob = new Blob(recordedChunks, { type: mimeType });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
@@ -907,19 +934,33 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
         };
 
         recordBtn.disabled = true;
-        mediaRecorder.start(200); // Larger chunks = less overhead on mobile
+        // Larger timeslice = fewer encoding interruptions
+        mediaRecorder.start(1000);
         indicator.style.display = "flex";
         recordBtn.innerHTML = '<span class="rec-dot pulse"></span><span>RECORDING\u2026</span>';
 
-        // Safety buffer: give encoder 500ms extra to flush
+        // 5 second recording + 1 second safety buffer for mobile encoder flush
         setTimeout(() => {
             if (mediaRecorder && mediaRecorder.state === "recording")
                 mediaRecorder.stop();
-        }, RECORD_DURATION + 500);
+        }, 6000);
+    }
+
+    function cleanupRecording(indicator, recordBtn, isMobile) {
+        isRecording = false;
+        indicator.style.display = "none";
+        recordBtn.innerHTML = '<span class="rec-dot"></span><span>CAPTURE 5s VIDEO</span>';
+        recordBtn.disabled = false;
+
+        // ── Restore full resolution and particles ──
+        if (isMobile) {
+            renderer.setSize(RENDER_W, RENDER_H, false);
+            if (goldDust) goldDust.visible = true;
+        }
     }
 
 })();
