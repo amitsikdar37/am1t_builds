@@ -930,31 +930,28 @@ function patchWebMDuration(blob, durationMs, callback) {
         const recordBtn = document.getElementById("recordBtn");
 
         // ─────────────────────────────────────────────────────────────────────
-        // CODEC SELECTION
+        // CODEC SELECTION — ALWAYS WEBM
         // ─────────────────────────────────────────────────────────────────────
-        // On mobile, prefer H.264 (mp4) — phones have dedicated H.264 hardware encoders
-        // that encode 720p at 30fps with zero CPU overhead. VP8/VP9 are software-only.
-        let mimeType;
-        if (isMobile) {
-            const mobilePriority = [
-                "video/mp4;codecs=avc1",   // H.264 — hardware accelerated on iOS + Android
-                "video/mp4",
-                "video/webm;codecs=vp8",   // Fallback: VP8 software
-                "video/webm"
-            ];
-            mimeType = mobilePriority.find(t => MediaRecorder.isTypeSupported(t)) || "video/webm";
-        } else {
-            mimeType = "video/mp4";
-            if (!MediaRecorder.isTypeSupported(mimeType))
-                mimeType = "video/webm;codecs=vp9";
-            if (!MediaRecorder.isTypeSupported(mimeType))
-                mimeType = "video/webm;codecs=vp8";
-            if (!MediaRecorder.isTypeSupported(mimeType))
-                mimeType = "video/webm";
-        }
+        // CRITICAL: We use WebM ONLY on all platforms.
+        //
+        // MP4 from MediaRecorder creates "fragmented MP4" (fMP4) with a zero/broken
+        // duration in the moov atom. Fixing fMP4 duration requires a full MP4 remuxer
+        // (like FFmpeg). We do NOT have that.
+        //
+        // WebM duration CAN be fixed with the ysFixWebmDuration library (23KB) which
+        // we now bundle locally (no CDN). This is the proven, correct solution.
+        //
+        // WebM plays natively in Chrome (Android + Desktop), Firefox, and modern Samsung
+        // Internet. It is the right format for MediaRecorder output.
+        const webmPriority = [
+            "video/webm;codecs=vp9",  // Best quality
+            "video/webm;codecs=vp8",  // Wide support fallback
+            "video/webm"              // Final fallback
+        ];
+        const mimeType = webmPriority.find(t => MediaRecorder.isTypeSupported(t)) || "video/webm";
 
-        // 6Mbps for 720p mobile = perfectly sharp & encoder-safe. 24Mbps for 1080p desktop.
-        const bitrate = isMobile ? 6_000_000 : 24_000_000;
+        // 6Mbps for mobile 720p, 16Mbps for desktop 1080p — quality without overloading encoder
+        const bitrate = isMobile ? 6_000_000 : 16_000_000;
 
         mediaRecorder = new MediaRecorder(stream, {
             mimeType, videoBitsPerSecond: bitrate
@@ -972,21 +969,24 @@ function patchWebMDuration(blob, durationMs, callback) {
         };
 
         mediaRecorder.onstop = () => {
-            // Measure exact recording duration for accurate metadata patching
+            // Measure exact elapsed time from encoder start to stop
             const actualDurationMs = performance.now() - recordingActualStartMs;
             cleanupRecording(indicator, recordBtn, isMobile);
 
-            const ext = mimeType.includes("mp4") ? "mp4" : "webm";
             const blob = new Blob(recordedChunks, { type: mimeType });
-            
-            // Always patch WebM duration using our inlined EBML fixer.
-            // This guarantees Android Gallery / iOS Photos shows the correct 5s duration.
-            if (ext === "webm") {
-                patchWebMDuration(blob, actualDurationMs, (fixedBlob) => {
-                    triggerDownload(fixedBlob, ext);
+
+            // ysFixWebmDuration (local file) properly parses the EBML tree and
+            // INSERTS the Duration element if missing, or overwrites it if present.
+            // This is what makes Android Gallery and iOS Photos show the correct duration.
+            if (typeof ysFixWebmDuration !== "undefined") {
+                ysFixWebmDuration(blob, actualDurationMs, (fixedBlob) => {
+                    triggerDownload(fixedBlob, "webm");
                 });
             } else {
-                triggerDownload(blob, ext);
+                // Fallback: use our inline EBML patcher
+                patchWebMDuration(blob, actualDurationMs, (fixedBlob) => {
+                    triggerDownload(fixedBlob, "webm");
+                });
             }
         };
 
