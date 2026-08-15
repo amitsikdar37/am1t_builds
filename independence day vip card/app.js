@@ -1,4 +1,4 @@
-/* ==========================================================
+﻿/* ==========================================================
    FUTURISTIC HOLOGRAPHIC 3D TIRANGA PASS — V3
    Vertical 9:16 · Dark glass + sharp iridescence · Photo upload
    Fixed flag · Balanced layout · Legible micro-text
@@ -266,8 +266,8 @@ function patchWebMDuration(blob, durationMs, callback) {
         const ar = RENDER_W / RENDER_H; // 9:16
 
         // Reserve space at top for badge and bottom for buttons so they never overlap the card.
-        const TOP_RESERVE = 56;   // px � badge height + gap
-        const BTM_RESERVE = 100;  // px � buttons bar height + gap
+        const TOP_RESERVE = 56;   // px � badge height + gap
+        const BTM_RESERVE = 100;  // px � buttons bar height + gap
         const availH = vh - TOP_RESERVE - BTM_RESERVE;
         const availW = vw;
 
@@ -1011,8 +1011,9 @@ function patchWebMDuration(blob, durationMs, callback) {
         }
 
         recordBtn.disabled = true;
-        // Timeslice of 500ms keeps chunk boundaries tight for accurate duration measurement
-        mediaRecorder.start(500);
+        // NO timeslice. Chunking causes the encoder to flush repeatedly, leading to dropped frames
+        // and stuttering videos. We encode continuously until stop() is called.
+        mediaRecorder.start();
         recordingActualStartMs = performance.now(); // Start clock AFTER encoder starts
         indicator.style.display = "flex";
         recordBtn.innerHTML = '<span class="rec-dot pulse"></span><span>RECORDING\u2026</span>';
