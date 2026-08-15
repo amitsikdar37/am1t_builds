@@ -865,21 +865,29 @@
         recordingStartTime = performance.now();
         recordedChunks = [];
 
+        // Detect mobile for adaptive quality
+        const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+                      || ('ontouchstart' in window && window.innerWidth < 1024);
+
+        const captureFPS = isMobile ? 30 : 60;
+        const bitrate = isMobile ? 8_000_000 : 24_000_000;
+        const RECORD_DURATION = 5000;
+
         const canvas = renderer.domElement;
-        const stream = canvas.captureStream(60);
+        const stream = canvas.captureStream(captureFPS);
         const indicator = document.getElementById("recordingIndicator");
         const recordBtn = document.getElementById("recordBtn");
 
-        let mimeType = "video/mp4"; // Safari native support
+        let mimeType = "video/mp4";
         if (!MediaRecorder.isTypeSupported(mimeType))
-            mimeType = "video/webm;codecs=vp9"; // Chrome/Android fallback
+            mimeType = "video/webm;codecs=vp9";
         if (!MediaRecorder.isTypeSupported(mimeType))
             mimeType = "video/webm;codecs=vp8";
         if (!MediaRecorder.isTypeSupported(mimeType))
             mimeType = "video/webm";
 
         mediaRecorder = new MediaRecorder(stream, {
-            mimeType, videoBitsPerSecond: 24_000_000
+            mimeType, videoBitsPerSecond: bitrate
         });
         mediaRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) recordedChunks.push(e.data);
@@ -888,25 +896,30 @@
             isRecording = false;
             indicator.style.display = "none";
             recordBtn.innerHTML = '<span class="rec-dot"></span><span>CAPTURE 5s VIDEO</span>';
+            recordBtn.disabled = false;
+
+            const ext = mimeType.startsWith("video/mp4") ? "mp4" : "webm";
             const blob = new Blob(recordedChunks, { type: mimeType });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `Tiranga_Pass_${userName.replace(/\s+/g, "_")}_${serialNumber.replace("#", "")}.mp4`;
+            a.download = `Tiranga_Pass_${userName.replace(/\s+/g, "_")}_${serialNumber.replace("#", "")}.${ext}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         };
 
-        mediaRecorder.start(100);
+        recordBtn.disabled = true;
+        mediaRecorder.start(200); // Larger chunks = less overhead on mobile
         indicator.style.display = "flex";
         recordBtn.innerHTML = '<span class="rec-dot pulse"></span><span>RECORDING\u2026</span>';
 
+        // Safety buffer: give encoder 500ms extra to flush
         setTimeout(() => {
             if (mediaRecorder && mediaRecorder.state === "recording")
                 mediaRecorder.stop();
-        }, 5000);
+        }, RECORD_DURATION + 500);
     }
 
 })();
