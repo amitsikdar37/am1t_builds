@@ -860,14 +860,19 @@
         const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
                       || ('ontouchstart' in window && window.innerWidth < 1024);
 
-        // ── HIGH QUALITY MOBILE FIX ──
-        // Do not downscale renderer on mobile to keep text perfectly crisp!
-        // We only hide 3D particles to save GPU cycles.
+        // ─────────────────────────────────────────────────────────────────────
+        // MOBILE RECORDING STRATEGY
+        // ─────────────────────────────────────────────────────────────────────
+        // 1080p = GPU stalls. 540p = blurry text. 720p (720x1280) is the sweet spot:
+        //   - Text is perfectly crisp and sharp on all phone screens.
+        //   - Instagram/WhatsApp Stories max at 720p anyway.
+        //   - 1/2 the encoding workload vs 1080p — no frame drops, smooth playback.
         if (isMobile) {
-            if (goldDust) goldDust.visible = false;
+            renderer.setSize(720, 1280, false);     // 720p portrait
+            if (goldDust) goldDust.visible = false; // Free GPU cycles
         }
 
-        // Force a solid white/pearl background in the exported video to match the Light Theme
+        // Force solid white/pearl background in the exported video
         scene.background = new THREE.Color(0xf5f5f7);
 
         const canvas = renderer.domElement;
@@ -880,14 +885,20 @@
         const indicator = document.getElementById("recordingIndicator");
         const recordBtn = document.getElementById("recordBtn");
 
-        // ── CRITICAL FIX 3: Use vp8 on mobile (lighter encoder) ──
-        // vp9 produces better quality but uses 3-5x more CPU to encode.
-        // On mobile, the encoder literally cannot keep up with vp9.
+        // ─────────────────────────────────────────────────────────────────────
+        // CODEC SELECTION
+        // ─────────────────────────────────────────────────────────────────────
+        // On mobile, prefer H.264 (mp4) — phones have dedicated H.264 hardware encoders
+        // that encode 720p at 30fps with zero CPU overhead. VP8/VP9 are software-only.
         let mimeType;
         if (isMobile) {
-            mimeType = "video/webm;codecs=vp8";
-            if (!MediaRecorder.isTypeSupported(mimeType))
-                mimeType = "video/webm";
+            const mobilePriority = [
+                "video/mp4;codecs=avc1",   // H.264 — hardware accelerated on iOS + Android
+                "video/mp4",
+                "video/webm;codecs=vp8",   // Fallback: VP8 software
+                "video/webm"
+            ];
+            mimeType = mobilePriority.find(t => MediaRecorder.isTypeSupported(t)) || "video/webm";
         } else {
             mimeType = "video/mp4";
             if (!MediaRecorder.isTypeSupported(mimeType))
@@ -898,7 +909,8 @@
                 mimeType = "video/webm";
         }
 
-        const bitrate = isMobile ? 8_000_000 : 24_000_000; // Bumped mobile bitrate to 8Mbps for crisp text
+        // 6Mbps for 720p mobile = perfectly sharp & encoder-safe. 24Mbps for 1080p desktop.
+        const bitrate = isMobile ? 6_000_000 : 24_000_000;
 
         mediaRecorder = new MediaRecorder(stream, {
             mimeType, videoBitsPerSecond: bitrate
@@ -962,8 +974,9 @@
         // Restore transparent scene background so the 2D particles show through again on the website
         if (scene) scene.background = null;
 
-        // ── Restore particles ──
+        // ── Restore full resolution & particles ──
         if (isMobile) {
+            renderer.setSize(RENDER_W, RENDER_H, false); // Back to full display resolution
             if (goldDust) goldDust.visible = true;
         }
     }
