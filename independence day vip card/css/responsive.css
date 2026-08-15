@@ -1,0 +1,9 @@
+/* ---- RESPONSIVE ---- */
+@media (max-width: 520px) {
+    .input-card { padding: 40px 24px 32px; width: 90vw; }
+    .title { font-size: 20px; }
+    .hud-bottom { flex-direction: column; align-items: stretch; width: 240px; }
+    .hud-bottom button { justify-content: center; }
+}
+
+

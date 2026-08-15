@@ -1,13 +1,10 @@
-﻿/* ==========================================================
+/* ==========================================================
    FUTURISTIC HOLOGRAPHIC 3D TIRANGA PASS — V3
    Vertical 9:16 · Dark glass + sharp iridescence · Photo upload
    Fixed flag · Balanced layout · Legible micro-text
    ========================================================== */
 
 
-
-(() => {
-    "use strict";
 
     // ───── CONFIG ─────
     const CARD_W = 2.4;
@@ -30,11 +27,6 @@
     let targetDragRotX = 0, targetDragRotY = 0;
     let lastDragTime = 0;
 
-    // ───── INIT ─────
-    initParticleBackground();
-    initInputHandlers();
-
-    // ─────────────────────────────────────────────────────
     // PARTICLE BACKGROUND
     // ─────────────────────────────────────────────────────
     function initParticleBackground() {
@@ -220,8 +212,8 @@
         const ar = RENDER_W / RENDER_H; // 9:16
 
         // Reserve space at top for badge and bottom for buttons so they never overlap the card.
-        const TOP_RESERVE = 56;   // px � badge height + gap
-        const BTM_RESERVE = 100;  // px � buttons bar height + gap
+        const TOP_RESERVE = 56;   // px  badge height + gap
+        const BTM_RESERVE = 100;  // px  buttons bar height + gap
         const availH = vh - TOP_RESERVE - BTM_RESERVE;
         const availW = vw;
 
@@ -236,6 +228,10 @@
         c.style.top = (TOP_RESERVE + (availH - dh) / 2) + "px";
         c.style.left = ((vw - dw) / 2) + "px";
     }
+
+    // Initialize the background and input handlers immediately on script load
+    initParticleBackground();
+    initInputHandlers();
 
     // ─────────────────────────────────────────────────────
     // HOLOGRAPHIC CARD — Dark glass + sharp spectral peaks
@@ -837,7 +833,6 @@
 
         renderer.render(scene, camera);
     }
-
     // ─────────────────────────────────────────────────────
     // VIDEO RECORDING
     // ─────────────────────────────────────────────────────
@@ -853,11 +848,11 @@
         // 1. Set the background to solid pearl (for the story image)
         scene.background = new THREE.Color(0xf5f5f7);
 
-        // 2. Temporarily adjust rotation to look very premium and 3D
+        // 2. Set rotation to exactly 0 to look perfectly straight-on
         const oldY = cardGroup.rotation.y;
         const oldX = cardGroup.rotation.x;
-        cardGroup.rotation.y = 0.25; // Nice 3D angle
-        cardGroup.rotation.x = 0.15;
+        cardGroup.rotation.y = 0; 
+        cardGroup.rotation.x = 0;
 
         // 3. Force render a single high-quality frame
         renderer.render(scene, camera);
@@ -889,5 +884,3 @@
             }, "image/png", 1.0);
         }, 50);
     }
-
-})();

@@ -1,0 +1,159 @@
+/* ---- BUTTON ---- */
+.generate-btn {
+    position: relative;
+    width: 100%;
+    padding: 16px 32px;
+    background: var(--text-primary);
+    border: none;
+    border-radius: 12px;
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.generate-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+.generate-btn:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+}
+.disclaimer {
+    margin-top: 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+/* ---- LOADER ---- */
+.loader-container {
+    text-align: center;
+}
+.loader-ring {
+    width: 60px; height: 60px;
+    margin: 0 auto 20px;
+    border: 3px solid rgba(0,0,0,0.05);
+    border-top-color: var(--text-primary);
+    border-radius: 50%;
+    animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loader-text {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    animation: textPulse 1.5s ease-in-out infinite;
+}
+@keyframes textPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+.loader-bar {
+    width: 200px;
+    height: 4px;
+    background: rgba(0,0,0,0.05);
+    border-radius: 2px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+.loader-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--text-primary);
+    border-radius: 2px;
+    transition: width 0.3s;
+}
+
+/* ---- HUD ---- */
+.hud {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 10;
+    pointer-events: none;
+}
+/* Badge pinned to top */
+.hud-top {
+    position: absolute;
+    top: 20px;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: center;
+}
+.hud-badge {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding: 8px 20px;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(0,0,0,0.05);
+    border-radius: 100px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    animation: fadeInDown 0.8s ease-out;
+}
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+/* Buttons pinned below the card, not overlapping it */
+.hud-bottom {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    pointer-events: all;
+    padding: 16px 24px 24px;
+    background: linear-gradient(to top, var(--bg-deep) 70%, transparent);
+}
+
+.snapshot-btn, .reset-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 24px;
+    border-radius: 100px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+.snapshot-btn {
+    background: #007aff;
+    border: none;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(0,122,255,0.3);
+}
+.snapshot-btn:hover {
+    background: #005bb5;
+    box-shadow: 0 6px 16px rgba(0,122,255,0.4);
+    transform: translateY(-1px);
+}
+.reset-btn {
+    background: rgba(255,255,255,0.8);
+    border: 1px solid rgba(0,0,0,0.08);
+    color: var(--text-primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+.reset-btn:hover {
+    background: #fff;
+    transform: translateY(-1px);
+}
+
+
+
+
+.recording-indicator 
