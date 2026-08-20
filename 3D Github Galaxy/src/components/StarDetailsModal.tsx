@@ -20,6 +20,7 @@ interface StarDetailsModalProps {
   onPrevStar?: () => void;
   onNextStar?: () => void;
   onReturnToOverview?: () => void;
+  isOpen?: boolean;
 }
 
 export const StarDetailsModal: React.FC<StarDetailsModalProps> = ({
@@ -28,6 +29,7 @@ export const StarDetailsModal: React.FC<StarDetailsModalProps> = ({
   onPrevStar,
   onNextStar,
   onReturnToOverview,
+  isOpen = true,
 }) => {
   if (!star) return null;
 
@@ -43,7 +45,7 @@ export const StarDetailsModal: React.FC<StarDetailsModalProps> = ({
       : `${star.diskUsageKB} KB`;
 
   return (
-    <div className="fixed top-24 bottom-6 right-6 left-6 lg:left-auto w-auto lg:w-96 z-40 pointer-events-none flex flex-col animate-in slide-in-from-right-8 duration-300">
+    <div className={`fixed top-24 bottom-6 right-6 left-6 lg:left-auto w-auto lg:w-96 z-40 pointer-events-none flex flex-col transition-all duration-500 ${isOpen ? 'translate-x-0 opacity-100 animate-in slide-in-from-right-8' : 'translate-x-[120%] opacity-0'}`}>
       <div className="w-full bg-space-950/70 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 text-white shadow-[0_8px_32px_rgba(0,0,0,0.4)] pointer-events-auto flex flex-col gap-6 max-h-full overflow-y-auto custom-scrollbar relative">
         
         {/* Top Header & Close Button */}

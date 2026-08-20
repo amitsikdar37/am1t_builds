@@ -8,6 +8,7 @@ export interface RepositoryNode {
     color: string | null;
   } | null;
   diskUsage: number; // in KB
+  createdAt: string;
   updatedAt: string;
   url: string;
   isFork: boolean;
@@ -70,6 +71,7 @@ export interface StarData {
   language: string;
   languageColor: string;
   diskUsageKB: number;
+  createdAt: string;
   updatedAt: string;
   url: string;
   isFork: boolean;

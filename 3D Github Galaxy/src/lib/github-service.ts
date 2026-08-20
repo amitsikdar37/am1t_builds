@@ -43,6 +43,7 @@ const GALAXY_QUERY = `
             color
           }
           diskUsage
+          createdAt
           updatedAt
           url
           isFork
@@ -122,6 +123,7 @@ export async function fetchGitHubGalaxyData(username: string, customToken?: stri
         forkCount: r.forks_count || 0,
         primaryLanguage: r.language ? { name: r.language, color: null } : null,
         diskUsage: r.size || 100,
+        createdAt: r.created_at || r.updated_at || new Date().toISOString(),
         updatedAt: r.updated_at || new Date().toISOString(),
         url: r.html_url,
         isFork: r.fork || false,
@@ -193,6 +195,7 @@ export function generateProceduralGalaxy(username: string): UserGalaxyData {
         color: null,
       },
       diskUsage: Math.floor(Math.random() * 45000) + 500,
+      createdAt: new Date(Date.now() - i * 86400000 * 80).toISOString(),
       updatedAt: new Date(Date.now() - i * 86400000 * 4).toISOString(),
       url: `https://github.com/${username}`,
       isFork: false,

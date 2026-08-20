@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import gsap from 'gsap';
 import { StarData } from '@/lib/types';
 import { createParticleTexture, createPlanetaryRingTexture } from './utils';
 
@@ -82,11 +83,55 @@ export class StarSystemManager {
   private hoveredMesh: THREE.Mesh | null = null;
   private selectedMesh: THREE.Mesh | null = null;
   private selectionReticle: THREE.Group | null = null;
+  private timeTravelListener: EventListener;
 
   constructor(stars: StarData[]) {
     this.group = new THREE.Group();
     this.createStarSystems(stars);
     this.createSelectionReticle();
+
+    this.timeTravelListener = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      this.updateTimeTravel(customEvent.detail);
+    };
+    window.addEventListener('time-travel-scrub', this.timeTravelListener);
+  }
+
+  public dispose() {
+    window.removeEventListener('time-travel-scrub', this.timeTravelListener);
+    
+    this.starMeshes.forEach((m) => {
+      m.geometry.dispose();
+      (m.material as THREE.Material).dispose();
+    });
+    this.atmosphereMeshes.forEach((m) => {
+      m.geometry.dispose();
+      (m.material as THREE.Material).dispose();
+    });
+    this.orbitalBelts.forEach((b) => {
+      b.geometry.dispose();
+      (b.material as THREE.Material).dispose();
+    });
+  }
+
+  private updateTimeTravel(targetYear: number) {
+    this.orbitingBodies.forEach((starGroup) => {
+      // Find the starMesh inside this group
+      const starMesh = starGroup.children.find(child => child.userData && child.userData.isStar);
+      if (starMesh) {
+        const starData = starMesh.userData.starData as StarData;
+        const creationYear = new Date(starData.createdAt).getFullYear();
+        
+        // GSAP animate scale
+        if (creationYear > targetYear) {
+          // This repo didn't exist yet! Shrink it away to dust.
+          gsap.to(starGroup.scale, { x: 0.001, y: 0.001, z: 0.001, duration: 0.8, ease: "power2.out" });
+        } else {
+          // It existed. Bring it back to full size.
+          gsap.to(starGroup.scale, { x: 1, y: 1, z: 1, duration: 0.8, ease: "back.out(1.7)" });
+        }
+      }
+    });
   }
 
   private createStarSystems(stars: StarData[]) {
@@ -360,18 +405,5 @@ export class StarSystemManager {
     }
   }
 
-  public dispose() {
-    this.starMeshes.forEach((m) => {
-      m.geometry.dispose();
-      (m.material as THREE.Material).dispose();
-    });
-    this.atmosphereMeshes.forEach((m) => {
-      m.geometry.dispose();
-      (m.material as THREE.Material).dispose();
-    });
-    this.orbitalBelts.forEach((b) => {
-      b.geometry.dispose();
-      (b.material as THREE.Material).dispose();
-    });
-  }
+
 }

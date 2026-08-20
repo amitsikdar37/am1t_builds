@@ -10,7 +10,7 @@ import { GalaxyControls } from '@/components/GalaxyControls';
 import { ConstellationTour } from '@/components/ConstellationTour';
 import { CustomTokenModal } from '@/components/CustomTokenModal';
 import { InfoGuideModal } from '@/components/InfoGuideModal';
-import { Sparkles, Loader2, Compass, AlertCircle } from 'lucide-react';
+import { Sparkles, Loader2, Compass, AlertCircle, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react';
 
 export default function Home() {
   const [username, setUsername] = useState<string>('torvalds');
@@ -28,6 +28,10 @@ export default function Home() {
   const [isBloomEnabled, setIsBloomEnabled] = useState<boolean>(true);
   const [areConstellationsVisible, setAreConstellationsVisible] = useState<boolean>(true);
   const [resetCameraCounter, setResetCameraCounter] = useState<number>(0);
+  
+  // Panel Visibility State
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState<boolean>(true);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(true);
 
   // Modals
   const [isTokenModalOpen, setIsTokenModalOpen] = useState<boolean>(false);
@@ -116,6 +120,8 @@ export default function Home() {
         onSearch={loadGalaxy}
         currentUsername={username}
         selectedStar={selectedStar}
+        isLeftOpen={isLeftPanelOpen}
+        isRightOpen={isRightPanelOpen}
       />
 
       {/* 2D Projected Hover Tooltip */}
@@ -136,7 +142,29 @@ export default function Home() {
           setSelectedStar(null);
           setResetCameraCounter((c) => c + 1);
         }}
+        isOpen={isRightPanelOpen}
       />
+
+      {/* Floating Panel Toggles */}
+      <div className="fixed left-0 top-1/2 -translate-y-1/2 z-50 pointer-events-auto">
+        <button
+          onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
+          className={`p-2 rounded-r-xl bg-space-950/80 backdrop-blur-md border border-l-0 border-white/10 text-slate-400 hover:text-white transition-all shadow-lg ${!isLeftPanelOpen ? 'bg-cyan-950/50 border-cyan-500/30' : ''}`}
+          title="Toggle Left Panel"
+        >
+          {isLeftPanelOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5 text-cyan-400" />}
+        </button>
+      </div>
+
+      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-50 pointer-events-auto">
+        <button
+          onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
+          className={`p-2 rounded-l-xl bg-space-950/80 backdrop-blur-md border border-r-0 border-white/10 text-slate-400 hover:text-white transition-all shadow-lg ${!isRightPanelOpen ? 'bg-cyan-950/50 border-cyan-500/30' : ''}`}
+          title="Toggle Right Panel"
+        >
+          {isRightPanelOpen ? <PanelRightClose className="w-5 h-5" /> : <PanelRightOpen className="w-5 h-5 text-cyan-400" />}
+        </button>
+      </div>
 
       {/* Bottom Interactive Controls Toolbar */}
       <GalaxyControls

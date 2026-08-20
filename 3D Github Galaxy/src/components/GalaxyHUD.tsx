@@ -20,6 +20,8 @@ interface GalaxyHUDProps {
   onSearch: (username: string) => void;
   currentUsername: string;
   selectedStar: StarData | null;
+  isLeftOpen: boolean;
+  isRightOpen: boolean;
 }
 
 const PRESET_EXPLORERS = [
@@ -38,6 +40,8 @@ export const GalaxyHUD: React.FC<GalaxyHUDProps> = ({
   onSearch,
   currentUsername,
   selectedStar,
+  isLeftOpen,
+  isRightOpen,
 }) => {
   const [searchInput, setSearchInput] = useState(currentUsername);
 
@@ -117,7 +121,7 @@ export const GalaxyHUD: React.FC<GalaxyHUDProps> = ({
 
       {/* LEFT SIDEBAR: GitHub Profile Panel */}
       {galaxyData && (
-        <div className="fixed top-24 bottom-6 left-6 w-80 z-20 pointer-events-none flex flex-col justify-start hidden lg:flex">
+        <div className={`fixed top-24 bottom-6 left-6 w-80 z-20 pointer-events-none flex flex-col justify-start hidden lg:flex transition-all duration-500 ${isLeftOpen ? 'translate-x-0 opacity-100' : '-translate-x-[120%] opacity-0'}`}>
           <div className="w-full bg-space-950/70 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.4)] flex flex-col gap-6 max-h-full overflow-y-auto custom-scrollbar">
             
             {/* Header: Avatar & Bio */}
@@ -240,7 +244,7 @@ export const GalaxyHUD: React.FC<GalaxyHUDProps> = ({
       {galaxyData && (
         <div
           className={`fixed top-24 bottom-6 right-6 w-96 z-20 pointer-events-none flex flex-col justify-start hidden lg:flex transition-all duration-500 ${
-            selectedStar ? 'translate-x-[120%] opacity-0' : 'translate-x-0 opacity-100'
+            selectedStar || !isRightOpen ? 'translate-x-[120%] opacity-0' : 'translate-x-0 opacity-100'
           }`}
         >
           <div className="w-full bg-space-950/70 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.4)] flex flex-col gap-6 max-h-full overflow-y-auto custom-scrollbar">
@@ -261,27 +265,47 @@ export const GalaxyHUD: React.FC<GalaxyHUDProps> = ({
             {/* Separator */}
             <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-            {/* 1. Galactic Time Travel (Placeholder) */}
+            {/* 1. Galactic Time Travel */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-purple-400" /> Galactic Time Travel
                 </h3>
-                <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-mono">
-                  Beta
+                <span className="text-[10px] font-mono text-purple-300 font-bold bg-purple-500/20 px-2 py-0.5 rounded-full">
+                  Active
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Rewind time to watch this galaxy evolve from its first commit to its current massive state.
+                Drag the timeline to watch this developer's galaxy physically evolve over the years.
               </p>
-              <div className="w-full h-8 rounded-lg bg-black/40 border border-white/10 flex items-center px-3 relative cursor-not-allowed">
-                <div className="w-full h-1 bg-white/10 rounded-full">
-                  <div className="w-full h-full bg-gradient-to-r from-purple-500 to-cyan-400 rounded-full" />
-                </div>
-                <div className="absolute right-2 text-[10px] font-mono text-slate-500 uppercase">
-                  (Coming Soon)
-                </div>
-              </div>
+              
+              {(() => {
+                const minYear = galaxyData.stars.length > 0 
+                  ? Math.min(...galaxyData.stars.map(s => new Date(s.createdAt).getFullYear())) 
+                  : 2015;
+                const maxYear = new Date().getFullYear();
+                
+                return (
+                  <div className="flex flex-col gap-2 mt-1">
+                    <div className="flex justify-between text-[10px] font-mono text-cyan-400/80">
+                      <span>{minYear}</span>
+                      <span>{maxYear}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={minYear}
+                      max={maxYear}
+                      step="1"
+                      defaultValue={maxYear}
+                      className="w-full h-1.5 bg-space-900 rounded-full appearance-none outline-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(34,211,238,0.8)] focus:outline-none"
+                      onChange={(e) => {
+                        const targetYear = parseInt(e.target.value);
+                        window.dispatchEvent(new CustomEvent('time-travel-scrub', { detail: targetYear }));
+                      }}
+                    />
+                  </div>
+                );
+              })()}
             </div>
 
             {/* 2. Compare Galaxy (Placeholder) */}

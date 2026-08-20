@@ -237,6 +237,7 @@ export function transformGitHubToGalaxy(data: UserGalaxyData): GalaxySceneData {
       language: langName,
       languageColor: langColor,
       diskUsageKB: repo.diskUsage || 0,
+      createdAt: repo.createdAt || repo.updatedAt || new Date().toISOString(),
       updatedAt: repo.updatedAt,
       url: repo.url,
       isFork: repo.isFork || false,
