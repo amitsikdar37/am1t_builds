@@ -5,6 +5,7 @@ export class ConstellationLines {
   public group: THREE.Group;
   private lineSegments: THREE.LineSegments | null = null;
   private pairs: { m1: THREE.Mesh; m2: THREE.Mesh }[] = [];
+  private isVisible: boolean = true;
 
   constructor(stars: StarData[], starMeshes: THREE.Mesh[]) {
     this.group = new THREE.Group();

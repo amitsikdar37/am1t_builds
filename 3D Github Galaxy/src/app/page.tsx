@@ -37,12 +37,17 @@ export default function Home() {
   const [isTokenModalOpen, setIsTokenModalOpen] = useState<boolean>(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState<boolean>(false);
 
-  // Fetch Galaxy Data
+  // Rival Galaxy State
+  const [rivalGalaxyData, setRivalGalaxyData] = useState<GalaxySceneData | null>(null);
+  const [isRivalLoading, setIsRivalLoading] = useState<boolean>(false);
+
+  // Fetch Main Galaxy Data
   const loadGalaxy = useCallback(async (userToFetch: string) => {
     setIsLoading(true);
     setError(null);
     setSelectedStar(null);
     setHoveredStar(null);
+    setRivalGalaxyData(null); // Reset rival when main galaxy changes
 
     try {
       let customToken = '';
@@ -74,6 +79,42 @@ export default function Home() {
     }
   }, []);
 
+  // Fetch Rival Galaxy Data
+  const loadRivalGalaxy = useCallback(async (rivalUser: string) => {
+    setIsRivalLoading(true);
+    setError(null);
+
+    try {
+      let customToken = '';
+      if (typeof window !== 'undefined') {
+        customToken = localStorage.getItem('github_custom_token') || '';
+      }
+
+      const headers: Record<string, string> = {};
+      if (customToken) {
+        headers['x-custom-token'] = customToken;
+      }
+
+      const res = await fetch(`/api/galaxy?username=${encodeURIComponent(rivalUser)}`, {
+        headers,
+      });
+
+      const json = await res.json();
+      if (json.success && json.data) {
+        // Tag all rival stars so the UI knows they belong to the rival
+        json.data.stars = json.data.stars.map((star: any) => ({ ...star, isRival: true }));
+        setRivalGalaxyData(json.data);
+      } else {
+        setError(json.error || 'Failed to locate rival galaxy coordinates');
+      }
+    } catch (err: any) {
+      console.error('Error fetching rival galaxy:', err);
+      setError('Rival communication link interrupted.');
+    } finally {
+      setIsRivalLoading(false);
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
     loadGalaxy('torvalds');
@@ -100,6 +141,7 @@ export default function Home() {
       {galaxyData && (
         <GalaxyCanvas
           galaxyData={galaxyData}
+          rivalGalaxyData={rivalGalaxyData}
           isMuted={isMuted}
           isBloomEnabled={isBloomEnabled}
           areConstellationsVisible={areConstellationsVisible}
@@ -116,8 +158,11 @@ export default function Home() {
       {/* Top Sci-Fi Navigation HUD */}
       <GalaxyHUD
         galaxyData={galaxyData}
+        rivalGalaxyData={rivalGalaxyData}
         isLoading={isLoading}
+        isRivalLoading={isRivalLoading}
         onSearch={loadGalaxy}
+        onLoadRival={loadRivalGalaxy}
         currentUsername={username}
         selectedStar={selectedStar}
         isLeftOpen={isLeftPanelOpen}

@@ -51,12 +51,12 @@ export const StarDetailsModal: React.FC<StarDetailsModalProps> = ({
         {/* Top Header & Close Button */}
         <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-white/5 border border-white/10">
-              <Github className="w-6 h-6 text-white" />
+            <div className={`p-2 rounded-xl bg-white/5 border ${star.isRival ? 'border-rose-500/50 text-rose-400' : 'border-white/10 text-white'}`}>
+              <Github className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-[10px] uppercase tracking-widest font-mono text-cyan-400 font-semibold mb-1 block">
-                Repository
+              <span className={`text-[10px] uppercase tracking-widest font-mono font-semibold mb-1 block ${star.isRival ? 'text-rose-400' : 'text-cyan-400'}`}>
+                {star.isRival ? 'Rival Repository' : 'Repository'}
               </span>
               <h2 className="text-xl font-bold tracking-tight text-white leading-tight break-words">
                 {star.name}

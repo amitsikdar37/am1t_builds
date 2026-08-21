@@ -6,10 +6,44 @@ export class CentralCore {
   private coreMesh: THREE.Mesh;
   private outerCoronaMesh: THREE.Mesh;
   private solarFlares: THREE.Points;
+  private nameSprite: THREE.Sprite;
   private rotationSpeed: number = 0.2;
 
-  constructor(radius: number = 3.5, luminosity: number = 1.5) {
+  constructor(radius: number = 3.5, luminosity: number = 1.5, username: string = "", isRival: boolean = false) {
     this.group = new THREE.Group();
+
+    // 0. 3D Username Label
+    const canvas = document.createElement('canvas');
+    // Double resolution for crisp supersampled text
+    canvas.width = 2048;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      // Remove manual shadow because UnrealBloomPass will naturally bloom bright text
+      // Manual shadow + Bloom = muddy blur
+      ctx.font = 'bold 220px "Inter", "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // Draw text
+      ctx.fillStyle = isRival ? '#fb7185' : '#7dd3fc'; // slightly lighter/brighter colors for crispness
+      ctx.fillText('@' + username, 1024, 256);
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter; // Ensures crisp scaling
+    
+    const spriteMat = new THREE.SpriteMaterial({ 
+      map: texture, 
+      transparent: true,
+      depthTest: false 
+    });
+    this.nameSprite = new THREE.Sprite(spriteMat);
+    // Position it hovering above the star and make it physically larger in the 3D scene
+    this.nameSprite.position.set(0, radius * 3.5, 0);
+    this.nameSprite.scale.set(36, 9, 1);
+    this.group.add(this.nameSprite);
 
     // 1. Central Star Sphere (The Sun)
     const coreGeo = new THREE.SphereGeometry(radius, 64, 64);
@@ -132,5 +166,12 @@ export class CentralCore {
     (this.outerCoronaMesh.material as THREE.Material).dispose();
     this.solarFlares.geometry.dispose();
     (this.solarFlares.material as THREE.Material).dispose();
+    
+    if (this.nameSprite) {
+      if ((this.nameSprite.material as THREE.SpriteMaterial).map) {
+        (this.nameSprite.material as THREE.SpriteMaterial).map!.dispose();
+      }
+      (this.nameSprite.material as THREE.Material).dispose();
+    }
   }
 }

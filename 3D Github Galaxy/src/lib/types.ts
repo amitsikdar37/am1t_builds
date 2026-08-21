@@ -95,6 +95,7 @@ export interface StarData {
   particleBeltSpeed: number;
   activityRating: 'Hyperspeed' | 'Active' | 'Stable' | 'Dormant';
   hasHaloAndRings: boolean;
+  isRival?: boolean;
 }
 
 export interface GalaxyMetrics {

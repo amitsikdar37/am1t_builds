@@ -84,11 +84,13 @@ export class StarSystemManager {
   private selectedMesh: THREE.Mesh | null = null;
   private selectionReticle: THREE.Group | null = null;
   private timeTravelListener: EventListener;
+  public isRival: boolean = false;
 
-  constructor(stars: StarData[]) {
+  constructor(stars: StarData[], isRival: boolean = false) {
+    this.isRival = isRival;
     this.group = new THREE.Group();
-    this.createStarSystems(stars);
-    this.createSelectionReticle();
+    this.createStarSystems(stars, isRival);
+    this.createSelectionReticle(isRival);
 
     this.timeTravelListener = (e: Event) => {
       const customEvent = e as CustomEvent;
@@ -134,7 +136,7 @@ export class StarSystemManager {
     });
   }
 
-  private createStarSystems(stars: StarData[]) {
+  private createStarSystems(stars: StarData[], isRival: boolean) {
     const sphereGeo = new THREE.SphereGeometry(1, 48, 48); // High poly sphere for premium look
 
     stars.forEach((star, idx) => {
@@ -165,15 +167,16 @@ export class StarSystemManager {
       starMesh.rotation.z = (Math.random() - 0.5) * 0.4;
       starMesh.rotation.x = (Math.random() - 0.5) * 0.4;
       
-      starMesh.userData = { starData: star, isStar: true, baseRadius: star.radius, index: idx };
+      starMesh.userData = { starData: star, isStar: true, baseRadius: star.radius, index: idx, isRival };
       
       this.starMeshes.push(starMesh);
       starGroup.add(starMesh);
 
       // 2. Premium Atmospheric Fresnel Rim (Applied to ALL planets but tighter)
+      const atmosphereColor = isRival ? color.clone().lerp(new THREE.Color(0xf43f5e), 0.6) : color;
       const atmosphereMat = new THREE.ShaderMaterial({
         uniforms: {
-          color: { value: color }
+          color: { value: atmosphereColor }
         },
         vertexShader: atmosphereVertexShader,
         fragmentShader: atmosphereFragmentShader,
@@ -249,9 +252,9 @@ export class StarSystemManager {
       }
       trackGeo.setFromPoints(trackPoints);
       const trackMat = new THREE.LineBasicMaterial({
-        color: 0x38bdf8,
+        color: isRival ? 0xf43f5e : 0x38bdf8,
         transparent: true,
-        opacity: 0.15,
+        opacity: isRival ? 0.25 : 0.15,
         blending: THREE.AdditiveBlending,
       });
       const trackMesh = new THREE.Line(trackGeo, trackMat);
@@ -278,14 +281,14 @@ export class StarSystemManager {
     });
   }
 
-  private createSelectionReticle() {
+  private createSelectionReticle(isRival: boolean) {
     this.selectionReticle = new THREE.Group();
     this.selectionReticle.visible = false;
 
     // Glowing target ring around selected star
     const ringGeo = new THREE.RingGeometry(1.4, 1.55, 32);
     const ringMat = new THREE.MeshBasicMaterial({
-      color: 0x38bdf8,
+      color: isRival ? 0xf43f5e : 0x38bdf8,
       side: THREE.DoubleSide,
       transparent: true,
       opacity: 0.85,
