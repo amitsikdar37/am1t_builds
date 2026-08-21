@@ -45,8 +45,8 @@ export const StarDetailsModal: React.FC<StarDetailsModalProps> = ({
       : `${star.diskUsageKB} KB`;
 
   return (
-    <div className={`fixed top-24 bottom-24 md:bottom-6 right-4 md:right-6 w-[calc(100vw-5rem)] sm:w-80 md:w-96 z-40 pointer-events-none flex flex-col transition-all duration-500 ${isOpen ? 'translate-x-0 opacity-100 animate-in slide-in-from-right-8' : 'translate-x-[120%] opacity-0'}`}>
-      <div className="w-full bg-space-950/40 md:bg-space-950/70 backdrop-blur-md md:backdrop-blur-2xl border border-white/10 rounded-3xl p-6 text-white shadow-[0_8px_32px_rgba(0,0,0,0.4)] pointer-events-auto flex flex-col gap-6 max-h-full overflow-y-auto custom-scrollbar relative">
+    <div className={`fixed bottom-24 md:top-24 md:bottom-6 left-4 md:left-auto right-4 md:right-6 w-auto md:w-96 z-40 pointer-events-none flex flex-col justify-end md:justify-start transition-all duration-500 ${isOpen ? 'translate-y-0 md:translate-x-0 opacity-100' : 'translate-y-[150%] md:translate-y-0 md:translate-x-[120%] opacity-0'}`}>
+      <div className="w-full max-h-[32vh] md:max-h-full bg-space-950/50 md:bg-space-950/70 backdrop-blur-md md:backdrop-blur-2xl border border-white/10 rounded-2xl md:rounded-3xl p-4 md:p-6 text-white shadow-[0_8px_32px_rgba(0,0,0,0.4)] pointer-events-auto flex flex-col gap-4 md:gap-6 overflow-y-auto custom-scrollbar relative">
         
         {/* Top Header & Close Button */}
         <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-4">
