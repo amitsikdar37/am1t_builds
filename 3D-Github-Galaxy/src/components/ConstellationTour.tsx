@@ -27,7 +27,7 @@ export const ConstellationTour: React.FC<ConstellationTourProps> = ({
   const sortedStars = [...filteredStars].sort((a, b) => b.stars - a.stars);
 
   return (
-    <div className="fixed bottom-5 right-5 z-30 pointer-events-auto flex flex-col items-end">
+    <div className="fixed bottom-24 md:bottom-5 right-4 md:right-5 z-30 pointer-events-auto flex flex-col items-end">
       {/* Expanded Star Systems List */}
       {isOpen && (
         <div className="mb-2 w-72 sm:w-80 max-h-80 bg-space-950/90 backdrop-blur-xl border border-cyan-500/30 rounded-2xl p-3.5 shadow-[0_0_40px_rgba(6,182,212,0.25)] text-white flex flex-col gap-2.5 animate-in fade-in slide-in-from-bottom-4 duration-200">

@@ -167,8 +167,8 @@ export const GalaxyHUD: React.FC<GalaxyHUDProps> = ({
 
       {/* LEFT SIDEBAR: GitHub Profile Panel */}
       {galaxyData && (
-        <div className={`fixed top-24 bottom-6 left-6 w-80 z-20 pointer-events-none flex flex-col justify-start hidden lg:flex transition-all duration-500 ${isLeftOpen ? 'translate-x-0 opacity-100' : '-translate-x-[120%] opacity-0'}`}>
-          <div className="w-full bg-space-950/70 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.4)] flex flex-col gap-6 max-h-full overflow-y-auto custom-scrollbar">
+        <div className={`fixed top-24 bottom-24 md:bottom-6 left-4 md:left-6 w-[calc(100vw-5rem)] sm:w-80 z-20 pointer-events-none flex flex-col justify-start transition-all duration-500 ${isLeftOpen ? 'translate-x-0 opacity-100' : '-translate-x-[120%] opacity-0'}`}>
+          <div className="w-full bg-space-950/40 md:bg-space-950/70 backdrop-blur-md md:backdrop-blur-2xl border border-white/10 rounded-3xl p-6 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.4)] flex flex-col gap-6 max-h-full overflow-y-auto custom-scrollbar">
             
             {/* Header: Avatar & Bio */}
             <div className="flex flex-col items-center text-center gap-3">
