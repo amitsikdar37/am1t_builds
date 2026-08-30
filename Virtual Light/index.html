@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Virtual Light — depth-aware relighting</title>
+    <meta
+      name="description"
+      content="Drop a virtual light into your camera feed. AI estimates the depth of everything on screen, so the light can sit in front of or behind you."
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main id="stage">
+      <canvas id="gl"></canvas>
+
+      <div id="boot" class="boot">
+        <div class="boot-card">
+          <h1>Virtual Light</h1>
+          <p class="boot-sub">
+            A light you can drag <em>through</em> your camera feed. A depth model estimates how far
+            away every pixel is, so the light lands in front of or behind you — with falloff,
+            shading and shadows.
+          </p>
+          <div class="boot-actions">
+            <button id="startCam" class="btn btn-primary">Use my camera</button>
+            <button id="startFile" class="btn">Open a video or photo</button>
+          </div>
+          <p class="boot-note" id="bootNote"></p>
+        </div>
+      </div>
+
+      <div id="loader" class="loader" hidden>
+        <div class="loader-inner">
+          <div class="spinner"></div>
+          <div class="loader-text" id="loaderText">Loading depth model…</div>
+          <div class="bar"><div class="bar-fill" id="loaderBar"></div></div>
+        </div>
+      </div>
+
+      <div id="hud" class="hud" hidden>
+        <div class="hud-row">
+          <span class="pill" id="pillDevice">–</span>
+          <span class="pill" id="pillDepthFps">depth –</span>
+          <span class="pill" id="pillRenderFps">render –</span>
+        </div>
+      </div>
+
+      <div id="hint" class="hint" hidden>
+        <b>Drag</b> the light · <b>Scroll</b> or <b>↑↓</b> for depth · <b>Tab</b> panel
+      </div>
+
+      <button id="panelToggle" class="panel-toggle" hidden aria-label="Toggle controls">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path
+            d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h12M20 17h0"
+            stroke="currentColor"
+            stroke-width="1.8"
+            fill="none"
+            stroke-linecap="round"
+          />
+          <circle cx="15" cy="7" r="2.2" fill="currentColor" />
+          <circle cx="9.5" cy="12" r="2.2" fill="currentColor" />
+          <circle cx="17" cy="17" r="2.2" fill="currentColor" />
+        </svg>
+      </button>
+
+      <aside id="panel" class="panel" hidden></aside>
+
+      <div id="toast" class="toast" hidden></div>
+    </main>
+
+    <input id="fileInput" type="file" accept="video/*,image/*" hidden />
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
