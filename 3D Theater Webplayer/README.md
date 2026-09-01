@@ -10,6 +10,12 @@ This WebPlayer uses a local Node.js media server to instantly extract and proces
 - **Automatic Subtitles**: Automatically extracts subtitles from `.mkv` files and projects them into the 3D space with cinematic styling.
 - **Look Around**: Click and drag your mouse to look around the immersive theatre.
 
+## 📸 Screenshots
+
+| 3D Subtitles & Controls | Front Row View | Left Side Seat View |
+|:---:|:---:|:---:|
+| ![3D Subtitles & Controls](assets/screenshots/screenshot1.png) | ![Front Row View](assets/screenshots/screenshot2.png) | ![Left Side Seat View](assets/screenshots/screenshot3.png) |
+
 ---
 
 ## 📺 Video Tutorial
