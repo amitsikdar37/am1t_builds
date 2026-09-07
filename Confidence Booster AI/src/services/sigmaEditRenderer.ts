@@ -2,9 +2,11 @@ import { FrameRecord } from '../types';
 
 export interface EditRenderOptions {
   canvas: HTMLCanvasElement;
-  frames: FrameRecord[];
+  frames?: FrameRecord[];
+  getSessionFrames?: () => FrameRecord[];
+  getCurrentEyeCenter?: () => { x: number; y: number } | undefined;
   actionType: 'drink' | 'glasses' | 'manual';
-  eyeCenter?: { x: number; y: number }; // normalized 0-1
+  eyeCenter?: { x: number; y: number }; // fallback normalized 0-1
   isMirrored?: boolean;
   onComplete: () => void;
   onDropImpact: () => void;
@@ -82,15 +84,19 @@ export class SigmaEditRenderer {
       this.loadMoggedPng();
     }
 
-    const { canvas, frames, eyeCenter, isMirrored = false, onComplete, onDropImpact } = options;
-    
-    // Filter only valid, open bitmaps
-    const validFrames = frames.filter(f => f && f.bitmap && f.bitmap.width > 0 && f.bitmap.height > 0);
-    if (validFrames.length === 0) {
-      console.warn('No valid video frames found for edit!');
-      onComplete();
-      return;
-    }
+    const { canvas, isMirrored = false, onComplete, onDropImpact } = options;
+
+    const getFrames = (): FrameRecord[] => {
+      if (options.getSessionFrames) {
+        const live = options.getSessionFrames();
+        if (live && live.length > 0) return live;
+      }
+      return options.frames || [];
+    };
+
+    // Number of frames captured during the initial gesture (the ~1.8s EDITING window)
+    const initialRawFrames = getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
+    const initialGestureCount = Math.max(1, initialRawFrames.length);
 
     const ctx = canvas.getContext('2d', { willReadFrequently: false });
     if (!ctx) return;
@@ -106,13 +112,9 @@ export class SigmaEditRenderer {
     let wastedFired = false;
     let dropFired = false;
 
-    const totalFrames = validFrames.length;
-    const peakIndex = Math.floor(totalFrames * 0.85);
-
-    const getValidFrame = (idx: number): FrameRecord => {
-      const clamped = Math.min(totalFrames - 1, Math.max(0, idx));
-      return validFrames[clamped];
-    };
+    // Snapshot variables for the 4.7s Present-Action snap
+    let frozenMoggedFrame: FrameRecord | null = null;
+    let frozenEyeCenter: { x: number; y: number } | undefined = undefined;
 
     const renderLoop = (now: number) => {
       if (!this.isRendering) return;
@@ -136,31 +138,58 @@ export class SigmaEditRenderer {
       ctx.save();
       ctx.clearRect(0, 0, w, h);
 
-      // 1. Calculate Frame Index
-      let currentFrameIdx = 0;
-      let delayFrameIdx1 = 0;
-      let delayFrameIdx2 = 0;
-
-      if (elapsed < wastedStartTime) {
-        // Build up: slow-mo ramp approaching peak action
-        const buildRatio = elapsed / wastedStartTime;
-        const rampIdx = Math.floor(buildRatio * peakIndex);
-        currentFrameIdx = Math.min(peakIndex, Math.max(0, rampIdx));
-      } else if (elapsed >= wastedStartTime && elapsed < wastedEndTime) {
-        // During 1-second Wasted / Mogged effect: freeze on peak frame
-        currentFrameIdx = peakIndex;
-      } else {
-        // Beat Drop: cycling delayed cuts
-        const postDropElapsed = elapsed - dropBeatTime;
-        const cycle = (postDropElapsed % 1200) / 1200;
-        currentFrameIdx = Math.floor(cycle * (totalFrames - 1));
-        delayFrameIdx1 = (currentFrameIdx - 12 + totalFrames) % totalFrames;
-        delayFrameIdx2 = (currentFrameIdx - 24 + totalFrames) % totalFrames;
+      // Dynamically fetch current valid frames from the live session
+      const currentFrames = getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
+      if (currentFrames.length === 0) {
+        this.animFrameId = requestAnimationFrame(renderLoop);
+        ctx.restore();
+        return;
       }
 
-      const fCenter = getValidFrame(currentFrameIdx);
-      const fLeft = getValidFrame(delayFrameIdx1);
-      const fRight = getValidFrame(delayFrameIdx2);
+      const totalFrames = currentFrames.length;
+      const getValidFrame = (idx: number): FrameRecord => {
+        const clamped = Math.min(totalFrames - 1, Math.max(0, idx));
+        return currentFrames[clamped];
+      };
+
+      // 1. Calculate Frame Selection across Edit Phases
+      let fCenter: FrameRecord;
+      let fLeft: FrameRecord;
+      let fRight: FrameRecord;
+
+      if (elapsed < wastedStartTime) {
+        // --- PHASE 1: SLOW-MOTION BUILD-UP (0.0s to 4.7s) ---
+        // Plays the initial trigger gesture (e.g. touching glasses / sip) in buttery slow motion!
+        // Stretches the initial gesture frames smoothly across the 4.7s audio build-up.
+        const buildRatio = elapsed / wastedStartTime;
+        const rampIdx = Math.floor(buildRatio * (initialGestureCount - 1));
+        const safeRampIdx = Math.min(initialGestureCount - 1, Math.max(0, rampIdx));
+        fCenter = getValidFrame(safeRampIdx);
+        fLeft = fCenter;
+        fRight = fCenter;
+
+      } else if (elapsed >= wastedStartTime && elapsed < wastedEndTime) {
+        // --- PHASE 2: GTA "WASTED" / MOGGED EFFECT (4.7s to 5.7s) ---
+        // Exactly at 4.7s, snaps from the slow-mo gesture directly to what the user is doing PRESENTLY!
+        if (!frozenMoggedFrame) {
+          // Snap to the latest present camera frame!
+          frozenMoggedFrame = currentFrames[currentFrames.length - 1];
+          frozenEyeCenter = options.getCurrentEyeCenter ? options.getCurrentEyeCenter() : options.eyeCenter;
+        }
+        fCenter = frozenMoggedFrame;
+        fLeft = frozenMoggedFrame;
+        fRight = frozenMoggedFrame;
+
+      } else {
+        // --- PHASE 3 & 4: 808 BEAT DROP (5.7s to 11.0s) ---
+        // Center panel shows present live action; Left and Right panels show delayed cuts!
+        const latestIdx = totalFrames - 1;
+        const delay1 = Math.max(0, latestIdx - 12);
+        const delay2 = Math.max(0, latestIdx - 24);
+        fCenter = getValidFrame(latestIdx);
+        fLeft = getValidFrame(delay1);
+        fRight = getValidFrame(delay2);
+      }
 
       // 2. Camera Shake & Beat Pulses
       let shakeX = 0;
@@ -281,9 +310,10 @@ export class SigmaEditRenderer {
       if (isWastedPhase) {
         ctx.save();
 
-        // Calculate center position directly over the user's eyes
-        const targetX = eyeCenter ? eyeCenter.x * w : w / 2;
-        const targetY = eyeCenter ? eyeCenter.y * h : h * 0.38;
+        // Calculate center position directly over the user's eyes from present snap
+        const effectiveEye = frozenEyeCenter || (options.getCurrentEyeCenter ? options.getCurrentEyeCenter() : options.eyeCenter);
+        const targetX = effectiveEye ? effectiveEye.x * w : w / 2;
+        const targetY = effectiveEye ? effectiveEye.y * h : h * 0.38;
 
         // Box size: compact, covering ONLY the eyes (matching reference Image 3)
         // Image aspect ratio: 420x100 = 4.2

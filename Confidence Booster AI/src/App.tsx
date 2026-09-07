@@ -91,33 +91,35 @@ export const App: React.FC = () => {
   }, []);
 
   // Step 1: Action Trigger (Drink sip, glasses adjust, or SPACEBAR)
-  // Completely self-contained: Shows EDITING... for 2.0s, then EXPANDS and PLAYS edit!
+  // Present-Clips Editing: Starts recording user's present action from this moment onwards!
+  // Shows EDITING... for 1.8s while user performs the action, then EXPANDS and PLAYS live edit!
   const triggerAction = useCallback((actionType: 'drink' | 'glasses' | 'manual') => {
     if (pipStateRef.current !== 'STANDBY') return;
 
-    // Wait until we have captured a few frames
+    // Wait until camera buffer is ready
     if (frameBuffer.getFrameCount() < 5) {
       console.warn('Frame buffer is still warming up, please wait a moment...');
       return;
     }
 
-    // Clean up any old replay frames before starting new clip
+    // Clean up any old replay session
+    frameBuffer.stopLiveSession();
     if (activeReplayFramesRef.current) {
       frameBuffer.releaseClip(activeReplayFramesRef.current);
       activeReplayFramesRef.current = null;
     }
 
-    // Immediately lock state into EDITING
+    // Immediately start live progressive session starting from this trigger moment!
+    // Grabs a 350ms pre-roll so the start of the glasses touch/sip is smoothly captured
+    frameBuffer.startLiveSession(350);
+
+    // Lock PIP state into EDITING (shows tactical spinning radar reticle for 1.8s)
     pipStateRef.current = 'EDITING';
     setPipState('EDITING');
 
-    // Slice replay frames right at the trigger moment (they are protected from disposal!)
-    const frames = frameBuffer.getReplayClip(4500);
-    activeReplayFramesRef.current = frames;
+    console.log(`[ConfidenceBooster] Triggered! Live present-action session recording started.`);
 
-    console.log(`[ConfidenceBooster] Triggered! Captured ${frames.length} frames for mog edit.`);
-
-    // Guaranteed 2.0s transition to PLAYING (no external re-render can cancel this!)
+    // 1.8s transition to PLAYING (user performs their trigger action during this window)
     window.setTimeout(() => {
       pipStateRef.current = 'PLAYING';
       setPipState('PLAYING');
@@ -125,12 +127,10 @@ export const App: React.FC = () => {
       // Brief tick to ensure DOM canvas is ready and sized
       window.setTimeout(() => {
         const editCanvas = editCanvasRef.current;
-        if (!editCanvas || frames.length === 0) {
+        const currentSessionFrames = frameBuffer.getSessionFrames();
+        if (!editCanvas || currentSessionFrames.length === 0) {
           console.warn('Canvas or frames not available, returning to standby');
-          if (activeReplayFramesRef.current) {
-            frameBuffer.releaseClip(activeReplayFramesRef.current);
-            activeReplayFramesRef.current = null;
-          }
+          frameBuffer.stopLiveSession();
           pipStateRef.current = 'STANDBY';
           setPipState('STANDBY');
           return;
@@ -158,7 +158,16 @@ export const App: React.FC = () => {
 
         sigmaEditRenderer.startEdit({
           canvas: editCanvas,
-          frames,
+          getSessionFrames: () => frameBuffer.getSessionFrames(),
+          getCurrentEyeCenter: () => {
+            const f = stateRef.current.faceData;
+            const m = stateRef.current.isMirrored;
+            if (!f.detected) return undefined;
+            return {
+              x: m ? 1 - f.noseBridge.x : f.noseBridge.x,
+              y: (f.leftEye.y + f.rightEye.y) / 2
+            };
+          },
           actionType,
           isMirrored: currentMirrored,
           eyeCenter: currentFace.detected
@@ -182,6 +191,7 @@ export const App: React.FC = () => {
             setPipState('STANDBY');
 
             // Free GPU memory safely
+            frameBuffer.stopLiveSession();
             if (activeReplayFramesRef.current) {
               frameBuffer.releaseClip(activeReplayFramesRef.current);
               activeReplayFramesRef.current = null;
@@ -189,7 +199,7 @@ export const App: React.FC = () => {
           }
         });
       }, 50);
-    }, 2000); // 2.0s of EDITING... state
+    }, 1800); // 1.8s of EDITING... state while user performs present action
   }, []);
 
   // Main Camera & AI Loop (Runs continuously, completely uninterrupted by PIP playback!)
@@ -328,6 +338,7 @@ export const App: React.FC = () => {
     visionDetector.resetCooldown();
     pipStateRef.current = 'STANDBY';
     setPipState('STANDBY');
+    frameBuffer.stopLiveSession();
     if (activeReplayFramesRef.current) {
       frameBuffer.releaseClip(activeReplayFramesRef.current);
       activeReplayFramesRef.current = null;
