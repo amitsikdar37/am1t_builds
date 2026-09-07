@@ -108,6 +108,7 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
           </button>
         </div>
 
+
         <div className="hidden sm:block h-5 w-[1px] bg-cyber-green/30" />
 
         {/* Camera Switch & Mirror Controls */}

@@ -31,18 +31,20 @@ export const PipPlayer: React.FC<PipPlayerProps> = ({
     >
       {/* Top Header Label */}
       <div className="flex items-center justify-between px-2.5 py-1 bg-black/80 border-b border-cyber-green/30 text-[10px] text-cyber-green z-30 flex-shrink-0 select-none">
-        <span className="font-bold flex items-center gap-1.5">
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${
-              isPlaying
-                ? 'bg-cyber-pink animate-ping'
-                : isEditing
-                ? 'bg-amber-400 animate-pulse'
-                : 'bg-cyber-green'
-            }`}
-          />
-          {isPlaying ? 'EDIT PLAYBACK' : isEditing ? 'EDITING...' : 'MONITOR STANDBY'}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-bold flex items-center gap-1.5">
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                isPlaying
+                  ? 'bg-cyber-pink animate-ping'
+                  : isEditing
+                  ? 'bg-amber-400 animate-pulse'
+                  : 'bg-cyber-green'
+              }`}
+            />
+            {isPlaying ? 'EDIT PLAYBACK' : isEditing ? 'EDITING...' : 'MONITOR'}
+          </span>
+        </div>
 
         {isPlaying && (
           <div className="flex items-center gap-1 pointer-events-auto">
