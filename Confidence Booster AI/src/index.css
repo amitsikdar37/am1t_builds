@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  font-family: 'Share Tech Mono', monospace;
+  background-color: #05070a;
+  color: #00ff66;
+  overflow: hidden;
+}
+
+/* Cyberpunk Glows and Text Shadows */
+.text-glow-green {
+  text-shadow: 0 0 8px rgba(0, 255, 102, 0.7), 0 0 16px rgba(0, 255, 102, 0.4);
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.7), 0 0 16px rgba(0, 240, 255, 0.4);
+}
+
+.text-glow-pink {
+  text-shadow: 0 0 8px rgba(255, 0, 85, 0.8), 0 0 20px rgba(255, 0, 85, 0.5);
+}
+
+.box-glow-green {
+  box-shadow: 0 0 15px rgba(0, 255, 102, 0.3), inset 0 0 15px rgba(0, 255, 102, 0.15);
+}
+
+.box-glow-pink {
+  box-shadow: 0 0 25px rgba(255, 0, 85, 0.5), inset 0 0 20px rgba(255, 0, 85, 0.25);
+}
+
+/* Tactical Grid Background */
+.tactical-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(0, 255, 102, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 255, 102, 0.05) 1px, transparent 1px);
+}
+
+/* Surveillance CRT Scanline Overlay */
+.crt-scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.03)
+  );
+  background-size: 100% 4px, 6px 100%;
+  pointer-events: none;
+}
+
+/* CRT Vignette */
+.crt-vignette {
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.8), inset 0 0 50px rgba(0, 255, 102, 0.1);
+  pointer-events: none;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0e14;
+}
+::-webkit-scrollbar-thumb {
+  background: #00ff66;
+  border-radius: 3px;
+}
+
+@keyframes progressBar {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
