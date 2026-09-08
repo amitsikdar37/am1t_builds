@@ -46,7 +46,17 @@ export interface FrameRecord {
   timestamp: number;
 }
 
-export type PhonkTrackId = 'marlon_mogged' | 'tokyo_drift' | 'cyber_sigma' | 'gigachad_anthem';
+export type PhonkTrackId = 'marlon_mogged' | 'montagem_tomada' | 'tokyo_drift' | 'cyber_sigma' | 'gigachad_anthem';
+
+export type EditPresetId = 'sigma_hard_snaps' | 'ghost_trail_impact' | 'parallax_dual_speed';
+
+export interface EditPresetInfo {
+  id: EditPresetId;
+  name: string;
+  trackId: PhonkTrackId;
+  description: string;
+  durationMs: number;
+}
 
 export interface PhonkTrackInfo {
   id: PhonkTrackId;
@@ -60,4 +70,5 @@ export interface AudioSettings {
   muted: boolean;
   volume: number; // 0 to 1
   selectedTrack: PhonkTrackId;
+  selectedPreset: EditPresetId;
 }

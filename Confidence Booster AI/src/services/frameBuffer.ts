@@ -16,10 +16,10 @@ export class RollingFrameBuffer {
 
   /**
    * Starts a live present-clip editing session.
-   * Grabs a small pre-roll (300ms) so the start of the gesture is smooth,
-   * and continuously accumulates newly captured camera frames.
+   * Grabs a 2400ms pre-roll so the full physical action (drinking water / glasses adjust)
+   * is captured completely and replayed during the tension setup!
    */
-  public startLiveSession(preRollMs = 350): void {
+  public startLiveSession(preRollMs = 2400): void {
     this.stopLiveSession();
     this.isSessionActive = true;
     const now = performance.now();

@@ -10,9 +10,10 @@ import {
   Maximize, 
   Music,
   Eye,
-  Coffee
+  Coffee,
+  Layers
 } from 'lucide-react';
-import { TriggerMode } from '../types';
+import { TriggerMode, EditPresetId } from '../types';
 
 interface ControlsBarProps {
   onSwitchCamera: () => void;
@@ -23,6 +24,8 @@ interface ControlsBarProps {
   onOpenSoundboard: () => void;
   triggerMode: TriggerMode;
   onChangeTriggerMode: (mode: TriggerMode) => void;
+  selectedPreset: EditPresetId;
+  onChangePreset: (preset: EditPresetId) => void;
   onForceTrigger: () => void;
   onDownloadClip: () => void;
   hasDownloadableClip: boolean;
@@ -40,6 +43,8 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
   onOpenSoundboard,
   triggerMode,
   onChangeTriggerMode,
+  selectedPreset,
+  onChangePreset,
   onForceTrigger,
   onDownloadClip,
   hasDownloadableClip,
@@ -56,18 +61,53 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
   };
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 max-w-4xl w-[94%] md:w-auto">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 max-w-5xl w-[96%] md:w-auto">
       <div className="bg-[#0b0f17]/90 border border-cyber-green/40 backdrop-blur-lg px-3 py-2 md:px-5 md:py-2.5 rounded-full shadow-2xl shadow-black/80 flex flex-wrap items-center justify-center gap-2 md:gap-3 text-white">
         
-        {/* Force Sigma Drop Manual Override */}
+        {/* Style Preset Selector */}
+        <div className="flex items-center bg-gray-900/90 p-0.5 rounded-full border border-gray-700 text-[11px] font-mono">
+          <button
+            onClick={() => onChangePreset('ghost_trail_impact')}
+            disabled={isEditing}
+            className={`px-3 py-1 rounded-full transition-all flex items-center gap-1.5 ${
+              selectedPreset === 'ghost_trail_impact' || selectedPreset === 'parallax_dual_speed'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold shadow-md shadow-cyan-500/40'
+                : 'text-gray-400 hover:text-white'
+            }`}
+            title="Phonk Ghost-Trail & Beat Impact (Montagem Tomada)"
+          >
+            <Layers className="w-3.5 h-3.5 text-cyan-300" />
+            <span className="tracking-wide">👻 GHOST TRAILS</span>
+          </button>
+          <button
+            onClick={() => onChangePreset('sigma_hard_snaps')}
+            disabled={isEditing}
+            className={`px-3 py-1 rounded-full transition-all flex items-center gap-1.5 ${
+              selectedPreset === 'sigma_hard_snaps'
+                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold shadow-md shadow-pink-500/40'
+                : 'text-gray-400 hover:text-white'
+            }`}
+            title="Sigma Hard Snaps & Wasted Mog (Marlon Mogged)"
+          >
+            <span>🗿 SIGMA SNAPS</span>
+          </button>
+        </div>
+
+        <div className="hidden sm:block h-5 w-[1px] bg-cyber-green/30" />
+
+        {/* Force Drop Manual Override */}
         <button
           onClick={onForceTrigger}
           disabled={isEditing}
-          className="flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-cyber-pink hover:from-red-500 hover:to-pink-500 text-white font-cyber font-bold text-xs md:text-sm px-3.5 py-1.5 rounded-full shadow-lg shadow-cyber-pink/40 hover:scale-105 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
+          className={`flex items-center gap-1.5 font-cyber font-bold text-xs md:text-sm px-3.5 py-1.5 rounded-full shadow-lg transition-all disabled:opacity-40 disabled:pointer-events-none ${
+            selectedPreset === 'ghost_trail_impact' || selectedPreset === 'parallax_dual_speed'
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-cyan-500/30'
+              : 'bg-gradient-to-r from-red-600 to-cyber-pink hover:from-red-500 hover:to-pink-500 text-white shadow-cyber-pink/40'
+          } hover:scale-105 active:scale-95`}
           title="Trigger edit immediately (Shortcut: SPACEBAR)"
         >
           <Zap className="w-4 h-4 fill-current text-yellow-300 animate-pulse" />
-          <span>FORCE SIGMA DROP</span>
+          <span>{selectedPreset === 'ghost_trail_impact' || selectedPreset === 'parallax_dual_speed' ? 'FORCE GHOST DROP' : 'FORCE SIGMA DROP'}</span>
           <span className="hidden lg:inline text-[10px] bg-black/40 px-1.5 py-0.5 rounded font-mono font-normal">
             SPACE
           </span>

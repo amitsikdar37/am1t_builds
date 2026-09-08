@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Camera, AlertCircle, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-import { TriggerMode, FaceData, PhonkTrackId, FrameRecord } from './types';
+import { TriggerMode, FaceData, PhonkTrackId, FrameRecord, EditPresetId } from './types';
 import { cameraManager } from './services/cameraManager';
 import { frameBuffer } from './services/frameBuffer';
 import { visionDetector } from './services/visionDetector';
@@ -25,12 +25,13 @@ export const App: React.FC = () => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isMirrored, setIsMirrored] = useState(true);
   const [triggerMode, setTriggerMode] = useState<TriggerMode>('both');
+  const [selectedPreset, setSelectedPreset] = useState<EditPresetId>('ghost_trail_impact');
   const [sensitivity, setSensitivity] = useState(1.0);
   const [fps, setFps] = useState(30);
 
   // Audio State
   const [soundMuted, setSoundMuted] = useState(false);
-  const [selectedTrack, setSelectedTrack] = useState<PhonkTrackId>('marlon_mogged');
+  const [selectedTrack, setSelectedTrack] = useState<PhonkTrackId>('montagem_tomada');
   const [isSoundboardOpen, setIsSoundboardOpen] = useState(false);
   const [hasDownloadableClip, setHasDownloadableClip] = useState(false);
 
@@ -65,14 +66,16 @@ export const App: React.FC = () => {
   const stateRef = useRef({
     faceData,
     isMirrored,
-    selectedTrack
+    selectedTrack,
+    selectedPreset
   });
   useEffect(() => {
-    stateRef.current = { faceData, isMirrored, selectedTrack };
+    stateRef.current = { faceData, isMirrored, selectedTrack, selectedPreset };
   });
 
-  // Preload viral audio on mount
+  // Preload audio files on mount
   useEffect(() => {
+    phonkAudio.preloadTomadaAudio();
     phonkAudio.preloadMoggedAudio();
   }, []);
 
@@ -102,24 +105,21 @@ export const App: React.FC = () => {
       return;
     }
 
-    // Clean up any old replay session
+    // Grab the past 2400ms where the user just performed the physical action (taking a drink / glasses touch)
+    const actionClip = frameBuffer.getReplayClip(2400);
+    activeReplayFramesRef.current = actionClip;
+
+    // Start live progressive session with full 2400ms pre-roll so action frames are preserved
     frameBuffer.stopLiveSession();
-    if (activeReplayFramesRef.current) {
-      frameBuffer.releaseClip(activeReplayFramesRef.current);
-      activeReplayFramesRef.current = null;
-    }
+    frameBuffer.startLiveSession(2400);
 
-    // Immediately start live progressive session starting from this trigger moment!
-    // Grabs a 350ms pre-roll so the start of the glasses touch/sip is smoothly captured
-    frameBuffer.startLiveSession(350);
-
-    // Lock PIP state into EDITING (shows tactical spinning radar reticle for 1.8s)
+    // Lock PIP state into EDITING for a quick 200ms target lock (eliminates the 1.8s dead wait!)
     pipStateRef.current = 'EDITING';
     setPipState('EDITING');
 
-    console.log(`[ConfidenceBooster] Triggered! Live present-action session recording started.`);
+    console.log(`[ConfidenceBooster] Action triggered (${actionType.toUpperCase()})! Captured ${actionClip.length} action frames.`);
 
-    // 1.8s transition to PLAYING (user performs their trigger action during this window)
+    // Fast 200ms punchy transition to PLAYING
     window.setTimeout(() => {
       pipStateRef.current = 'PLAYING';
       setPipState('PLAYING');
@@ -142,22 +142,50 @@ export const App: React.FC = () => {
         // Start video recording for 1-click download
         clipRecorder.startRecording(editCanvas, phonkAudio.getAudioStream());
 
-        // Start viral audio playback and obtain sample-accurate audio clock timestamp
-        phonkAudio.playEditSequence(stateRef.current.selectedTrack, () => {
-          confetti({
-            particleCount: 50,
-            spread: 90,
-            origin: { x: 0.8, y: 0.5 },
-            colors: ['#00ff66', '#ff0055', '#00f0ff', '#ffe600']
-          });
-        }).then(audioStartTime => {
-          // Start the visual edit renderer locked to the exact audio clock!
+        let completed = false;
+        const handlePlaybackComplete = () => {
+          if (completed) return;
+          completed = true;
+
+          // Playback finished -> Reset PIP box back to standby!
+          clipRecorder.stopRecording();
+          setHasDownloadableClip(true);
+          phonkAudio.stop();
+          visionDetector.resetCooldown();
+          pipStateRef.current = 'STANDBY';
+          setPipState('STANDBY');
+
+          // Free GPU memory safely
+          frameBuffer.stopLiveSession();
+          if (activeReplayFramesRef.current) {
+            frameBuffer.releaseClip(activeReplayFramesRef.current);
+            activeReplayFramesRef.current = null;
+          }
+        };
+
+        // Start viral audio playback and obtain sample-accurate audio clock timestamp and duration
+        phonkAudio.playEditSequence(
+          stateRef.current.selectedTrack,
+          () => {
+            confetti({
+              particleCount: 50,
+              spread: 90,
+              origin: { x: 0.8, y: 0.5 },
+              colors: ['#00ff66', '#ff0055', '#00f0ff', '#ffe600']
+            });
+          },
+          handlePlaybackComplete
+        ).then(({ startTime: audioStartTime, durationMs }) => {
+          // Start the visual edit renderer locked to the exact audio clock and full track duration!
           const currentFace = stateRef.current.faceData;
           const currentMirrored = stateRef.current.isMirrored;
 
           sigmaEditRenderer.startEdit({
             canvas: editCanvas,
+            preset: stateRef.current.selectedPreset,
             startTime: audioStartTime,
+            durationMs,
+            actionFrames: actionClip,
             getSessionFrames: () => frameBuffer.getSessionFrames(),
             getCurrentEyeCenter: () => {
               const f = stateRef.current.faceData;
@@ -181,26 +209,11 @@ export const App: React.FC = () => {
                 navigator.vibrate([100, 50, 150]);
               }
             },
-            onComplete: () => {
-              // Playback finished -> Reset PIP box back to standby!
-              clipRecorder.stopRecording();
-              setHasDownloadableClip(true);
-              phonkAudio.stop();
-              visionDetector.resetCooldown();
-              pipStateRef.current = 'STANDBY';
-              setPipState('STANDBY');
-
-              // Free GPU memory safely
-              frameBuffer.stopLiveSession();
-              if (activeReplayFramesRef.current) {
-                frameBuffer.releaseClip(activeReplayFramesRef.current);
-                activeReplayFramesRef.current = null;
-              }
-            }
+            onComplete: handlePlaybackComplete
           });
         });
       }, 50);
-    }, 1800); // 1.8s of EDITING... state while user performs present action
+    }, 200); // 200ms quick target lock transition
   }, []);
 
   // Main Camera & AI Loop (Runs continuously, completely uninterrupted by PIP playback!)
@@ -346,9 +359,24 @@ export const App: React.FC = () => {
     }
   };
 
+  // Preset selector
+  const handleSelectPreset = useCallback((preset: EditPresetId) => {
+    setSelectedPreset(preset);
+    if (preset === 'ghost_trail_impact' || preset === 'parallax_dual_speed') {
+      setSelectedTrack('montagem_tomada');
+      phonkAudio.preloadTomadaAudio();
+    } else {
+      setSelectedTrack('marlon_mogged');
+      phonkAudio.preloadMoggedAudio();
+    }
+  }, []);
+
   // Download Clip
   const handleDownloadClip = () => {
-    clipRecorder.downloadLastClip(`sigma_mog_edit_${Date.now()}.webm`);
+    const filename = (selectedPreset === 'ghost_trail_impact' || selectedPreset === 'parallax_dual_speed')
+      ? `ghost_trail_edit_${Date.now()}.webm`
+      : `sigma_mog_edit_${Date.now()}.webm`;
+    clipRecorder.downloadLastClip(filename);
   };
 
   return (
@@ -446,6 +474,8 @@ export const App: React.FC = () => {
           onOpenSoundboard={() => setIsSoundboardOpen(true)}
           triggerMode={triggerMode}
           onChangeTriggerMode={setTriggerMode}
+          selectedPreset={selectedPreset}
+          onChangePreset={handleSelectPreset}
           onForceTrigger={() => triggerAction('manual')}
           onDownloadClip={handleDownloadClip}
           hasDownloadableClip={hasDownloadableClip}

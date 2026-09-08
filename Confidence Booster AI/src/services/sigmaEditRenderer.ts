@@ -1,14 +1,17 @@
-import { FrameRecord } from '../types';
+import { FrameRecord, EditPresetId } from '../types';
 
 export interface EditRenderOptions {
   canvas: HTMLCanvasElement;
   frames?: FrameRecord[];
+  actionFrames?: FrameRecord[]; // captured physical action (drinking / glasses adjust)
   getSessionFrames?: () => FrameRecord[];
   getCurrentEyeCenter?: () => { x: number; y: number } | undefined;
   actionType: 'drink' | 'glasses' | 'manual';
   eyeCenter?: { x: number; y: number }; // fallback normalized 0-1
   isMirrored?: boolean;
   startTime?: number; // exact synchronized audio start timestamp
+  durationMs?: number; // exact track duration matching audio completion!
+  preset?: EditPresetId;
   onComplete: () => void;
   onDropImpact: () => void;
 }
@@ -80,6 +83,11 @@ export class SigmaEditRenderer {
     this.stop();
     this.isRendering = true;
 
+    if (options.preset === 'ghost_trail_impact' || options.preset === 'parallax_dual_speed') {
+      this.startGhostTrailImpact(options);
+      return;
+    }
+
     // Ensure MoggedPng is loaded
     if (!this.moggedImageLoaded) {
       this.loadMoggedPng();
@@ -103,7 +111,7 @@ export class SigmaEditRenderer {
     if (!ctx) return;
 
     const startTime = options.startTime ?? performance.now();
-    const totalDuration = 11000; // 11s duration matching audio
+    const totalDuration = options.durationMs ?? 11150; // exact duration matching audio track completion
     const wastedStartTime = 4750; // 4.75s mark: GTA "Wasted" / Mogged effect starts (exact audio peak)
     const popupStartTime = 5250;  // 5.25s: user image pops up from below (overlapping MOGGED text)
     const zoomStartTime = 6100;   // 6.1s: explosive full-screen zoom takeover begins
@@ -413,10 +421,25 @@ export class SigmaEditRenderer {
       focusY = effectiveEye ? effectiveEye.y * h : h * 0.38;
     }
 
+    // 1-frame violent jagged shake: ±15px random displacement dropping straight back over 60ms
+    let shakeX = 0;
+    let shakeY = 0;
+    if (timeSinceKick < 60) {
+      if (timeSinceKick < 30) {
+        const signX = (kickIdx % 2 === 0) ? 1 : -1;
+        const signY = (kickIdx % 3 === 0) ? 1 : -1;
+        shakeX = signX * (14 + ((kickIdx * 5) % 5));
+        shakeY = signY * (14 + ((kickIdx * 7) % 5));
+      } else {
+        shakeX = (kickIdx % 2 === 0 ? 1 : -1) * 3;
+        shakeY = (kickIdx % 3 === 0 ? 1 : -1) * 3;
+      }
+    }
+
     ctx.save();
 
-    // Instant scale transform (Hard Cut Jump)
-    ctx.translate(focusX, focusY);
+    // Instant scale transform + violent jagged shake (Hard Cut Jump)
+    ctx.translate(focusX + shakeX, focusY + shakeY);
     ctx.scale(jumpScale, jumpScale);
     ctx.translate(-focusX, -focusY);
 
@@ -555,6 +578,364 @@ export class SigmaEditRenderer {
 
     ctx.restore(); // restore shadow & clip
     ctx.restore(); // restore main save
+  }
+
+  /**
+   * Heavy radial vignette for border shading
+   */
+  private drawHeavyVignette(ctx: CanvasRenderingContext2D, w: number, h: number, alphaMultiplier = 1.0) {
+    if (alphaMultiplier <= 0) return;
+    ctx.save();
+    const cx = w / 2;
+    const cy = h / 2;
+    const r = Math.max(w, h) * 0.72;
+    const grad = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    grad.addColorStop(0.65, `rgba(0, 0, 0, ${0.45 * alphaMultiplier})`);
+    grad.addColorStop(1, `rgba(0, 0, 0, ${0.85 * alphaMultiplier})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
+
+  /**
+   * PHONK GHOST-TRAIL & BEAT IMPACT ENGINE
+   * Pure canvas math, frame buffers, holographic motion trails, RGB split, and hard beat snaps.
+   * Zero machine learning models. Locked 60 FPS.
+   * Total Duration: 4.5 Seconds (4500ms)
+   */
+  private startGhostTrailImpact(options: EditRenderOptions) {
+    const { canvas, isMirrored = false, onComplete, onDropImpact } = options;
+
+    const getFrames = (): FrameRecord[] => {
+      if (options.getSessionFrames) {
+        const live = options.getSessionFrames();
+        if (live && live.length > 0) return live;
+      }
+      return options.frames || [];
+    };
+
+    const initialRawFrames = getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
+
+    const ctx = canvas.getContext('2d', { willReadFrequently: false });
+    if (!ctx) return;
+
+    const startTime = options.startTime ?? performance.now();
+    const totalDuration = options.durationMs ?? 15940; // Full duration matching complete Montagem Tomada audio
+    const dropBeatTime = 3570;  // 3.57s: Exact 808 drop impact in Montagem Tomada
+
+    // Complete measured 808 sub-bass kick timestamps across the full 15.94s track
+    const beatKicks = [
+      3570, 3790, 4050, 4260, 4470, 4720, 4940, 5220, 5470, 5720,
+      6010, 6230, 6450, 6730, 7080, 7320, 7550, 7960, 8260, 8510,
+      8720, 8950, 9160, 9400, 9620, 9900, 10120, 10360, 10580, 10800,
+      11020, 11230, 11530, 11750, 12010, 12350, 12620, 12830, 13070, 13340,
+      13550, 13790, 14010, 14220, 14460, 14700, 14920
+    ];
+
+    // Captured physical action frames (taking a sip / adjusting glasses)
+    const actionFrames = (options.actionFrames && options.actionFrames.length > 5)
+      ? options.actionFrames
+      : initialRawFrames;
+    const actionCount = Math.max(1, actionFrames.length);
+
+    let dropFired = false;
+    let frozenFrameRecord: FrameRecord | null = null;
+
+    const renderLoop = (now: number) => {
+      if (!this.isRendering) return;
+
+      const elapsed = now - startTime;
+
+      if (elapsed >= dropBeatTime && !dropFired) {
+        dropFired = true;
+        onDropImpact();
+      }
+
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.save();
+      ctx.clearRect(0, 0, w, h);
+
+      const frames = getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
+      const poolCount = Math.max(1, frames.length);
+
+      // ----------------------------------------------------
+      // PHASE 1: THE ACTION SETUP & TENSION (0.0s - 3.25s)
+      // Replays the physical action (taking a drink / touching glasses)
+      // ----------------------------------------------------
+      if (elapsed < 3250) {
+        // Continuous slow zoom toward the eyes/action (scale: 1.0 -> 1.15)
+        const tZoom = elapsed / 3250;
+        const scale = 1.0 + tZoom * 0.15;
+
+        // Smoothly replay the captured physical action up to the climax
+        const actionRatio = Math.min(1, Math.max(0, elapsed / 3250));
+        const frameIdx = Math.floor(actionRatio * (actionCount - 1));
+        const frame = actionFrames[frameIdx] || actionFrames[0];
+
+        ctx.save();
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(scale, scale);
+        ctx.translate(-w / 2, -h / 2);
+
+        // Desaturate slightly, boost contrast, cold grading
+        ctx.filter = 'saturate(70%) contrast(120%) brightness(96%)';
+        this.drawCover(ctx, frame?.bitmap, 0, 0, w, h, isMirrored);
+        this.drawHeavyVignette(ctx, w, h, 0.45);
+
+        // Action meme badge in bottom corner
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+        ctx.fillRect(16, h - 38, 200, 24);
+        ctx.strokeStyle = '#00ff66';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(16, h - 38, 200, 24);
+        ctx.fillStyle = '#00ff66';
+        ctx.font = 'bold 10px monospace';
+        const actionLabel = options.actionType === 'drink'
+          ? '⚡ ACTION: HYDRATION SIP'
+          : options.actionType === 'glasses'
+          ? '⚡ ACTION: GLASSES ADJUST'
+          : '⚡ ACTION: DETECTED';
+        ctx.fillText(actionLabel, 24, h - 22);
+        ctx.restore();
+
+        ctx.restore();
+      }
+
+      // ----------------------------------------------------
+      // PHASE 2: THE PRE-DROP "HALT" (3.25s - 3.57s)
+      // Freezes right on the peak of the action (cup on mouth / glasses on nose)
+      // ----------------------------------------------------
+      else if (elapsed >= 3250 && elapsed < 3570) {
+        // Freeze Frame: Hold the video playhead completely static on the peak action frame for 0.32s
+        if (!frozenFrameRecord) {
+          frozenFrameRecord = actionFrames[actionCount - 1] || actionFrames[0];
+        }
+
+        // Zoom Pop: Instant hard step to scale(1.25)
+        const scale = 1.25;
+
+        ctx.save();
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(scale, scale);
+        ctx.translate(-w / 2, -h / 2);
+
+        // Invert Strobe:
+        // 3250ms - 3350ms: Full negative flash (invert(100%))
+        // 3350ms - 3450ms: Back to normal
+        // 3450ms - 3570ms: Black & white high contrast (grayscale(100%) contrast(250%))
+        if (elapsed < 3350) {
+          ctx.filter = 'invert(100%) contrast(130%)';
+        } else if (elapsed < 3450) {
+          ctx.filter = 'contrast(120%) saturate(80%)';
+        } else {
+          ctx.filter = 'grayscale(100%) contrast(250%) brightness(110%)';
+        }
+
+        this.drawCover(ctx, frozenFrameRecord?.bitmap, 0, 0, w, h, isMirrored);
+        this.drawHeavyVignette(ctx, w, h, 0.6);
+        ctx.restore();
+      }
+
+      // ----------------------------------------------------
+      // PHASE 3: THE DROP & EVOLVING VISUALS (3.57s - 14.5s)
+      // Completely eliminates the 10-second repetition trap with 4 evolving sections!
+      // ----------------------------------------------------
+      else if (elapsed >= 3570 && elapsed < 14500) {
+        // Find most recent kick
+        let dtKick = 999;
+        let lastKickIdx = 0;
+        for (let i = 0; i < beatKicks.length; i++) {
+          const k = beatKicks[i];
+          if (elapsed >= k && (elapsed - k) < dtKick) {
+            dtKick = elapsed - k;
+            lastKickIdx = i;
+          }
+        }
+
+        // POINT 3: VIOLENT 1-FRAME JAGGED SHAKE (NO SPONGY EASING!)
+        // Instant 1-frame offset (±15px random translation) that drops straight back to base over 60ms
+        let shakeX = 0;
+        let shakeY = 0;
+
+        if (dtKick < 60) {
+          if (dtKick < 30) {
+            // Instant 1-frame violent offset: ±15px random displacement (user spec)
+            const signX = (lastKickIdx % 2 === 0) ? 1 : -1;
+            const signY = (lastKickIdx % 3 === 0) ? 1 : -1;
+            shakeX = signX * (14 + ((lastKickIdx * 7) % 6)); // 14px to 19px
+            shakeY = signY * (14 + ((lastKickIdx * 11) % 6));
+          } else {
+            // Drop sharply back towards base over 60ms
+            shakeX = (lastKickIdx % 2 === 0 ? 1 : -1) * 3;
+            shakeY = (lastKickIdx % 3 === 0 ? 1 : -1) * 3;
+          }
+        }
+
+        // EVOLVING STAGES: Breaks the visual monotony across the 11-second drop
+        const isJumpCutSection = elapsed >= 6500 && elapsed < 9500;
+        const isSpeedRampSection = elapsed >= 9500 && elapsed < 12500;
+        const isQuadEchoSection = elapsed >= 12500;
+
+        // Hard Scale Jump
+        let snapScale = 1.10;
+        if (isJumpCutSection) {
+          // Alternating wide (1.12x) vs extreme face close-up (1.72x) jump cuts
+          snapScale = (lastKickIdx % 2 === 1) ? 1.72 : 1.12;
+        } else if (dtKick < 60) {
+          snapScale = 1.28;
+        }
+
+        // Hard RGB Split
+        const isRgbSplit = dtKick < 60;
+
+        // Playhead motion progression
+        let speedMultiplier = isSpeedRampSection ? 1.8 : 1.0;
+        const actionProg = actionCount + Math.floor(((elapsed - 3570) / 1000) * 30 * speedMultiplier);
+        let currentIdx = actionProg;
+
+        // Glitch stutter twitch during speed ramp section
+        if (isSpeedRampSection && dtKick < 90) {
+          const twitch = (Math.floor(dtKick / 30) % 2 === 0) ? -2 : 0;
+          currentIdx += twitch;
+        }
+
+        const currentFrame = frames[currentIdx % poolCount] || frames[frames.length - 1] || initialRawFrames[0];
+
+        // Apply violent 1-frame shake + instant snap scale
+        ctx.save();
+        ctx.translate(w / 2 + shakeX, h / 2 + shakeY);
+        ctx.scale(snapScale, snapScale);
+        ctx.translate(-w / 2, -h / 2);
+
+        // --- GHOST ECHO TRAILS ---
+        // Trail 1: -12 frames (or -16 in quad echo)
+        const frame12Idx = Math.max(0, currentIdx - (isQuadEchoSection ? 16 : 12));
+        const frame12 = frames[frame12Idx % poolCount];
+        if (frame12 && frame12.bitmap) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          ctx.globalAlpha = 0.15;
+          ctx.translate(w / 2, h / 2);
+          ctx.scale(1.10, 1.10);
+          ctx.translate(-w / 2, -h / 2);
+          ctx.filter = 'contrast(130%) brightness(120%) hue-rotate(190deg)'; // cyan holographic trail
+          this.drawCover(ctx, frame12.bitmap, 0, 0, w, h, isMirrored);
+          ctx.restore();
+        }
+
+        // Trail 2: -6 frames (or -8 in quad echo)
+        const frame6Idx = Math.max(0, currentIdx - (isQuadEchoSection ? 8 : 6));
+        const frame6 = frames[frame6Idx % poolCount];
+        if (frame6 && frame6.bitmap) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          ctx.globalAlpha = 0.35;
+          ctx.translate(w / 2, h / 2);
+          ctx.scale(1.05, 1.05);
+          ctx.translate(-w / 2, -h / 2);
+          ctx.filter = 'contrast(130%) brightness(115%) hue-rotate(160deg)';
+          this.drawCover(ctx, frame6.bitmap, 0, 0, w, h, isMirrored);
+          ctx.restore();
+        }
+
+        // Optional Trail 3 in quad echo section (-4 frames)
+        if (isQuadEchoSection) {
+          const frame4Idx = Math.max(0, currentIdx - 4);
+          const frame4 = frames[frame4Idx % poolCount];
+          if (frame4 && frame4.bitmap) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            ctx.globalAlpha = 0.25;
+            ctx.translate(w / 2, h / 2);
+            ctx.scale(1.03, 1.03);
+            ctx.translate(-w / 2, -h / 2);
+            ctx.filter = 'contrast(130%) brightness(120%) hue-rotate(220deg)';
+            this.drawCover(ctx, frame4.bitmap, 0, 0, w, h, isMirrored);
+            ctx.restore();
+          }
+        }
+
+        // Current frame at 100% opacity
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1.0;
+
+        if (isRgbSplit) {
+          // Hard ±15px chromatic split on kicks!
+          ctx.filter = 'drop-shadow(-15px 0 0 rgba(255, 0, 50, 0.95)) drop-shadow(15px 0 0 rgba(0, 240, 255, 0.95)) contrast(140%) saturate(120%)';
+        } else {
+          ctx.filter = 'contrast(130%) saturate(105%) brightness(100%)';
+        }
+
+        this.drawCover(ctx, currentFrame?.bitmap, 0, 0, w, h, isMirrored);
+        this.applyColdPhonkGrade(ctx, 0, 0, w, h);
+        this.drawHeavyVignette(ctx, w, h, 0.55);
+        ctx.restore();
+
+        ctx.restore(); // restore shake & snap scale
+
+        // 1-frame bleached white blast on main 808 drop impact (3.57s - 3.63s)
+        if (elapsed >= 3570 && elapsed < 3630) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+          ctx.fillRect(0, 0, w, h);
+          ctx.restore();
+        }
+      }
+
+      // ----------------------------------------------------
+      // PHASE 4: STUTTER CLIMAX & OUTRO RESET (14.5s - totalDuration)
+      // Synchronized to finish with the complete audio!
+      // ----------------------------------------------------
+      else {
+        let displayFrame: FrameRecord;
+
+        if (elapsed < 15200) {
+          // 3-frame violent stutter loop
+          const twitchPattern = [0, 1, 2, 1, 0, 1, 2, 1];
+          const stutterOffset = twitchPattern[Math.floor((elapsed - 14500) / 33) % twitchPattern.length];
+          const outroBaseIdx = actionCount + Math.floor(((14500 - 3570) / 1000) * 30);
+          displayFrame = frames[(outroBaseIdx + stutterOffset) % poolCount] || frames[frames.length - 1] || initialRawFrames[0];
+        } else {
+          displayFrame = frames[frames.length - 1] || initialRawFrames[0];
+        }
+
+        // Smooth ease transforms back to default
+        let outroScale = 1.10;
+        let fadeAlpha = 1.0;
+
+        if (elapsed >= 15200) {
+          const tFade = Math.min(1, (elapsed - 15200) / Math.max(100, totalDuration - 15200));
+          outroScale = 1.10 - tFade * 0.10; // 1.10 -> 1.00
+          fadeAlpha = 1.0 - tFade * 0.4;    // gentle fade out
+        }
+
+        ctx.save();
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(outroScale, outroScale);
+        ctx.translate(-w / 2, -h / 2);
+        ctx.globalAlpha = fadeAlpha;
+
+        ctx.filter = 'contrast(120%) saturate(95%)';
+        this.drawCover(ctx, displayFrame?.bitmap, 0, 0, w, h, isMirrored);
+        this.drawHeavyVignette(ctx, w, h, 0.45);
+        ctx.restore();
+      }
+
+      ctx.restore();
+
+      if (elapsed < totalDuration) {
+        this.animFrameId = requestAnimationFrame(renderLoop);
+      } else {
+        this.stop();
+        onComplete();
+      }
+    };
+
+    this.animFrameId = requestAnimationFrame(renderLoop);
   }
 
   public stop() {

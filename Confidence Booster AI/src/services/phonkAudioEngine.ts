@@ -1,12 +1,24 @@
 import { PhonkTrackId, PhonkTrackInfo } from '../types';
 
+export interface AudioPlaybackInfo {
+  startTime: number;
+  durationMs: number;
+}
+
 export const PHONK_TRACKS: Record<PhonkTrackId, PhonkTrackInfo> = {
   marlon_mogged: {
     id: 'marlon_mogged',
     title: 'MARLON GETS MOGGED (VIRAL 2026)',
     bpm: 104,
     vibe: 'Wasted Effect + Slowed Mog Beat',
-    dropDelaySeconds: 4.7, // Wasted effect hits at 4.7s (stays 1s), then 808 drop at 6.5s
+    dropDelaySeconds: 4.7, // Wasted effect hits at 4.7s (stays 1s), then 808 drop at 6.71s
+  },
+  montagem_tomada: {
+    id: 'montagem_tomada',
+    title: 'MONTAGEM TOMADA (GHOST IMPACT 2026)',
+    bpm: 130,
+    vibe: 'Phonk Ghost-Trails + 808 Sub Shatter',
+    dropDelaySeconds: 3.57, // Measured exact 808 sub-bass drop at 3570ms
   },
   tokyo_drift: {
     id: 'tokyo_drift',
@@ -42,8 +54,12 @@ class PhonkAudioEngine {
 
   // Custom audio file for the viral mog edit
   private moggedAudioBuffer: AudioBuffer | null = null;
+  // Custom audio file for Montagem Tomada parallax dual-speed edit
+  private tomadaAudioBuffer: AudioBuffer | null = null;
   private currentAudioSource: AudioBufferSourceNode | null = null;
+  private lowpassFilter: BiquadFilterNode | null = null;
   private isPreloadingAudio = false;
+  private isPreloadingTomada = false;
 
   private initContext() {
     if (!this.ctx) {
@@ -88,6 +104,43 @@ class PhonkAudioEngine {
       console.warn('Could not load custom mog audio file, will use procedural fallback:', err);
     } finally {
       this.isPreloadingAudio = false;
+    }
+  }
+
+  /**
+   * Pre-loads and decodes the Montagem Tomada audio file for the Parallax preset
+   */
+  public async preloadTomadaAudio(): Promise<void> {
+    if (this.tomadaAudioBuffer || this.isPreloadingTomada) return;
+    this.isPreloadingTomada = true;
+    this.initContext();
+
+    try {
+      const audioUrl = '/audios/Montagem_Tomada.mp3';
+      const response = await fetch(audioUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch audio: ${response.statusText}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      if (this.ctx) {
+        this.tomadaAudioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+        console.log('Montagem Tomada Audio loaded successfully! Duration:', this.tomadaAudioBuffer.duration.toFixed(2), 's');
+      }
+    } catch (err) {
+      console.warn('Could not load Montagem Tomada audio file, checking fallback path...', err);
+      try {
+        const fallbackUrl = '/src/audios/Montagem_Tomada.mp3';
+        const response = await fetch(fallbackUrl);
+        if (response.ok && this.ctx) {
+          const arrayBuffer = await response.arrayBuffer();
+          this.tomadaAudioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+          console.log('Montagem Tomada fallback loaded successfully!');
+        }
+      } catch (fbErr) {
+        console.warn('Failed to load Montagem Tomada fallback:', fbErr);
+      }
+    } finally {
+      this.isPreloadingTomada = false;
     }
   }
 
@@ -393,32 +446,96 @@ class PhonkAudioEngine {
 
   /**
    * Starts playing the selected Phonk edit sequence synced precisely with the edit timeline!
+   * Plays the COMPLETE audio track from start to finish without early cutoffs!
    * @param trackId Selected track (defaults to 'marlon_mogged')
    * @param onDropCallback Fired exactly when the beat drop hits
+   * @param onEndedCallback Fired when the audio track finishes playing
    */
   public async playEditSequence(
     trackId: PhonkTrackId = 'marlon_mogged',
-    onDropCallback?: () => void
-  ): Promise<number> {
+    onDropCallback?: () => void,
+    onEndedCallback?: () => void
+  ): Promise<AudioPlaybackInfo> {
     this.initContext();
     this.stop();
     this.isPlaying = true;
 
-    if (!this.ctx) return performance.now();
+    if (!this.ctx) return { startTime: performance.now(), durationMs: 15940 };
 
-    // 1. If using the viral mogged audio (or default)
+    // 1. If using Montagem Tomada (Full 15.94s Track - Complete Audio Playback)
+    if (trackId === 'montagem_tomada') {
+      if (!this.tomadaAudioBuffer) {
+        await this.preloadTomadaAudio();
+      }
+
+      if (this.tomadaAudioBuffer && this.isPlaying) {
+        const durationMs = this.tomadaAudioBuffer.duration * 1000;
+        const source = this.ctx.createBufferSource();
+        source.buffer = this.tomadaAudioBuffer;
+
+        // Dynamic low-pass filter: muffled cowbell buildup during Phase 1 (0.0s - 3.25s), opening up on drop (3.57s)
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        const now = this.ctx.currentTime;
+
+        // Phase 1 (0.0s - 3.25s): Low-pass muffled cowbell buildup (cutoff 420Hz)
+        filter.frequency.setValueAtTime(420, now);
+        // Phase 2 (3.25s - 3.55s): Rapid opening during pre-drop silence ("Tomada" vocal tag)
+        filter.frequency.exponentialRampToValueAtTime(3600, now + 3.4);
+        // Phase 3 (3.57s): Wide open for the massive 808 drop
+        filter.frequency.exponentialRampToValueAtTime(20000, now + 3.57);
+
+        source.connect(filter);
+        filter.connect(this.masterGain!);
+        this.lowpassFilter = filter;
+
+        // Play the complete 15.94s audio track from 0 to completion!
+        source.start(0);
+        this.currentAudioSource = source;
+        const audioStartTime = performance.now();
+
+        if (onEndedCallback) {
+          source.onended = () => {
+            if (this.isPlaying) {
+              onEndedCallback();
+            }
+          };
+        }
+
+        // 808 Drop Impact Callback precisely at 3.57s (3570ms)
+        const dropTimer = window.setTimeout(() => {
+          if (this.isPlaying && onDropCallback) {
+            onDropCallback();
+          }
+        }, 3570);
+        this.activeTimers.push(dropTimer);
+
+        return { startTime: audioStartTime, durationMs };
+      }
+    }
+
+    // 2. If using the viral mogged audio (Sigma Hard Snaps Preset)
     if (trackId === 'marlon_mogged') {
       if (!this.moggedAudioBuffer) {
         await this.preloadMoggedAudio();
       }
 
       if (this.moggedAudioBuffer && this.isPlaying) {
+        const durationMs = this.moggedAudioBuffer.duration * 1000;
         const source = this.ctx.createBufferSource();
         source.buffer = this.moggedAudioBuffer;
         source.connect(this.masterGain!);
         source.start(0);
         this.currentAudioSource = source;
         const audioStartTime = performance.now();
+
+        if (onEndedCallback) {
+          source.onended = () => {
+            if (this.isPlaying) {
+              onEndedCallback();
+            }
+          };
+        }
 
         // Schedule Drop impact at 4.75s (Wasted mogged effect) and 6.71s (808 drop)
         const dropTimer = window.setTimeout(() => {
@@ -434,7 +551,7 @@ class PhonkAudioEngine {
           }
         }, 6710);
         this.activeTimers.push(beatDropTimer);
-        return audioStartTime;
+        return { startTime: audioStartTime, durationMs };
       }
     }
 
@@ -501,7 +618,18 @@ class PhonkAudioEngine {
       this.playPhonkCowbell(beatTime, note1, 0.65);
       this.playPhonkCowbell(beatTime + sixteenth * 2, note2, 0.6);
     }
-    return performance.now();
+
+    const totalProceduralDurationMs = (track.dropDelaySeconds + dropLengthBeats * beatDuration) * 1000;
+    if (onEndedCallback) {
+      const endTimer = window.setTimeout(() => {
+        if (this.isPlaying) {
+          onEndedCallback();
+        }
+      }, totalProceduralDurationMs);
+      this.activeTimers.push(endTimer);
+    }
+
+    return { startTime: performance.now(), durationMs: totalProceduralDurationMs };
   }
 
   public stop() {
@@ -515,6 +643,13 @@ class PhonkAudioEngine {
         this.currentAudioSource.disconnect();
       } catch {}
       this.currentAudioSource = null;
+    }
+
+    if (this.lowpassFilter) {
+      try {
+        this.lowpassFilter.disconnect();
+      } catch {}
+      this.lowpassFilter = null;
     }
   }
 }
