@@ -426,51 +426,65 @@ export class SigmaEditRenderer {
 
     ctx.save();
 
-    let curY = h * 0.30;
-    let curX = w * 0.56; // positioned slightly right of center so left "M" of MOGGED is clearly exposed!
-    let scale = 1.0;
+    // Initial card dimensions during pop-up
+    const initialW = w * 0.58;
+    const initialH = h * 0.75;
+    // PERFECT HORIZONTAL CENTER
+    const initialX = (w - initialW) / 2;
+    const startY = h; // starts completely below the screen
+    const targetY = h * 0.20; // settled height in upper-center
+
+    let cardX = initialX;
+    let cardY = targetY;
+    let cardW = initialW;
+    let cardH = initialH;
+    let cornerRadius = 16;
+    let shadowAlpha = 0.92;
+
     const isZooming = elapsed >= zoomStartTime;
 
     if (!isZooming) {
-      // 1. POP-UP FROM BELOW (5200ms to 6200ms)
+      // 1. POP-UP FROM BELOW (5200ms to 6200ms) - PERFECT HORIZONTAL CENTER
       const t = Math.min(1, Math.max(0, (elapsed - popupStartTime) / (zoomStartTime - popupStartTime)));
-      // Snappy spring easing (overshoot and settle)
+      // Snappy overshoot spring easing
       const s = 1.6;
       const springT = (t - 1) * (t - 1) * ((s + 1) * (t - 1) + s) + 1;
       const clampedSpring = Math.max(0, springT);
-      // Starts down below bottom (h * 0.95), settles at h * 0.30
-      curY = (h * 0.95) - clampedSpring * (h * 0.65);
-      scale = 0.92 + clampedSpring * 0.08;
+
+      // Springs straight up into the perfect center
+      cardX = initialX;
+      cardY = startY - clampedSpring * (startY - targetY);
+      cardW = initialW;
+      cardH = initialH;
+      cornerRadius = 16;
+      shadowAlpha = 0.92;
     } else {
-      // 2. EXPLOSIVE ZOOM TAKEOVER (6200ms to 6750ms)
+      // 2. ZOOM IN AND EXPAND TO FIT THE SCREEN FRAME (6200ms to 6750ms)
       const zT = Math.min(1, Math.max(0, (elapsed - zoomStartTime) / (popupEndTime - zoomStartTime)));
-      // Exponential zoom ramp
-      const expZoom = Math.pow(zT, 1.8);
-      scale = 1.0 + expZoom * 1.85; // Scales up to ~2.85x
-      curY = (h * 0.30) * (1 - zT) + (h * 0.50) * zT; // smoothly centers
-      curX = (w * 0.56) * (1 - zT) + (w * 0.50) * zT;
+      // Smooth S-curve ease-in-out for explosive expansion
+      const ease = zT < 0.5 ? 2 * zT * zT : 1 - Math.pow(-2 * zT + 2, 2) / 2;
+
+      // Card bounding box smoothly expands directly into the full screen frame [0, 0, w, h]
+      cardX = initialX * (1 - ease) + 0 * ease;
+      cardY = targetY * (1 - ease) + 0 * ease;
+      cardW = initialW * (1 - ease) + w * ease;
+      cardH = initialH * (1 - ease) + h * ease;
+
+      cornerRadius = Math.max(0, 16 * (1 - ease * 1.5));
+      shadowAlpha = Math.max(0, 0.92 * (1 - ease));
     }
 
-    // Card dimensions
-    const zProgress = Math.max(0, (elapsed - zoomStartTime) / (popupEndTime - zoomStartTime));
-    const baseW = w * 0.46;
-    const baseH = h * 0.65;
-    // Expands mask during zoom so it completely covers the full screen edge-to-edge
-    const cardW = baseW * scale * (1 + zProgress * 0.8);
-    const cardH = baseH * scale * (1 + zProgress * 0.8);
-    const cardX = curX - cardW / 2;
-    const cardY = curY - cardH * 0.12;
-
-    // Dark drop shadow behind the foreground subject so it clearly separates from background
+    // Drop shadow while in floating card mode
     ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.92)';
-    ctx.shadowBlur = 28;
-    ctx.shadowOffsetY = 14;
+    if (shadowAlpha > 0.05) {
+      ctx.shadowColor = `rgba(0, 0, 0, ${shadowAlpha})`;
+      ctx.shadowBlur = 25;
+      ctx.shadowOffsetY = 12;
+    }
 
-    // Rounded cutout portrait mask during rise; smoothly rectangles out during zoom takeover
-    const cornerRadius = Math.max(0, 14 * (1 - zProgress * 2.2));
+    // Clipping path: rounded portrait mask during rise, smoothly expands to full screen frame
     ctx.beginPath();
-    if (cornerRadius > 0 && typeof ctx.roundRect === 'function') {
+    if (cornerRadius > 0.5 && typeof ctx.roundRect === 'function') {
       ctx.roundRect(cardX, cardY, cardW, cardH, cornerRadius);
     } else {
       ctx.rect(cardX, cardY, cardW, cardH);
