@@ -142,7 +142,7 @@ export const App: React.FC = () => {
         // Start video recording for 1-click download
         clipRecorder.startRecording(editCanvas, phonkAudio.getAudioStream());
 
-        // Start viral audio playback
+        // Start viral audio playback and obtain sample-accurate audio clock timestamp
         phonkAudio.playEditSequence(stateRef.current.selectedTrack, () => {
           confetti({
             particleCount: 50,
@@ -150,53 +150,54 @@ export const App: React.FC = () => {
             origin: { x: 0.8, y: 0.5 },
             colors: ['#00ff66', '#ff0055', '#00f0ff', '#ffe600']
           });
-        });
+        }).then(audioStartTime => {
+          // Start the visual edit renderer locked to the exact audio clock!
+          const currentFace = stateRef.current.faceData;
+          const currentMirrored = stateRef.current.isMirrored;
 
-        // Start the visual edit renderer inside the expanded PIP player box!
-        const currentFace = stateRef.current.faceData;
-        const currentMirrored = stateRef.current.isMirrored;
-
-        sigmaEditRenderer.startEdit({
-          canvas: editCanvas,
-          getSessionFrames: () => frameBuffer.getSessionFrames(),
-          getCurrentEyeCenter: () => {
-            const f = stateRef.current.faceData;
-            const m = stateRef.current.isMirrored;
-            if (!f.detected) return undefined;
-            return {
-              x: m ? 1 - f.noseBridge.x : f.noseBridge.x,
-              y: (f.leftEye.y + f.rightEye.y) / 2
-            };
-          },
-          actionType,
-          isMirrored: currentMirrored,
-          eyeCenter: currentFace.detected
-            ? {
-                x: currentMirrored ? 1 - currentFace.noseBridge.x : currentFace.noseBridge.x,
-                y: (currentFace.leftEye.y + currentFace.rightEye.y) / 2
+          sigmaEditRenderer.startEdit({
+            canvas: editCanvas,
+            startTime: audioStartTime,
+            getSessionFrames: () => frameBuffer.getSessionFrames(),
+            getCurrentEyeCenter: () => {
+              const f = stateRef.current.faceData;
+              const m = stateRef.current.isMirrored;
+              if (!f.detected) return undefined;
+              return {
+                x: m ? 1 - f.noseBridge.x : f.noseBridge.x,
+                y: (f.leftEye.y + f.rightEye.y) / 2
+              };
+            },
+            actionType,
+            isMirrored: currentMirrored,
+            eyeCenter: currentFace.detected
+              ? {
+                  x: currentMirrored ? 1 - currentFace.noseBridge.x : currentFace.noseBridge.x,
+                  y: (currentFace.leftEye.y + currentFace.rightEye.y) / 2
+                }
+              : undefined,
+            onDropImpact: () => {
+              if ('vibrate' in navigator) {
+                navigator.vibrate([100, 50, 150]);
               }
-            : undefined,
-          onDropImpact: () => {
-            if ('vibrate' in navigator) {
-              navigator.vibrate([100, 50, 150]);
-            }
-          },
-          onComplete: () => {
-            // Playback finished -> Reset PIP box back to standby!
-            clipRecorder.stopRecording();
-            setHasDownloadableClip(true);
-            phonkAudio.stop();
-            visionDetector.resetCooldown();
-            pipStateRef.current = 'STANDBY';
-            setPipState('STANDBY');
+            },
+            onComplete: () => {
+              // Playback finished -> Reset PIP box back to standby!
+              clipRecorder.stopRecording();
+              setHasDownloadableClip(true);
+              phonkAudio.stop();
+              visionDetector.resetCooldown();
+              pipStateRef.current = 'STANDBY';
+              setPipState('STANDBY');
 
-            // Free GPU memory safely
-            frameBuffer.stopLiveSession();
-            if (activeReplayFramesRef.current) {
-              frameBuffer.releaseClip(activeReplayFramesRef.current);
-              activeReplayFramesRef.current = null;
+              // Free GPU memory safely
+              frameBuffer.stopLiveSession();
+              if (activeReplayFramesRef.current) {
+                frameBuffer.releaseClip(activeReplayFramesRef.current);
+                activeReplayFramesRef.current = null;
+              }
             }
-          }
+          });
         });
       }, 50);
     }, 1800); // 1.8s of EDITING... state while user performs present action

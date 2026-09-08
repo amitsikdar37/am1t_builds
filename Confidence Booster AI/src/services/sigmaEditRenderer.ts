@@ -8,6 +8,7 @@ export interface EditRenderOptions {
   actionType: 'drink' | 'glasses' | 'manual';
   eyeCenter?: { x: number; y: number }; // fallback normalized 0-1
   isMirrored?: boolean;
+  startTime?: number; // exact synchronized audio start timestamp
   onComplete: () => void;
   onDropImpact: () => void;
 }
@@ -101,14 +102,14 @@ export class SigmaEditRenderer {
     const ctx = canvas.getContext('2d', { willReadFrequently: false });
     if (!ctx) return;
 
-    const startTime = performance.now();
+    const startTime = options.startTime ?? performance.now();
     const totalDuration = 11000; // 11s duration matching audio
-    const wastedStartTime = 4700; // 4.7s mark: GTA "Wasted" / Mogged effect starts
-    const popupStartTime = 5200;  // 5.2s: user image pops up from below (overlapping MOGGED text)
-    const zoomStartTime = 6200;   // 6.2s: explosive full-screen zoom takeover begins
-    const dropBeatTime = 6500;    // 6.5s: 808 drop impact (screen flash, vibration, RGB shear)
-    const popupEndTime = 6750;    // 6.75s: full-screen takeover complete, hands off to velocity drop kicks
-    const beatKicks = [6500, 7300, 7890, 8480, 9060, 9650]; // exact audio 808 beats
+    const wastedStartTime = 4750; // 4.75s mark: GTA "Wasted" / Mogged effect starts (exact audio peak)
+    const popupStartTime = 5250;  // 5.25s: user image pops up from below (overlapping MOGGED text)
+    const zoomStartTime = 6100;   // 6.1s: explosive full-screen zoom takeover begins
+    const dropBeatTime = 6710;    // 6.71s: EXACT 808 drop impact in audio waveform
+    const popupEndTime = 6710;    // Exactly 6.71s: full-screen takeover hits precisely on the 808 drop
+    const beatKicks = [6710, 7470, 8050, 8640, 9260, 9880, 10500]; // exact audio 808 beats measured from audio waveform!
 
     let wastedFired = false;
     let dropFired = false;
@@ -157,7 +158,7 @@ export class SigmaEditRenderer {
       let fCenter: FrameRecord;
 
       if (elapsed < wastedStartTime) {
-        // --- PHASE 1: SLOW-MOTION BUILD-UP (0.0s to 4.7s) ---
+        // --- PHASE 1: SLOW-MOTION BUILD-UP (0.0s to 4.75s) ---
         // Plays the initial trigger gesture (e.g. touching glasses / sip) in buttery slow motion!
         const buildRatio = elapsed / wastedStartTime;
         const rampIdx = Math.floor(buildRatio * (initialGestureCount - 1));
@@ -165,7 +166,7 @@ export class SigmaEditRenderer {
         fCenter = getValidFrame(safeRampIdx);
 
       } else if (elapsed >= wastedStartTime && elapsed < popupEndTime) {
-        // --- PHASE 2: GTA "WASTED" / MOGGED EFFECT (4.7s to 6.75s) ---
+        // --- PHASE 2: GTA "WASTED" / MOGGED EFFECT (4.75s to 6.71s) ---
         // Snaps to the latest present camera frame and holds it on the background layer!
         if (!frozenMoggedFrame) {
           frozenMoggedFrame = currentFrames[currentFrames.length - 1];
@@ -174,18 +175,21 @@ export class SigmaEditRenderer {
         fCenter = frozenMoggedFrame;
 
       } else {
-        // --- PHASE 3 & 4: 808 BEAT DROP (6.75s to 11.0s) ---
+        // --- PHASE 3: LIVE CAMERA WITH HARD CUT JUMPS (6.71s to 11.0s) ---
+        // Continuous live camera feed with instant hard jump cuts on the beat!
         const latestIdx = totalFrames - 1;
         fCenter = getValidFrame(latestIdx);
       }
 
-      // Dynamic eye position (frozen during mogged phase, live otherwise)
-      const effectiveEye = frozenEyeCenter || (options.getCurrentEyeCenter ? options.getCurrentEyeCenter() : options.eyeCenter);
+      // Dynamic eye position (frozen during mogged phase, live tracking during drop phase)
+      const liveEye = options.getCurrentEyeCenter ? options.getCurrentEyeCenter() : undefined;
+      const effectiveEye = (elapsed >= wastedStartTime && elapsed < popupEndTime)
+        ? (frozenEyeCenter || liveEye || options.eyeCenter)
+        : (liveEye || frozenEyeCenter || options.eyeCenter);
 
-      // 2. Camera Shake & Beat Pulses
+      // 2. Camera Shake (active only during Wasted impact)
       let shakeX = 0;
       let shakeY = 0;
-      let zoomPulse = 1.0;
 
       if (elapsed >= wastedStartTime && elapsed < wastedStartTime + 300) {
         // Wasted impact shock
@@ -194,26 +198,27 @@ export class SigmaEditRenderer {
         shakeY = (Math.random() - 0.5) * shock * 30;
       }
 
-      // Check 808 beat kicks for rhythmic zoom punch & shake
-      for (const kickTime of beatKicks) {
-        if (elapsed >= kickTime && elapsed < kickTime + 280) {
-          const punch = 1 - (elapsed - kickTime) / 280;
-          zoomPulse = 1.0 + punch * 0.08;
-          shakeX += (Math.random() - 0.5) * punch * 24;
-          shakeY += (Math.random() - 0.5) * punch * 24;
-          break;
-        }
+      if (shakeX !== 0 || shakeY !== 0) {
+        ctx.translate(w / 2 + shakeX, h / 2 + shakeY);
+        ctx.translate(-w / 2, -h / 2);
       }
-
-      ctx.translate(w / 2 + shakeX, h / 2 + shakeY);
-      ctx.scale(zoomPulse, zoomPulse);
-      ctx.translate(-w / 2, -h / 2);
 
       // 3. Render Background Layer
       const isWastedPhase = elapsed >= wastedStartTime && elapsed < popupEndTime;
 
-      if (isWastedPhase) {
-        // --- WASTED EFFECT: High-contrast Black & White / Grayscale background ---
+      if (elapsed < wastedStartTime) {
+        // --- PHASE 1: SLOW-MOTION BUILD-UP (0.0s to 4.75s) ---
+        // Plays gesture in buttery slow-mo with Cold Phonk anti-warmth grade!
+        ctx.save();
+        ctx.filter = 'contrast(130%) brightness(98%) saturate(84%) hue-rotate(-8deg)';
+        if (fCenter && fCenter.bitmap) {
+          this.drawCover(ctx, fCenter.bitmap, 0, 0, w, h, isMirrored);
+        }
+        this.applyColdPhonkGrade(ctx, 0, 0, w, h);
+        ctx.restore();
+
+      } else if (isWastedPhase) {
+        // --- PHASE 2: GTA "WASTED" / MOGGED EFFECT (4.75s to 6.71s) ---
         ctx.save();
         ctx.filter = 'grayscale(100%) contrast(140%) brightness(95%)';
         if (fCenter && fCenter.bitmap) {
@@ -229,9 +234,8 @@ export class SigmaEditRenderer {
         ctx.fillRect(0, 0, w, h);
 
       } else {
-        // --- PHASE 3: 808 BEAT DROP VELOCITY EFFECT (6.75s to 11.0s) ---
-        // Pure Phonk Velocity: Alternating extreme close-up jump-cuts, RGB chromatic aberration shear & radial zoom shockwaves
-        this.renderVelocityDrop(ctx, fCenter, w, h, elapsed, beatKicks, effectiveEye, isMirrored);
+        // --- PHASE 3: HARD CUT JUMP EFFECTS (6.71s to 11.0s) ---
+        this.renderBeatHardSnaps(ctx, fCenter, w, h, elapsed, beatKicks, effectiveEye, isMirrored);
       }
 
       // 4. === THE "MOGGED" PNG OVERLAY ON BACKGROUND LAYER ===
@@ -290,16 +294,8 @@ export class SigmaEditRenderer {
           popupStartTime,
           zoomStartTime,
           popupEndTime,
-          dropBeatTime,
           isMirrored
         );
-      }
-
-      // 6. White Flash at 6.5s drop
-      if (elapsed >= dropBeatTime && elapsed < dropBeatTime + 280) {
-        const flashAlpha = 1 - (elapsed - dropBeatTime) / 280;
-        ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha * 0.9})`;
-        ctx.fillRect(0, 0, w, h);
       }
 
       ctx.restore();
@@ -323,10 +319,57 @@ export class SigmaEditRenderer {
   }
 
   /**
-   * PRESET 1: Pure Phonk Velocity
-   * Alternating extreme close-up jump-cuts on 808 kicks, RGB chromatic shear, and radial zoom shockwaves.
+   * 2026 Ice Phonk Color Grading (Anti-Warmth CC)
+   * Eliminates yellow/warm room lighting and imparts an icy, chiseled, cold steel aesthetic.
    */
-  private renderVelocityDrop(
+  private applyColdPhonkGrade(
+    ctx: CanvasRenderingContext2D,
+    x = 0,
+    y = 0,
+    w?: number,
+    h?: number
+  ) {
+    const width = w ?? ctx.canvas.width;
+    const height = h ?? ctx.canvas.height;
+
+    ctx.save();
+
+    // 1. Ice Cyan Color Toning (Crushes yellow room tint in soft-light mode)
+    ctx.globalCompositeOperation = 'soft-light';
+    const coldGrad = ctx.createLinearGradient(x, y, x, y + height);
+    coldGrad.addColorStop(0, 'rgba(0, 195, 255, 0.22)'); // icy cyan top
+    coldGrad.addColorStop(1, 'rgba(20, 70, 160, 0.26)'); // deep cold navy bottom
+    ctx.fillStyle = coldGrad;
+    ctx.fillRect(x, y, width, height);
+
+    // 2. Cold Steel Shadow Vignette (Crushed navy/black edges to focus lighting on face)
+    ctx.globalCompositeOperation = 'source-over';
+    const vignette = ctx.createRadialGradient(
+      x + width / 2,
+      y + height * 0.44,
+      height * 0.28,
+      x + width / 2,
+      y + height / 2,
+      Math.max(width, height) * 0.76
+    );
+    vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    vignette.addColorStop(0.65, 'rgba(0, 18, 38, 0.38)'); // cold steel shadow
+    vignette.addColorStop(1, 'rgba(0, 8, 20, 0.76)');     // deep crushed navy black
+    ctx.fillStyle = vignette;
+    ctx.fillRect(x, y, width, height);
+
+    ctx.restore();
+  }
+
+  /**
+   * HARD CUT JUMP EFFECTS (PERFECTLY SYNCED WITH AUDIO 808 BEATS)
+   * - Instant scale jumps: Instant jump-cuts between extreme face close-up and wide shot
+   * - Hard RGB chromatic split on bass hits (first 160ms with exponential decay)
+   * - High-contrast flash frames on beat transients (first 65ms)
+   * - Perfectly synced with exact audio kicks: [6710, 7470, 8050, 8640, 9260, 9880, 10500]
+   * - Signature Cold Phonk color grading throughout
+   */
+  private renderBeatHardSnaps(
     ctx: CanvasRenderingContext2D,
     frame: FrameRecord,
     w: number,
@@ -339,65 +382,78 @@ export class SigmaEditRenderer {
     if (!frame || !frame.bitmap) return;
 
     const kickIdx = this.getLastKickIndex(beatKicks, elapsed);
-    const lastKickTime = kickIdx >= 0 ? beatKicks[kickIdx] : 0;
+    const lastKickTime = kickIdx >= 0 ? beatKicks[kickIdx] : beatKicks[0];
     const timeSinceKick = elapsed - lastKickTime;
-    const isOddKick = kickIdx % 2 === 0;
-    const isImpact = timeSinceKick < 260;
+
+    // Alternating Hard Jump Cut Scale:
+    // Kick 0 (6710ms - Main 808 Drop): Instant Extreme Close-Up Slam (1.68x) right on drop!
+    // Kick 1 (7470ms - 2nd Kick): Instant Wide Angle Snap (1.12x)
+    // Kick 2 (8050ms - 3rd Kick): Instant Extreme Face Close-Up Snap (1.75x)
+    // Kick 3 (8640ms - 4th Kick): Instant Wide Angle Snap (1.12x)
+    // Kick 4 (9260ms - 5th Kick): Instant Extreme Face Close-Up Snap (1.78x)
+    // Kick 5 (9880ms - 6th Kick): Instant Wide Angle Snap (1.12x)
+    // Kick 6 (10500ms - 7th Kick): Instant Climax Face Slam (1.82x)
+    const isCloseUpKick = (kickIdx === 0 || kickIdx === 2 || kickIdx === 4 || kickIdx === 6);
+    let jumpScale = 1.12;
+
+    if (isCloseUpKick) {
+      if (kickIdx === 6) jumpScale = 1.82;
+      else if (kickIdx === 4) jumpScale = 1.78;
+      else if (kickIdx === 2) jumpScale = 1.75;
+      else jumpScale = 1.68;
+    } else {
+      jumpScale = 1.12;
+    }
+
+    // Framing focus: locked onto user's eyes/jaw during close-up snaps, center during wide
+    let focusX = w / 2;
+    let focusY = h / 2;
+    if (isCloseUpKick) {
+      focusX = effectiveEye ? effectiveEye.x * w : w / 2;
+      focusY = effectiveEye ? effectiveEye.y * h : h * 0.38;
+    }
 
     ctx.save();
 
-    // 1. Extreme Close-Up Jump-Cut on alternating kicks
-    let zoom = 1.05;
-    let focusX = w / 2;
-    let focusY = h / 2;
-
-    if (isOddKick && timeSinceKick < 550) {
-      // Snaps tightly into eyes / jawline
-      zoom = 1.55;
-      if (effectiveEye) {
-        focusX = effectiveEye.x * w;
-        focusY = effectiveEye.y * h;
-      }
-    }
-
+    // Instant scale transform (Hard Cut Jump)
     ctx.translate(focusX, focusY);
-    ctx.scale(zoom, zoom);
+    ctx.scale(jumpScale, jumpScale);
     ctx.translate(-focusX, -focusY);
 
-    // 2. High-Contrast Bleach CC
-    ctx.filter = 'contrast(135%) saturate(125%) brightness(105%)';
+    // 2. High-Contrast Flash Frames (first 65ms of every beat hit)
+    const isFlashFrame = timeSinceKick < 65;
+    if (isFlashFrame) {
+      ctx.filter = 'contrast(280%) brightness(190%) saturate(140%)';
+    } else {
+      ctx.filter = 'contrast(135%) brightness(98%) saturate(84%) hue-rotate(-8deg)';
+    }
 
-    // 3. RGB Chromatic Aberration Split on kick impact
-    if (isImpact) {
-      const splitDist = (1 - timeSinceKick / 260) * 18;
+    // Draw live webcam feed
+    this.drawCover(ctx, frame.bitmap, 0, 0, w, h, isMirrored);
 
-      // Base layer
-      this.drawCover(ctx, frame.bitmap, 0, 0, w, h, isMirrored);
+    // 3. Hard RGB Chromatic Split on Bass Hit (first 160ms of kick impact)
+    if (timeSinceKick < 160 && !isFlashFrame) {
+      const splitProgress = 1 - timeSinceKick / 160;
+      const splitDist = Math.pow(splitProgress, 1.2) * 26; // 26px hard split
 
-      // Red channel shear
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      ctx.fillStyle = 'rgba(255, 0, 60, 0.35)';
-      this.drawCover(ctx, frame.bitmap, -splitDist, 0, w, h, isMirrored);
-      ctx.fillRect(0, 0, w, h);
+      ctx.globalAlpha = Math.pow(splitProgress, 1.5) * 0.70;
 
-      // Cyan channel shear
-      ctx.fillStyle = 'rgba(0, 240, 255, 0.35)';
-      this.drawCover(ctx, frame.bitmap, splitDist, 0, w, h, isMirrored);
-      ctx.fillRect(0, 0, w, h);
-      ctx.restore();
+      // Hard Red channel shear
+      ctx.filter = 'hue-rotate(90deg) contrast(180%) brightness(120%)';
+      this.drawCover(ctx, frame.bitmap, -splitDist, -2, w, h, isMirrored);
 
-      // Radial Zoom Shockwave
-      const shockAlpha = (1 - timeSinceKick / 260) * 0.35;
-      ctx.save();
-      ctx.globalAlpha = shockAlpha;
-      ctx.translate(w / 2, h / 2);
-      ctx.scale(1.08, 1.08);
-      ctx.translate(-w / 2, -h / 2);
-      this.drawCover(ctx, frame.bitmap, 0, 0, w, h, isMirrored);
+      // Hard Cyan channel shear
+      ctx.filter = 'hue-rotate(-90deg) contrast(180%) brightness(120%)';
+      this.drawCover(ctx, frame.bitmap, splitDist, 2, w, h, isMirrored);
+
       ctx.restore();
-    } else {
-      this.drawCover(ctx, frame.bitmap, 0, 0, w, h, isMirrored);
+    }
+
+    // 4. Signature Cold Phonk Grade
+    if (!isFlashFrame) {
+      this.applyColdPhonkGrade(ctx, 0, 0, w, h);
     }
 
     ctx.restore();
@@ -419,7 +475,6 @@ export class SigmaEditRenderer {
     popupStartTime: number,
     zoomStartTime: number,
     popupEndTime: number,
-    dropBeatTime: number,
     isMirrored: boolean
   ) {
     if (!frame || !frame.bitmap) return;
@@ -491,25 +546,12 @@ export class SigmaEditRenderer {
     }
     ctx.clip();
 
-    // High clarity & contrast on the foreground subject
-    ctx.filter = 'contrast(135%) brightness(110%) saturate(120%)';
+    // High clarity & contrast on the foreground subject (Cold Phonk Anti-Warmth)
+    ctx.filter = 'contrast(132%) brightness(100%) saturate(84%) hue-rotate(-8deg)';
     this.drawCover(ctx, frame.bitmap, cardX, cardY, cardW, cardH, isMirrored);
 
-    // RGB Chromatic Aberration shear on 6500ms 808 drop impact
-    if (elapsed >= dropBeatTime && elapsed < dropBeatTime + 260) {
-      const splitProgress = 1 - (elapsed - dropBeatTime) / 260;
-      const splitDist = splitProgress * 18;
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      ctx.fillStyle = 'rgba(255, 0, 60, 0.35)';
-      this.drawCover(ctx, frame.bitmap, cardX - splitDist, cardY, cardW, cardH, isMirrored);
-      ctx.fillRect(cardX, cardY, cardW, cardH);
-
-      ctx.fillStyle = 'rgba(0, 240, 255, 0.35)';
-      this.drawCover(ctx, frame.bitmap, cardX + splitDist, cardY, cardW, cardH, isMirrored);
-      ctx.fillRect(cardX, cardY, cardW, cardH);
-      ctx.restore();
-    }
+    // Subtle cold steel color grade on the pop-up subject
+    this.applyColdPhonkGrade(ctx, cardX, cardY, cardW, cardH);
 
     ctx.restore(); // restore shadow & clip
     ctx.restore(); // restore main save

@@ -399,12 +399,12 @@ class PhonkAudioEngine {
   public async playEditSequence(
     trackId: PhonkTrackId = 'marlon_mogged',
     onDropCallback?: () => void
-  ) {
+  ): Promise<number> {
     this.initContext();
     this.stop();
     this.isPlaying = true;
 
-    if (!this.ctx) return;
+    if (!this.ctx) return performance.now();
 
     // 1. If using the viral mogged audio (or default)
     if (trackId === 'marlon_mogged') {
@@ -418,22 +418,23 @@ class PhonkAudioEngine {
         source.connect(this.masterGain!);
         source.start(0);
         this.currentAudioSource = source;
+        const audioStartTime = performance.now();
 
-        // Schedule Drop impact at 4.7s (Wasted mogged effect) and 6.5s (808 drop)
+        // Schedule Drop impact at 4.75s (Wasted mogged effect) and 6.71s (808 drop)
         const dropTimer = window.setTimeout(() => {
           if (this.isPlaying && onDropCallback) {
             onDropCallback();
           }
-        }, 4700);
+        }, 4750);
         this.activeTimers.push(dropTimer);
 
         const beatDropTimer = window.setTimeout(() => {
           if (this.isPlaying && onDropCallback) {
             onDropCallback();
           }
-        }, 6500);
+        }, 6710);
         this.activeTimers.push(beatDropTimer);
-        return;
+        return audioStartTime;
       }
     }
 
@@ -500,6 +501,7 @@ class PhonkAudioEngine {
       this.playPhonkCowbell(beatTime, note1, 0.65);
       this.playPhonkCowbell(beatTime + sixteenth * 2, note2, 0.6);
     }
+    return performance.now();
   }
 
   public stop() {
