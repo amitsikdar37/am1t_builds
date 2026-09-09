@@ -105,17 +105,14 @@ export const App: React.FC = () => {
       return;
     }
 
-    const currentPreset = stateRef.current.selectedPreset;
-
     // Grab a rich, high-density pre-roll clip of the physical action (3500ms ~105 frames)
-    // This provides buttery-smooth, unlagged frame-by-frame slo-mo replay for sigma_hard_snaps
+    // This provides buttery-smooth, unlagged frame-by-frame slo-mo replay for sigma_hard_snaps and ghost_trail_impact
     const actionClip = frameBuffer.getReplayClip(3500);
     activeReplayFramesRef.current = actionClip;
 
     // Start live progressive recording session starting right now (from trigger moment onwards)!
     frameBuffer.stopLiveSession();
-    const preRollMs = currentPreset === 'sigma_hard_snaps' ? 3500 : 500;
-    frameBuffer.startLiveSession(preRollMs);
+    frameBuffer.startLiveSession(0); // 0 pre-roll: Live session strictly records footage AFTER trigger
     const sessionStartTime = frameBuffer.getSessionStartTimestamp();
 
     // Lock PIP state into EDITING for a quick 200ms target lock
@@ -132,9 +129,8 @@ export const App: React.FC = () => {
       // Brief tick to ensure DOM canvas is ready and sized
       window.setTimeout(() => {
         const editCanvas = editCanvasRef.current;
-        const currentSessionFrames = frameBuffer.getSessionFrames();
-        if (!editCanvas || currentSessionFrames.length === 0) {
-          console.warn('Canvas or frames not available, returning to standby');
+        if (!editCanvas || frameBuffer.getFrameCount() === 0) {
+          console.warn('Canvas or camera frames not available, returning to standby');
           frameBuffer.stopLiveSession();
           pipStateRef.current = 'STANDBY';
           setPipState('STANDBY');

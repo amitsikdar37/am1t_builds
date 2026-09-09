@@ -626,26 +626,24 @@ export class SigmaEditRenderer {
       return options.frames || [];
     };
 
-    const initialRawFrames = getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
-
     const ctx = canvas.getContext('2d', { willReadFrequently: false });
     if (!ctx) return;
 
     const startTime = options.startTime ?? performance.now();
     const totalDuration = options.durationMs ?? 15940; // Full duration matching complete Montagem Tomada audio
-    const dropBeatTime = 3570;  // 3.57s: Exact 808 drop impact in Montagem Tomada
+    const dropBeatTime = 4940;  // 4.94s (~5.0s): Exact real fast beats drop in Montagem Tomada!
 
-    // Complete measured 808 sub-bass kick timestamps across the full 15.94s track
+    // Complete measured 808 sub-bass kick timestamps starting from 4.94s / 5.0s drop onwards!
     const beatKicks = [
-      3570, 3790, 4050, 4260, 4470, 4720, 4940, 5220, 5470, 5720,
-      6010, 6230, 6450, 6730, 7080, 7320, 7550, 7960, 8260, 8510,
-      8720, 8950, 9160, 9400, 9620, 9900, 10120, 10360, 10580, 10800,
-      11020, 11230, 11530, 11750, 12010, 12350, 12620, 12830, 13070, 13340,
-      13550, 13790, 14010, 14220, 14460, 14700, 14920
+      4940, 5220, 5470, 5720, 6010, 6230, 6450, 6730, 7080, 7320,
+      7550, 7960, 8260, 8510, 8720, 8950, 9160, 9400, 9620, 9900,
+      10120, 10360, 10580, 10800, 11020, 11230, 11530, 11750, 12010, 12350,
+      12620, 12830, 13070, 13340, 13550, 13790, 14010, 14220, 14460, 14700, 14920
     ];
 
     let dropFired = false;
     let frozenFrameRecord: FrameRecord | null = null;
+    let lastRenderedFrame: FrameRecord | null = null;
 
     const renderLoop = (now: number) => {
       if (!this.isRendering) return;
@@ -663,86 +661,154 @@ export class SigmaEditRenderer {
       ctx.fillStyle = '#050508';
       ctx.fillRect(0, 0, w, h);
 
-      // Dynamically fetch live present camera frames
+      // Dynamically fetch live present camera frames (STRICTLY post-trigger session frames)
       const liveFrames = getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
-      const latestLiveFrame = liveFrames[liveFrames.length - 1] || initialRawFrames[0];
+      const latestLiveFrame = liveFrames[liveFrames.length - 1] || lastRenderedFrame;
+      if (latestLiveFrame) {
+        lastRenderedFrame = latestLiveFrame;
+      }
 
       // Dynamically extract moments that happened AFTER the trigger action
       const postMoments = options.getPostTriggerMoments ? options.getPostTriggerMoments(now) : undefined;
 
       // ----------------------------------------------------
-      // PHASE 1: THE ACTION SETUP & LIVE RECORDING (0.0s - 3.25s)
-      // Displays & records the user performing their action live after trigger!
+      // PHASE 1: CLIP 1 - LIVE ACTION PERFORMANCE (0.0s - 3.0s)
+      // Displays user's live performance after trigger with smooth cinematic camera push!
       // ----------------------------------------------------
-      if (elapsed < 3250) {
-        // Continuous slow zoom toward the eyes/action (scale: 1.0 -> 1.15)
-        const tZoom = elapsed / 3250;
-        const scale = 1.0 + tZoom * 0.15;
+      if (elapsed < 3000) {
+        const progress = elapsed / 3000;
+        const frame = latestLiveFrame || lastRenderedFrame;
 
-        // Render the LIVE webcam feed in real time as the user performs their action!
-        const frame = latestLiveFrame;
+        // Continuous slow camera push toward face (scale: 1.0 -> 1.15)
+        const scale = 1.0 + progress * 0.15;
 
         ctx.save();
         ctx.beginPath();
         ctx.rect(0, 0, w, h);
-        ctx.clip(); // strict boundary clip
+        ctx.clip(); // strict boundary clip: zero edge leaks
 
-        ctx.translate(w / 2, h / 2);
+        const liveEye = options.getCurrentEyeCenter ? options.getCurrentEyeCenter() : undefined;
+        const eye = liveEye || options.eyeCenter;
+        const focusX = eye ? eye.x * w : w / 2;
+        const focusY = eye ? eye.y * h : h * 0.40;
+
+        ctx.translate(focusX, focusY);
         ctx.scale(scale, scale);
-        ctx.translate(-w / 2, -h / 2);
+        ctx.translate(-focusX, -focusY);
 
-        // Professional Film Grade: rich natural skin tones, crisp contrast, ZERO cyan tint
         ctx.filter = 'contrast(125%) brightness(96%) saturate(106%) hue-rotate(-5deg)';
-        this.drawCover(ctx, frame?.bitmap, 0, 0, w, h, isMirrored);
+        if (frame?.bitmap) {
+          this.drawCover(ctx, frame.bitmap, 0, 0, w, h, isMirrored);
+        }
         this.applyCinematicGrade(ctx, 0, 0, w, h);
 
         ctx.restore();
       }
 
       // ----------------------------------------------------
-      // PHASE 2: THE PRE-DROP "HALT" (3.25s - 3.57s)
-      // Freezes on the peak moment of the action you just performed live in Phase 1!
+      // PHASE 2: TRANSITION BETWEEN CLIP 1 & CLIP 2 (3.0s - 3.45s)
+      // Whip-zoom punch + vocal silence invert strobe ("Tomada" tag)
       // ----------------------------------------------------
-      else if (elapsed >= 3250 && elapsed < 3570) {
-        // Freeze Frame: Hold the video playhead on the peak post-trigger action frame
-        if (!frozenFrameRecord) {
-          frozenFrameRecord = latestLiveFrame;
+      else if (elapsed >= 3000 && elapsed < 3450) {
+        // Freeze peak live frame from the end of Phase 1 for the transition impact
+        if (!frozenFrameRecord && (latestLiveFrame || lastRenderedFrame)) {
+          frozenFrameRecord = latestLiveFrame || lastRenderedFrame;
         }
 
-        // Zoom Pop: Instant hard step to scale(1.25)
-        const scale = 1.25;
+        const transProgress = (elapsed - 3000) / 450; // 0 to 1
+        const isPastCut = elapsed >= 3250;
+        const frame = frozenFrameRecord || latestLiveFrame || lastRenderedFrame;
+
+        // Whip-zoom scale & horizontal shear punch
+        const whipScale = 1.15 + Math.sin(transProgress * Math.PI) * 0.18;
+        const whipDx = Math.sin(transProgress * Math.PI) * (isPastCut ? 12 : -12);
 
         ctx.save();
         ctx.beginPath();
         ctx.rect(0, 0, w, h);
         ctx.clip();
 
-        ctx.translate(w / 2, h / 2);
-        ctx.scale(scale, scale);
+        ctx.translate(w / 2 + whipDx, h / 2);
+        ctx.scale(whipScale, whipScale);
         ctx.translate(-w / 2, -h / 2);
 
-        // Invert Strobe:
-        // 3250ms - 3350ms: Full negative flash (invert(100%))
-        // 3350ms - 3450ms: Back to normal
-        // 3450ms - 3570ms: Black & white high contrast (grayscale(100%) contrast(250%))
-        if (elapsed < 3350) {
-          ctx.filter = 'invert(100%) contrast(130%)';
-        } else if (elapsed < 3450) {
-          ctx.filter = 'contrast(125%) saturate(106%) brightness(96%) hue-rotate(-5deg)';
+        // Vocal tag invert strobe & high-contrast flash on the cut
+        if (elapsed >= 3200 && elapsed < 3270) {
+          ctx.filter = 'invert(100%) contrast(140%)';
+        } else if (elapsed >= 3270 && elapsed < 3360) {
+          ctx.filter = 'grayscale(100%) contrast(240%) brightness(112%)';
         } else {
-          ctx.filter = 'grayscale(100%) contrast(240%) brightness(105%)';
+          ctx.filter = 'contrast(125%) saturate(106%) brightness(96%) hue-rotate(-5deg)';
         }
 
-        this.drawCover(ctx, frozenFrameRecord?.bitmap, 0, 0, w, h, isMirrored);
+        if (frame?.bitmap) {
+          this.drawCover(ctx, frame.bitmap, 0, 0, w, h, isMirrored);
+        }
         this.applyCinematicGrade(ctx, 0, 0, w, h);
+
         ctx.restore();
       }
 
       // ----------------------------------------------------
-      // PHASE 3: THE DROP & RANDOM POST-TRIGGER MONTAGE (3.57s - 14.5s)
-      // Randomly merges post-trigger saved moments with live video on beat kicks!
+      // PHASE 3: CLIP 2 - POST-TRIGGER BUTTERY SLOW-MO & PERCUSSION BUILD-UP (3.45s - 4.94s)
+      // Dramatic slow-motion close-up replay of the user's post-trigger action building tension toward drop!
       // ----------------------------------------------------
-      else if (elapsed >= 3570 && elapsed < 14500) {
+      else if (elapsed >= 3450 && elapsed < 4940) {
+        // Pool of frames recorded strictly AFTER trigger (between 0.0s and 3.45s)
+        const recordedFrames = (postMoments?.allRecorded && postMoments.allRecorded.length > 0)
+          ? postMoments.allRecorded
+          : liveFrames;
+
+        const replayPool = (postMoments?.motionMoment && postMoments.motionMoment.length > 3)
+          ? postMoments.motionMoment
+          : (recordedFrames.length > 6
+              ? recordedFrames.slice(Math.floor(recordedFrames.length * 0.2))
+              : recordedFrames);
+
+        const poolLen = Math.max(1, replayPool.length);
+        const progress = (elapsed - 3450) / (4940 - 3450); // 0.0 to 1.0
+        const rampIdx = Math.min(poolLen - 1, Math.max(0, Math.floor(progress * (poolLen - 1))));
+        const frame = replayPool[rampIdx] || frozenFrameRecord || latestLiveFrame || lastRenderedFrame;
+
+        // Keep frozenFrameRecord updated to the climax of Clip 2 so drop slams into it!
+        frozenFrameRecord = frame;
+
+        // Dramatic close-up zoom building tension toward the drop (scale: 1.28 -> 1.50)
+        let scale = 1.28 + progress * 0.22;
+
+        // Subtle drum pulse rhythm as percussion builds up from 4.2s to 4.94s
+        if (elapsed >= 4200) {
+          scale += Math.sin((elapsed - 4200) * 0.025) * 0.03;
+        }
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.clip();
+
+        const liveEye = options.getCurrentEyeCenter ? options.getCurrentEyeCenter() : undefined;
+        const eye = liveEye || options.eyeCenter;
+        const focusX = eye ? eye.x * w : w / 2;
+        const focusY = eye ? eye.y * h : h * 0.40;
+
+        ctx.translate(focusX, focusY);
+        ctx.scale(scale, scale);
+        ctx.translate(-focusX, -focusY);
+
+        ctx.filter = 'contrast(125%) brightness(96%) saturate(106%) hue-rotate(-5deg)';
+        if (frame?.bitmap) {
+          this.drawCover(ctx, frame.bitmap, 0, 0, w, h, isMirrored);
+        }
+        this.applyCinematicGrade(ctx, 0, 0, w, h);
+
+        ctx.restore();
+      }
+
+      // ----------------------------------------------------
+      // PHASE 4: THE REAL FAST PHONK DROP & RANDOM POST-TRIGGER MONTAGE (4.94s - 14.5s)
+      // Fast cuts, snap zooms, quick clip transitions, and ghost trails on real fast beats!
+      // ----------------------------------------------------
+      else if (elapsed >= 4940 && elapsed < 14500) {
         // Find most recent kick
         let dtKick = 999;
         let lastKickIdx = 0;
@@ -821,7 +887,7 @@ export class SigmaEditRenderer {
         // Available post-trigger moment pools
         const climaxPool = (postMoments?.climaxMoment && postMoments.climaxMoment.length > 0)
           ? postMoments.climaxMoment
-          : (frozenFrameRecord ? [frozenFrameRecord] : [latestLiveFrame]);
+          : (frozenFrameRecord ? [frozenFrameRecord] : (latestLiveFrame ? [latestLiveFrame] : (lastRenderedFrame ? [lastRenderedFrame] : [])));
 
         const motionPool = (postMoments?.motionMoment && postMoments.motionMoment.length > 0)
           ? postMoments.motionMoment
@@ -840,20 +906,20 @@ export class SigmaEditRenderer {
         if (currentTakeType === 'POST_CLIMAX') {
           // 3-frame micro-shatter around the peak climax moment
           const microIdx = Math.max(0, climaxPool.length - 1 - (Math.floor(dtKick / 35) % Math.min(3, climaxPool.length)));
-          activeFrame = climaxPool[microIdx] || climaxPool[climaxPool.length - 1] || latestLiveFrame;
+          activeFrame = climaxPool[microIdx] || climaxPool[climaxPool.length - 1] || latestLiveFrame || lastRenderedFrame;
         } else if (currentTakeType === 'POST_MOTION') {
           // Rapid forward movement playback
           const motionIdx = Math.floor((dtKick / 40)) % motionPool.length;
-          activeFrame = motionPool[motionIdx] || motionPool[0] || latestLiveFrame;
+          activeFrame = motionPool[motionIdx] || motionPool[0] || latestLiveFrame || lastRenderedFrame;
         } else if (currentTakeType === 'POST_START') {
           const startIdx = Math.floor((dtKick / 50)) % startPool.length;
-          activeFrame = startPool[startIdx] || startPool[0] || latestLiveFrame;
+          activeFrame = startPool[startIdx] || startPool[0] || latestLiveFrame || lastRenderedFrame;
         } else if (currentTakeType === 'POST_DROP_RECENT') {
           const dropIdx = Math.floor((dtKick / 45)) % dropPool.length;
-          activeFrame = dropPool[dropIdx] || dropPool[0] || latestLiveFrame;
+          activeFrame = dropPool[dropIdx] || dropPool[0] || latestLiveFrame || lastRenderedFrame;
         } else {
           // Live camera feed
-          activeFrame = latestLiveFrame;
+          activeFrame = latestLiveFrame || lastRenderedFrame;
         }
 
         // Focus framing: lock onto eyes/face during close-ups, center during wide
@@ -880,7 +946,7 @@ export class SigmaEditRenderer {
         // --- SILVER HOLOGRAPHIC GHOST ECHO TRAILS (ZERO BLUE BORDERS) ---
         const isQuadEcho = lastKickIdx >= 38;
         // Trail 1: Ethereal silver motion echo (-8 frames)
-        const trail1Frame = liveFrames[Math.max(0, liveFrames.length - 8)] || liveFrames[0];
+        const trail1Frame = liveFrames[Math.max(0, liveFrames.length - 8)] || latestLiveFrame || lastRenderedFrame;
         if (trail1Frame && trail1Frame.bitmap) {
           ctx.save();
           ctx.globalCompositeOperation = 'screen';
@@ -894,7 +960,7 @@ export class SigmaEditRenderer {
 
         // Trail 2: Secondary silver echo (-14 frames)
         if (isQuadEcho || lastKickIdx < 12) {
-          const trail2Frame = liveFrames[Math.max(0, liveFrames.length - 14)] || liveFrames[0];
+          const trail2Frame = liveFrames[Math.max(0, liveFrames.length - 14)] || latestLiveFrame || lastRenderedFrame;
           if (trail2Frame && trail2Frame.bitmap) {
             ctx.save();
             ctx.globalCompositeOperation = 'screen';
@@ -937,17 +1003,17 @@ export class SigmaEditRenderer {
 
         ctx.restore(); // restore shake, snap scale, and clip
 
-        // 1-frame bleached white blast on main 808 drop impact (3.57s - 3.63s)
-        if (elapsed >= 3570 && elapsed < 3630) {
+        // 1-frame bleached white blast on real fast 808 drop impact (4.94s - 5.01s)
+        if (elapsed >= 4940 && elapsed < 5010) {
           ctx.save();
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
           ctx.fillRect(0, 0, w, h);
           ctx.restore();
         }
       }
 
       // ----------------------------------------------------
-      // PHASE 4: STUTTER CLIMAX & OUTRO RESET (14.5s - totalDuration)
+      // PHASE 5: STUTTER CLIMAX & OUTRO RESET (14.5s - totalDuration)
       // Synchronized to finish with the complete audio!
       // ----------------------------------------------------
       else {
@@ -955,15 +1021,15 @@ export class SigmaEditRenderer {
 
         const climaxPool = (postMoments?.climaxMoment && postMoments.climaxMoment.length > 0)
           ? postMoments.climaxMoment
-          : (frozenFrameRecord ? [frozenFrameRecord] : [latestLiveFrame]);
+          : (frozenFrameRecord ? [frozenFrameRecord] : (latestLiveFrame ? [latestLiveFrame] : (lastRenderedFrame ? [lastRenderedFrame] : [])));
 
         if (elapsed < 15200) {
           // 3-frame violent stutter loop of the post-trigger climax
           const twitchPattern = [0, 1, 2, 1, 0, 1, 2, 1];
           const stutterOffset = twitchPattern[Math.floor((elapsed - 14500) / 33) % twitchPattern.length];
-          displayFrame = climaxPool[(climaxPool.length - 1 - stutterOffset + climaxPool.length) % climaxPool.length];
+          displayFrame = climaxPool[(climaxPool.length - 1 - stutterOffset + climaxPool.length) % climaxPool.length] || latestLiveFrame || lastRenderedFrame;
         } else {
-          displayFrame = latestLiveFrame;
+          displayFrame = latestLiveFrame || lastRenderedFrame;
         }
 
         // Smooth ease transforms back to default

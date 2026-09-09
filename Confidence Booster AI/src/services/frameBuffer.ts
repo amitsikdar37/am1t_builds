@@ -19,22 +19,25 @@ export class RollingFrameBuffer {
    * Grabs a 2400ms pre-roll so the full physical action (drinking water / glasses adjust)
    * is captured completely and replayed during the tension setup!
    */
-  public startLiveSession(preRollMs = 2400): void {
+  public startLiveSession(preRollMs = 0): void {
     this.stopLiveSession();
     this.isSessionActive = true;
     const now = performance.now();
     this.sessionStartTimestamp = now;
 
-    // Grab pre-roll frames from just before the trigger
-    const cutoff = now - preRollMs;
-    const preRoll = this.buffer.filter(f => f.timestamp >= cutoff && f.bitmap && f.bitmap.width > 0);
-    this.sessionFrames = [...preRoll];
+    if (preRollMs > 0) {
+      const cutoff = now - preRollMs;
+      const preRoll = this.buffer.filter(f => f.timestamp >= cutoff && f.bitmap && f.bitmap.width > 0);
+      this.sessionFrames = [...preRoll];
 
-    for (const f of this.sessionFrames) {
-      this.protectedBitmaps.add(f.bitmap);
+      for (const f of this.sessionFrames) {
+        this.protectedBitmaps.add(f.bitmap);
+      }
+    } else {
+      this.sessionFrames = [];
     }
 
-    console.log(`[FrameBuffer] Live session started with ${this.sessionFrames.length} pre-roll frames.`);
+    console.log(`[FrameBuffer] Live session started with ${this.sessionFrames.length} frames.`);
   }
 
   /**
@@ -228,7 +231,7 @@ export class RollingFrameBuffer {
    */
   public getPostTriggerMoments(sessionStartTime: number, _nowTimestamp?: number): PostTriggerMoments {
     const valid = this.sessionFrames.filter(
-      f => f && f.bitmap && f.bitmap.width > 0 && f.timestamp >= sessionStartTime - 50
+      f => f && f.bitmap && f.bitmap.width > 0 && f.timestamp >= sessionStartTime
     );
 
     const startMoment: FrameRecord[] = [];
@@ -240,13 +243,13 @@ export class RollingFrameBuffer {
 
     for (const f of valid) {
       const dt = f.timestamp - sessionStartTime;
-      if (dt >= 150 && dt < 1200) {
+      if (dt >= 100 && dt < 1600) {
         startMoment.push(f);
-      } else if (dt >= 1200 && dt < 2600) {
+      } else if (dt >= 1600 && dt < 3200) {
         motionMoment.push(f);
-      } else if (dt >= 2600 && dt <= 3350) {
+      } else if (dt >= 3200 && dt <= 4940) {
         climaxMoment.push(f);
-      } else if (dt > 3570) {
+      } else if (dt > 4940) {
         currentDropChunk.push(f);
         if (currentDropChunk.length >= 15) {
           dropMoments.push([...currentDropChunk]);
@@ -258,8 +261,8 @@ export class RollingFrameBuffer {
       dropMoments.push(currentDropChunk);
     }
 
-    // Fallbacks if moments are not yet populated
-    const fallback = valid.length > 0 ? valid : this.buffer.filter(f => f.bitmap && f.bitmap.width > 0);
+    // Strictly post-trigger fallback: NEVER fall back to pre-trigger buffer!
+    const fallback = valid;
     const lastFrame = fallback.length > 0 ? [fallback[fallback.length - 1]] : [];
 
     return {
@@ -267,7 +270,7 @@ export class RollingFrameBuffer {
       motionMoment: motionMoment.length > 0 ? motionMoment : (fallback.length > 0 ? fallback.slice(Math.max(0, Math.floor(fallback.length * 0.3)), Math.floor(fallback.length * 0.7)) : lastFrame),
       climaxMoment: climaxMoment.length > 0 ? climaxMoment : lastFrame,
       dropMoments,
-      allRecorded: valid.length > 0 ? valid : fallback
+      allRecorded: valid
     };
   }
 
