@@ -105,16 +105,24 @@ export const App: React.FC = () => {
       return;
     }
 
+    const currentPreset = stateRef.current.selectedPreset;
+
+    // Grab a rich, high-density pre-roll clip of the physical action (3500ms ~105 frames)
+    // This provides buttery-smooth, unlagged frame-by-frame slo-mo replay for sigma_hard_snaps
+    const actionClip = frameBuffer.getReplayClip(3500);
+    activeReplayFramesRef.current = actionClip;
+
     // Start live progressive recording session starting right now (from trigger moment onwards)!
     frameBuffer.stopLiveSession();
-    frameBuffer.startLiveSession(150); // 150ms buffer ensures frames are immediately ready
+    const preRollMs = currentPreset === 'sigma_hard_snaps' ? 3500 : 500;
+    frameBuffer.startLiveSession(preRollMs);
     const sessionStartTime = frameBuffer.getSessionStartTimestamp();
 
     // Lock PIP state into EDITING for a quick 200ms target lock
     pipStateRef.current = 'EDITING';
     setPipState('EDITING');
 
-    console.log(`[ConfidenceBooster] Action triggered (${actionType.toUpperCase()})! Live recording started at timestamp ${sessionStartTime.toFixed(0)}.`);
+    console.log(`[ConfidenceBooster] Action triggered (${actionType.toUpperCase()})! Pre-roll action clip: ${actionClip.length} frames.`);
 
     // Fast 200ms punchy transition to PLAYING
     window.setTimeout(() => {
@@ -183,6 +191,7 @@ export const App: React.FC = () => {
             startTime: audioStartTime,
             durationMs,
             sessionStartTime,
+            actionFrames: actionClip,
             getPostTriggerMoments: (nowTimestamp: number) =>
               frameBuffer.getPostTriggerMoments(sessionStartTime, nowTimestamp),
             getSessionFrames: () => frameBuffer.getSessionFrames(),

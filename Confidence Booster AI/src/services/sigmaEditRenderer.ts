@@ -106,9 +106,12 @@ export class SigmaEditRenderer {
       return options.frames || [];
     };
 
-    // Number of frames captured during the initial gesture (the ~1.8s EDITING window)
-    const initialRawFrames = getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
-    const initialGestureCount = Math.max(1, initialRawFrames.length);
+    // Dedicated immutable gesture frames for Phase 1 slow-mo build-up:
+    // Prioritize actionFrames (3.5s pre-roll clip containing 100+ recorded frames of the gesture)
+    const gestureFrames = (options.actionFrames && options.actionFrames.length > 5)
+      ? options.actionFrames.filter(f => f && f.bitmap && f.bitmap.width > 0)
+      : getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
+    const gestureCount = Math.max(1, gestureFrames.length);
 
     const ctx = canvas.getContext('2d', { willReadFrequently: false });
     if (!ctx) return;
@@ -149,7 +152,8 @@ export class SigmaEditRenderer {
       const h = canvas.height;
 
       ctx.save();
-      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#050508';
+      ctx.fillRect(0, 0, w, h);
 
       // Dynamically fetch current valid frames from the live session
       const currentFrames = getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
@@ -170,11 +174,11 @@ export class SigmaEditRenderer {
 
       if (elapsed < wastedStartTime) {
         // --- PHASE 1: SLOW-MOTION BUILD-UP (0.0s to 4.75s) ---
-        // Plays the initial trigger gesture (e.g. touching glasses / sip) in buttery slow motion!
-        const buildRatio = elapsed / wastedStartTime;
-        const rampIdx = Math.floor(buildRatio * (initialGestureCount - 1));
-        const safeRampIdx = Math.min(initialGestureCount - 1, Math.max(0, rampIdx));
-        fCenter = getValidFrame(safeRampIdx);
+        // Plays the physical trigger gesture (e.g. touching glasses / sip) in buttery smooth slow motion!
+        const buildRatio = Math.min(1, Math.max(0, elapsed / wastedStartTime));
+        const rampIdx = Math.floor(buildRatio * (gestureCount - 1));
+        const safeRampIdx = Math.min(gestureCount - 1, Math.max(0, rampIdx));
+        fCenter = gestureFrames[safeRampIdx] || currentFrames[0];
 
       } else if (elapsed >= wastedStartTime && elapsed < popupEndTime) {
         // --- PHASE 2: GTA "WASTED" / MOGGED EFFECT (4.75s to 6.71s) ---
@@ -219,9 +223,22 @@ export class SigmaEditRenderer {
 
       if (elapsed < wastedStartTime) {
         // --- PHASE 1: SLOW-MOTION BUILD-UP (0.0s to 4.75s) ---
-        // Plays gesture in buttery slow-mo with commercial cinematic grade!
+        // Plays gesture in buttery smooth slow-mo with commercial cinematic grade!
+        const buildProgress = Math.min(1, Math.max(0, elapsed / wastedStartTime));
+        const slowScale = 1.0 + buildProgress * 0.08; // subtle smooth zoom toward face
+
         ctx.save();
-        ctx.filter = 'contrast(120%) brightness(100%) saturate(108%)';
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.clip();
+
+        const eyeX = effectiveEye ? effectiveEye.x * w : w / 2;
+        const eyeY = effectiveEye ? effectiveEye.y * h : h * 0.40;
+        ctx.translate(eyeX, eyeY);
+        ctx.scale(slowScale, slowScale);
+        ctx.translate(-eyeX, -eyeY);
+
+        ctx.filter = 'contrast(125%) brightness(96%) saturate(106%) hue-rotate(-5deg)';
         if (fCenter && fCenter.bitmap) {
           this.drawCover(ctx, fCenter.bitmap, 0, 0, w, h, isMirrored);
         }
@@ -460,7 +477,7 @@ export class SigmaEditRenderer {
     if (isFlashFrame) {
       ctx.filter = 'contrast(280%) brightness(190%) saturate(140%)';
     } else {
-      ctx.filter = 'contrast(135%) brightness(98%) saturate(84%) hue-rotate(-8deg)';
+      ctx.filter = 'contrast(128%) brightness(96%) saturate(106%) hue-rotate(-5deg)';
     }
 
     // Draw live webcam feed
@@ -582,7 +599,7 @@ export class SigmaEditRenderer {
     ctx.clip();
 
     // High clarity & contrast on the foreground subject (Clean cinematic film look)
-    ctx.filter = 'contrast(122%) brightness(101%) saturate(108%)';
+    ctx.filter = 'contrast(125%) brightness(96%) saturate(106%) hue-rotate(-5deg)';
     this.drawCover(ctx, frame.bitmap, cardX, cardY, cardW, cardH, isMirrored);
 
     // Subtle cinematic grade on the pop-up subject
