@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, RotateCcw } from 'lucide-react';
+import { Download, RotateCcw, Loader2 } from 'lucide-react';
 
 export type PipState = 'STANDBY' | 'EDITING' | 'PLAYING';
 
@@ -9,6 +9,7 @@ interface PipPlayerProps {
   onSkip: () => void;
   onDownload: () => void;
   canDownload: boolean;
+  isConverting?: boolean;
 }
 
 export const PipPlayer: React.FC<PipPlayerProps> = ({
@@ -16,7 +17,8 @@ export const PipPlayer: React.FC<PipPlayerProps> = ({
   editCanvasRef,
   onSkip,
   onDownload,
-  canDownload
+  canDownload,
+  isConverting = false
 }) => {
   const isPlaying = state === 'PLAYING';
   const isEditing = state === 'EDITING';
@@ -51,10 +53,19 @@ export const PipPlayer: React.FC<PipPlayerProps> = ({
             {canDownload && (
               <button
                 onClick={onDownload}
-                className="p-1 text-cyber-green hover:text-white transition-colors"
-                title="Download edit clip"
+                disabled={isConverting}
+                className={`p-1 transition-colors ${
+                  isConverting
+                    ? 'text-amber-400 animate-pulse cursor-wait'
+                    : 'text-cyber-green hover:text-white'
+                }`}
+                title={isConverting ? 'Processing fast-start MP4...' : 'Download edit clip (MP4)'}
               >
-                <Download className="w-3.5 h-3.5" />
+                {isConverting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
               </button>
             )}
             <button

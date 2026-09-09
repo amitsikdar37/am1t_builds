@@ -11,7 +11,8 @@ import {
   Music,
   Eye,
   Coffee,
-  Layers
+  Layers,
+  Loader2
 } from 'lucide-react';
 import { TriggerMode, EditPresetId } from '../types';
 
@@ -29,6 +30,7 @@ interface ControlsBarProps {
   onForceTrigger: () => void;
   onDownloadClip: () => void;
   hasDownloadableClip: boolean;
+  isConverting?: boolean;
   sensitivity: number;
   onChangeSensitivity: (val: number) => void;
   isEditing: boolean;
@@ -48,6 +50,7 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
   onForceTrigger,
   onDownloadClip,
   hasDownloadableClip,
+  isConverting = false,
   sensitivity,
   onChangeSensitivity,
   isEditing
@@ -240,11 +243,25 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
         {hasDownloadableClip && (
           <button
             onClick={onDownloadClip}
-            className="flex items-center gap-1.5 bg-cyber-green text-black font-cyber font-bold text-xs px-3 py-1.5 rounded-full hover:bg-white transition-all shadow-md shadow-cyber-green/30"
-            title="Download recorded clip"
+            disabled={isConverting}
+            className={`flex items-center gap-1.5 font-cyber font-bold text-xs px-3 py-1.5 rounded-full transition-all shadow-md ${
+              isConverting
+                ? 'bg-amber-400/80 text-black animate-pulse cursor-wait shadow-amber-400/20'
+                : 'bg-cyber-green text-black hover:bg-white shadow-cyber-green/30'
+            }`}
+            title={isConverting ? 'Processing fast-start MP4...' : 'Download recorded clip in universal MP4 format'}
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>DOWNLOAD</span>
+            {isConverting ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>CONVERTING...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-3.5 h-3.5" />
+                <span>DOWNLOAD MP4</span>
+              </>
+            )}
           </button>
         )}
 

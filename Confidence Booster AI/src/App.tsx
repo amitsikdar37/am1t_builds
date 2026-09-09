@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Camera, AlertCircle, Sparkles } from 'lucide-react';
+import { Camera, Zap } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 import { TriggerMode, FaceData, PhonkTrackId, FrameRecord, EditPresetId } from './types';
@@ -34,6 +34,7 @@ export const App: React.FC = () => {
   const [selectedTrack, setSelectedTrack] = useState<PhonkTrackId>('montagem_tomada');
   const [isSoundboardOpen, setIsSoundboardOpen] = useState(false);
   const [hasDownloadableClip, setHasDownloadableClip] = useState(false);
+  const [isConvertingMp4, setIsConvertingMp4] = useState(false);
 
   // Vision State
   const [faceData, setFaceData] = useState<FaceData>({
@@ -73,11 +74,15 @@ export const App: React.FC = () => {
     stateRef.current = { faceData, isMirrored, selectedTrack, selectedPreset };
   });
 
-  // Preload audio files on mount
+  // Preload audio files on mount & listen to clip recorder state changes
   useEffect(() => {
     phonkAudio.preloadTomadaAudio();
     phonkAudio.preloadMoggedAudio();
     phonkAudio.preloadMoggerAudio();
+
+    clipRecorder.setOnStateChange((converting) => {
+      setIsConvertingMp4(converting);
+    });
   }, []);
 
   // Handle window resizing so live canvas covers the entire display edge-to-edge
@@ -379,15 +384,15 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Download Clip
-  const handleDownloadClip = () => {
-    let filename = `sigma_mog_edit_${Date.now()}.webm`;
+  // Download Clip in Universal MP4 Format
+  const handleDownloadClip = async () => {
+    let filename = `sigma_mog_edit_${Date.now()}.mp4`;
     if (selectedPreset === 'ghost_trail_impact' || selectedPreset === 'parallax_dual_speed') {
-      filename = `ghost_trail_edit_${Date.now()}.webm`;
+      filename = `ghost_trail_edit_${Date.now()}.mp4`;
     } else if (selectedPreset === 'dark_manga_strobe') {
-      filename = `dark_manga_edit_${Date.now()}.webm`;
+      filename = `dark_manga_edit_${Date.now()}.mp4`;
     }
-    clipRecorder.downloadLastClip(filename);
+    await clipRecorder.downloadLastClip(filename);
   };
 
   return (
@@ -408,55 +413,53 @@ export const App: React.FC = () => {
               <h1 className="font-cyber font-bold text-2xl tracking-wider text-cyber-green text-glow-green">
                 CONFIDENCE BOOSTER AI
               </h1>
-              <p className="text-xs text-gray-400 font-mono mt-1">
-                FULLSCREEN SURVEILLANCE // AUTOMATIC MOG EDITS
+              <p className="text-gray-400 text-xs mt-1">
+                VIRAL PHONK WEBCAM &bull; 3D FACE TRACKING &bull; PRESENT ACTION RECORDING
               </p>
             </div>
 
             {cameraError ? (
-              <div className="flex items-center gap-2 p-3 bg-red-950/70 border border-red-500 rounded text-red-300 text-xs">
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                <span>{cameraError}</span>
+              <div className="w-full p-3 bg-red-950/60 border border-red-500 rounded text-red-300 text-xs text-left">
+                <p className="font-bold mb-1">Camera Access Error:</p>
+                <p className="text-red-400 font-mono text-[11px] break-all">{cameraError}</p>
+                <button
+                  onClick={startCamera}
+                  className="mt-3 w-full py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-xs font-bold transition-colors"
+                >
+                  RETRY CAMERA
+                </button>
               </div>
             ) : (
-              <div className="text-xs text-gray-300 bg-gray-950/80 p-3.5 rounded border border-cyber-green/20 space-y-2 text-left w-full">
-                <div className="flex items-center gap-2 text-cyber-green font-bold">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  HOW IT WORKS:
+              <div className="w-full flex flex-col gap-3">
+                <div className="text-left text-xs text-gray-400 bg-black/50 p-3 rounded border border-gray-800 space-y-1.5">
+                  <p className="text-cyber-green font-bold flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5" /> HOW TO USE:
+                  </p>
+                  <p>&bull; Take a sip of water/coffee, OR adjust your glasses.</p>
+                  <p>&bull; AI detects your gesture &bull; locks target &bull; triggers edit.</p>
+                  <p>&bull; Press <kbd className="px-1.5 py-0.5 bg-gray-800 text-cyber-green rounded text-[10px]">SPACE</kbd> anytime to force trigger manually.</p>
                 </div>
-                <div className="text-[11px] text-gray-400">
-                  1. A 3D wireframe green cube locks onto your face in the live monitor.
-                </div>
-                <div className="text-[11px] text-gray-400">
-                  2. Take a <strong className="text-cyber-green">sip from a drink</strong> or <strong className="text-cyber-cyan">adjust your glasses</strong>.
-                </div>
-                <div className="text-[11px] text-gray-400">
-                  3. The top-right box shows <strong className="text-amber-400">EDITING...</strong> for 2s, then expands and plays your mog edit while the camera stays live!
-                </div>
+
+                <button
+                  onClick={startCamera}
+                  className="w-full py-3 bg-cyber-green hover:bg-white text-black font-cyber font-bold text-sm tracking-wider rounded transition-all shadow-lg shadow-cyber-green/30 flex items-center justify-center gap-2"
+                >
+                  <Zap className="w-4 h-4" />
+                  INITIALIZE TACTICAL CAM
+                </button>
               </div>
             )}
-
-            <button
-              onClick={startCamera}
-              className="w-full py-3 bg-cyber-green hover:bg-white text-black font-cyber font-bold text-sm tracking-wider rounded transition-all shadow-lg shadow-cyber-green/40 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              INITIALIZE LIVE FEED
-            </button>
           </div>
         </div>
       )}
 
-      {/* FULLSCREEN EDGE-TO-EDGE LIVE CAMERA FEED WITH 3D GREEN CUBE */}
+      {/* Main Fullscreen Webcam Canvas */}
       <canvas
         ref={liveCanvasRef}
-        className="absolute inset-0 w-full h-full object-cover block"
+        className="w-full h-full object-cover block"
       />
 
-      {/* Subtle Fullscreen CRT Scanlines & Vignette */}
-      <div className="absolute inset-0 crt-scanlines opacity-35 pointer-events-none" />
-      <div className="absolute inset-0 crt-vignette pointer-events-none" />
-
-      {/* Minimal Tactical HUD: [ LIVE, CAM 01, REC timer (Overlaid on Fullscreen) */}
+      {/* Tactical HUD Overlay (Reticle, Face Wireframe Cube, FPS, Status) */}
       {cameraActive && <TacticalHUD fps={fps} />}
 
       {/* PICTURE-IN-PICTURE VIDEO PLAYER BOX (Top Right / Expanded on Right Side) */}
@@ -467,6 +470,7 @@ export const App: React.FC = () => {
           onSkip={handleSkipPip}
           onDownload={handleDownloadClip}
           canDownload={hasDownloadableClip}
+          isConverting={isConvertingMp4}
         />
       )}
 
@@ -490,6 +494,7 @@ export const App: React.FC = () => {
           onForceTrigger={() => triggerAction('manual')}
           onDownloadClip={handleDownloadClip}
           hasDownloadableClip={hasDownloadableClip}
+          isConverting={isConvertingMp4}
           sensitivity={sensitivity}
           onChangeSensitivity={(v) => {
             setSensitivity(v);
