@@ -1,8 +1,8 @@
-import { FrameRecord } from '../types';
+import { FrameRecord, MultiTakeClips } from '../types';
 
 export class RollingFrameBuffer {
   private buffer: FrameRecord[] = [];
-  private maxDurationMs = 6000; // retain sliding 6 seconds of video
+  private maxDurationMs = 7500; // retain sliding 7.5 seconds of video to hold rich past takes
   private isCapturing = true;
 
   // Bitmaps that are actively being used by an edit replay clip or live session.
@@ -168,6 +168,55 @@ export class RollingFrameBuffer {
         }
       }
     }
+  }
+
+  /**
+   * Captures multiple structured past takes from the rolling buffer:
+   * - climax: Past 0ms to -1200ms (peak sip / glasses touch / intense direct stare)
+   * - motion: Past -1200ms to -2800ms (physical movement: raising cup / reaching up)
+   * - setup: Past -2800ms to -5000ms (earlier neutral posture / glancing take)
+   * - allAction: The combined clip for slow-mo tension buildup
+   * All frame bitmaps are protected from garbage collection until explicitly released.
+   */
+  public getMultiTakeClips(preRollDurationMs = 5000): MultiTakeClips {
+    const valid = this.buffer.filter(f => f.bitmap && f.bitmap.width > 0);
+    if (valid.length === 0) {
+      return { setup: [], motion: [], climax: [], allAction: [] };
+    }
+
+    const now = performance.now();
+    const cutoff = now - preRollDurationMs;
+    const allAction = valid.filter(f => f.timestamp >= cutoff);
+    const pool = allAction.length >= 10 ? allAction : valid;
+
+    const len = pool.length;
+    // Slicing into 3 distinct takes
+    const setupEnd = Math.max(1, Math.floor(len * 0.35));
+    const motionEnd = Math.max(setupEnd + 1, Math.floor(len * 0.75));
+
+    const setup = pool.slice(0, setupEnd);
+    const motion = pool.slice(setupEnd, motionEnd);
+    const climax = pool.slice(motionEnd);
+
+    // Protect all bitmaps in these takes
+    for (const f of pool) {
+      this.protectedBitmaps.add(f.bitmap);
+    }
+
+    return {
+      setup: setup.length > 0 ? setup : pool,
+      motion: motion.length > 0 ? motion : pool,
+      climax: climax.length > 0 ? climax : pool,
+      allAction: pool
+    };
+  }
+
+  public releaseMultiTakes(takes: MultiTakeClips): void {
+    if (!takes) return;
+    if (takes.allAction) this.releaseClip(takes.allAction);
+    if (takes.setup) this.releaseClip(takes.setup);
+    if (takes.motion) this.releaseClip(takes.motion);
+    if (takes.climax) this.releaseClip(takes.climax);
   }
 
   public getFrameCount(): number {

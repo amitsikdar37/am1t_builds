@@ -46,6 +46,13 @@ export interface FrameRecord {
   timestamp: number;
 }
 
+export interface MultiTakeClips {
+  setup: FrameRecord[];    // Past -2.5s to -4.5s (earlier glance / setup take)
+  motion: FrameRecord[];   // Past -1.0s to -2.5s (movement take: raising drink / hand)
+  climax: FrameRecord[];   // Past 0s to -1.0s (peak action take: sip / glasses touch / direct stare)
+  allAction: FrameRecord[]; // Full pre-roll action clip (for Phase 1 & 2)
+}
+
 export type PhonkTrackId = 'marlon_mogged' | 'montagem_tomada' | 'tokyo_drift' | 'cyber_sigma' | 'gigachad_anthem';
 
 export type EditPresetId = 'sigma_hard_snaps' | 'ghost_trail_impact' | 'parallax_dual_speed';

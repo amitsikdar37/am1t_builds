@@ -1,9 +1,10 @@
-import { FrameRecord, EditPresetId } from '../types';
+import { FrameRecord, EditPresetId, MultiTakeClips } from '../types';
 
 export interface EditRenderOptions {
   canvas: HTMLCanvasElement;
   frames?: FrameRecord[];
   actionFrames?: FrameRecord[]; // captured physical action (drinking / glasses adjust)
+  multiTakes?: MultiTakeClips;   // structured past takes (setup, motion, climax) for beat-synced montage!
   getSessionFrames?: () => FrameRecord[];
   getCurrentEyeCenter?: () => { x: number; y: number } | undefined;
   actionType: 'drink' | 'glasses' | 'manual';
@@ -216,13 +217,13 @@ export class SigmaEditRenderer {
 
       if (elapsed < wastedStartTime) {
         // --- PHASE 1: SLOW-MOTION BUILD-UP (0.0s to 4.75s) ---
-        // Plays gesture in buttery slow-mo with Cold Phonk anti-warmth grade!
+        // Plays gesture in buttery slow-mo with commercial cinematic grade!
         ctx.save();
-        ctx.filter = 'contrast(130%) brightness(98%) saturate(84%) hue-rotate(-8deg)';
+        ctx.filter = 'contrast(120%) brightness(100%) saturate(108%)';
         if (fCenter && fCenter.bitmap) {
           this.drawCover(ctx, fCenter.bitmap, 0, 0, w, h, isMirrored);
         }
-        this.applyColdPhonkGrade(ctx, 0, 0, w, h);
+        this.applyCinematicGrade(ctx, 0, 0, w, h);
         ctx.restore();
 
       } else if (isWastedPhase) {
@@ -327,10 +328,11 @@ export class SigmaEditRenderer {
   }
 
   /**
-   * 2026 Ice Phonk Color Grading (Anti-Warmth CC)
-   * Eliminates yellow/warm room lighting and imparts an icy, chiseled, cold steel aesthetic.
+   * Professional Commercial Phonk Color Grading
+   * Delivers punchy S-curve contrast, healthy natural skin tones, and rich neutral crushed blacks.
+   * ZERO cyan or blue border artifacts.
    */
-  private applyColdPhonkGrade(
+  private applyCinematicGrade(
     ctx: CanvasRenderingContext2D,
     x = 0,
     y = 0,
@@ -342,27 +344,25 @@ export class SigmaEditRenderer {
 
     ctx.save();
 
-    // 1. Ice Cyan Color Toning (Crushes yellow room tint in soft-light mode)
+    // 1. Subtle warm-golden highlight / cool-neutral shadow tone mapping (soft-light)
     ctx.globalCompositeOperation = 'soft-light';
-    const coldGrad = ctx.createLinearGradient(x, y, x, y + height);
-    coldGrad.addColorStop(0, 'rgba(0, 195, 255, 0.22)'); // icy cyan top
-    coldGrad.addColorStop(1, 'rgba(20, 70, 160, 0.26)'); // deep cold navy bottom
-    ctx.fillStyle = coldGrad;
+    const filmGrad = ctx.createLinearGradient(x, y, x, y + height);
+    filmGrad.addColorStop(0, 'rgba(255, 235, 210, 0.08)'); // subtle warm highlight glow
+    filmGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+    filmGrad.addColorStop(1, 'rgba(12, 12, 18, 0.12)');     // neutral deep film shadow density
+    ctx.fillStyle = filmGrad;
     ctx.fillRect(x, y, width, height);
 
-    // 2. Cold Steel Shadow Vignette (Crushed navy/black edges to focus lighting on face)
+    // 2. Pure Neutral Optical Dark Vignette (Smooth feathered edge darkness, NEVER colored blue)
     ctx.globalCompositeOperation = 'source-over';
-    const vignette = ctx.createRadialGradient(
-      x + width / 2,
-      y + height * 0.44,
-      height * 0.28,
-      x + width / 2,
-      y + height / 2,
-      Math.max(width, height) * 0.76
-    );
+    const cx = x + width / 2;
+    const cy = y + height * 0.48;
+    const rInner = Math.min(width, height) * 0.35;
+    const rOuter = Math.max(width, height) * 0.72;
+    const vignette = ctx.createRadialGradient(cx, cy, rInner, cx, cy, rOuter);
     vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    vignette.addColorStop(0.65, 'rgba(0, 18, 38, 0.38)'); // cold steel shadow
-    vignette.addColorStop(1, 'rgba(0, 8, 20, 0.76)');     // deep crushed navy black
+    vignette.addColorStop(0.68, 'rgba(0, 0, 0, 0.18)');
+    vignette.addColorStop(1, 'rgba(0, 0, 0, 0.52)'); // pure neutral black, zero blue
     ctx.fillStyle = vignette;
     ctx.fillRect(x, y, width, height);
 
@@ -474,9 +474,9 @@ export class SigmaEditRenderer {
       ctx.restore();
     }
 
-    // 4. Signature Cold Phonk Grade
+    // 4. Commercial Cinematic Grade
     if (!isFlashFrame) {
-      this.applyColdPhonkGrade(ctx, 0, 0, w, h);
+      this.applyCinematicGrade(ctx, 0, 0, w, h);
     }
 
     ctx.restore();
@@ -569,33 +569,15 @@ export class SigmaEditRenderer {
     }
     ctx.clip();
 
-    // High clarity & contrast on the foreground subject (Cold Phonk Anti-Warmth)
-    ctx.filter = 'contrast(132%) brightness(100%) saturate(84%) hue-rotate(-8deg)';
+    // High clarity & contrast on the foreground subject (Clean cinematic film look)
+    ctx.filter = 'contrast(122%) brightness(101%) saturate(108%)';
     this.drawCover(ctx, frame.bitmap, cardX, cardY, cardW, cardH, isMirrored);
 
-    // Subtle cold steel color grade on the pop-up subject
-    this.applyColdPhonkGrade(ctx, cardX, cardY, cardW, cardH);
+    // Subtle cinematic grade on the pop-up subject
+    this.applyCinematicGrade(ctx, cardX, cardY, cardW, cardH);
 
     ctx.restore(); // restore shadow & clip
     ctx.restore(); // restore main save
-  }
-
-  /**
-   * Heavy radial vignette for border shading
-   */
-  private drawHeavyVignette(ctx: CanvasRenderingContext2D, w: number, h: number, alphaMultiplier = 1.0) {
-    if (alphaMultiplier <= 0) return;
-    ctx.save();
-    const cx = w / 2;
-    const cy = h / 2;
-    const r = Math.max(w, h) * 0.72;
-    const grad = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r);
-    grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    grad.addColorStop(0.65, `rgba(0, 0, 0, ${0.45 * alphaMultiplier})`);
-    grad.addColorStop(1, `rgba(0, 0, 0, ${0.85 * alphaMultiplier})`);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-    ctx.restore();
   }
 
   /**
@@ -633,11 +615,16 @@ export class SigmaEditRenderer {
       13550, 13790, 14010, 14220, 14460, 14700, 14920
     ];
 
-    // Captured physical action frames (taking a sip / adjusting glasses)
-    const actionFrames = (options.actionFrames && options.actionFrames.length > 5)
-      ? options.actionFrames
-      : initialRawFrames;
-    const actionCount = Math.max(1, actionFrames.length);
+    // Multi-Take Clips: structured past takes (climax, motion, setup) and full action clip
+    const multiTakes = options.multiTakes;
+    const allActionFrames = (multiTakes?.allAction && multiTakes.allAction.length > 5)
+      ? multiTakes.allAction
+      : ((options.actionFrames && options.actionFrames.length > 5) ? options.actionFrames : initialRawFrames);
+    const actionCount = Math.max(1, allActionFrames.length);
+
+    const climaxTake = (multiTakes?.climax && multiTakes.climax.length > 0) ? multiTakes.climax : allActionFrames;
+    const motionTake = (multiTakes?.motion && multiTakes.motion.length > 0) ? multiTakes.motion : allActionFrames;
+    const setupTake = (multiTakes?.setup && multiTakes.setup.length > 0) ? multiTakes.setup : allActionFrames;
 
     let dropFired = false;
     let frozenFrameRecord: FrameRecord | null = null;
@@ -657,8 +644,9 @@ export class SigmaEditRenderer {
       ctx.save();
       ctx.clearRect(0, 0, w, h);
 
-      const frames = getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
-      const poolCount = Math.max(1, frames.length);
+      // Dynamically fetch live present camera frames
+      const liveFrames = getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
+      const latestLiveFrame = liveFrames[liveFrames.length - 1] || initialRawFrames[0];
 
       // ----------------------------------------------------
       // PHASE 1: THE ACTION SETUP & TENSION (0.0s - 3.25s)
@@ -672,19 +660,23 @@ export class SigmaEditRenderer {
         // Smoothly replay the captured physical action up to the climax
         const actionRatio = Math.min(1, Math.max(0, elapsed / 3250));
         const frameIdx = Math.floor(actionRatio * (actionCount - 1));
-        const frame = actionFrames[frameIdx] || actionFrames[0];
+        const frame = allActionFrames[frameIdx] || allActionFrames[0];
 
         ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.clip(); // strict boundary clip
+
         ctx.translate(w / 2, h / 2);
         ctx.scale(scale, scale);
         ctx.translate(-w / 2, -h / 2);
 
-        // Desaturate slightly, boost contrast, cold grading
-        ctx.filter = 'saturate(70%) contrast(120%) brightness(96%)';
+        // Professional Film Grade: rich natural skin tones, crisp contrast, ZERO cyan tint
+        ctx.filter = 'contrast(118%) saturate(110%) brightness(101%)';
         this.drawCover(ctx, frame?.bitmap, 0, 0, w, h, isMirrored);
-        this.drawHeavyVignette(ctx, w, h, 0.45);
+        this.applyCinematicGrade(ctx, 0, 0, w, h);
 
-        // Action meme badge in bottom corner
+        // Action badge in bottom corner
         ctx.save();
         ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
         ctx.fillRect(16, h - 38, 200, 24);
@@ -711,13 +703,17 @@ export class SigmaEditRenderer {
       else if (elapsed >= 3250 && elapsed < 3570) {
         // Freeze Frame: Hold the video playhead completely static on the peak action frame for 0.32s
         if (!frozenFrameRecord) {
-          frozenFrameRecord = actionFrames[actionCount - 1] || actionFrames[0];
+          frozenFrameRecord = allActionFrames[actionCount - 1] || allActionFrames[0];
         }
 
         // Zoom Pop: Instant hard step to scale(1.25)
         const scale = 1.25;
 
         ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.clip();
+
         ctx.translate(w / 2, h / 2);
         ctx.scale(scale, scale);
         ctx.translate(-w / 2, -h / 2);
@@ -729,19 +725,19 @@ export class SigmaEditRenderer {
         if (elapsed < 3350) {
           ctx.filter = 'invert(100%) contrast(130%)';
         } else if (elapsed < 3450) {
-          ctx.filter = 'contrast(120%) saturate(80%)';
+          ctx.filter = 'contrast(125%) saturate(105%)';
         } else {
-          ctx.filter = 'grayscale(100%) contrast(250%) brightness(110%)';
+          ctx.filter = 'grayscale(100%) contrast(240%) brightness(105%)';
         }
 
         this.drawCover(ctx, frozenFrameRecord?.bitmap, 0, 0, w, h, isMirrored);
-        this.drawHeavyVignette(ctx, w, h, 0.6);
+        this.applyCinematicGrade(ctx, 0, 0, w, h);
         ctx.restore();
       }
 
       // ----------------------------------------------------
-      // PHASE 3: THE DROP & EVOLVING VISUALS (3.57s - 14.5s)
-      // Completely eliminates the 10-second repetition trap with 4 evolving sections!
+      // PHASE 3: THE DROP & MULTI-TAKE MONTAGE (3.57s - 14.5s)
+      // Dynamically merges past saved clip moments with live webcam video on beats!
       // ----------------------------------------------------
       else if (elapsed >= 3570 && elapsed < 14500) {
         // Find most recent kick
@@ -755,127 +751,184 @@ export class SigmaEditRenderer {
           }
         }
 
-        // POINT 3: VIOLENT 1-FRAME JAGGED SHAKE (NO SPONGY EASING!)
-        // Instant 1-frame offset (±15px random translation) that drops straight back to base over 60ms
+        // 1-FRAME VIOLENT JAGGED SHAKE (±15px random displacement dropping straight back in 60ms)
         let shakeX = 0;
         let shakeY = 0;
 
         if (dtKick < 60) {
           if (dtKick < 30) {
-            // Instant 1-frame violent offset: ±15px random displacement (user spec)
             const signX = (lastKickIdx % 2 === 0) ? 1 : -1;
             const signY = (lastKickIdx % 3 === 0) ? 1 : -1;
             shakeX = signX * (14 + ((lastKickIdx * 7) % 6)); // 14px to 19px
             shakeY = signY * (14 + ((lastKickIdx * 11) % 6));
           } else {
-            // Drop sharply back towards base over 60ms
             shakeX = (lastKickIdx % 2 === 0 ? 1 : -1) * 3;
             shakeY = (lastKickIdx % 3 === 0 ? 1 : -1) * 3;
           }
         }
 
-        // EVOLVING STAGES: Breaks the visual monotony across the 11-second drop
-        const isJumpCutSection = elapsed >= 6500 && elapsed < 9500;
-        const isSpeedRampSection = elapsed >= 9500 && elapsed < 12500;
-        const isQuadEchoSection = elapsed >= 12500;
+        // === MULTI-TAKE MONTAGE CUT SEQUENCER ===
+        // Rhythmically cuts between past saved moments and live webcam movements!
+        type TakeType = 'PAST_CLIMAX' | 'PAST_MOTION' | 'PAST_SETUP' | 'LIVE_FEED';
+        let currentTakeType: TakeType = 'LIVE_FEED';
+        let snapScale = 1.12;
+        let isCloseUp = false;
 
-        // Hard Scale Jump
-        let snapScale = 1.10;
-        if (isJumpCutSection) {
-          // Alternating wide (1.12x) vs extreme face close-up (1.72x) jump cuts
-          snapScale = (lastKickIdx % 2 === 1) ? 1.72 : 1.12;
-        } else if (dtKick < 60) {
-          snapScale = 1.28;
+        // Stage 1: Initial Drop Shock (Kicks 0 - 11: 3.57s - 6.45s)
+        if (lastKickIdx < 12) {
+          if (lastKickIdx === 0 || lastKickIdx === 2 || lastKickIdx === 6 || lastKickIdx === 10) {
+            currentTakeType = 'PAST_CLIMAX'; // Flash cut to peak sip / intense gaze!
+            snapScale = 1.72;
+            isCloseUp = true;
+          } else if (lastKickIdx === 4 || lastKickIdx === 8) {
+            currentTakeType = 'PAST_MOTION'; // Flash cut to raising drink / glasses movement
+            snapScale = 1.40;
+          } else {
+            currentTakeType = 'LIVE_FEED';   // Cut back to user reacting live
+            snapScale = 1.12;
+          }
+        }
+        // Stage 2: Rapid-Fire Multi-Take Montage (Kicks 12 - 24: 6.45s - 9.62s)
+        else if (lastKickIdx < 25) {
+          const cyclePattern: TakeType[] = [
+            'PAST_SETUP',  'LIVE_FEED',
+            'PAST_MOTION', 'LIVE_FEED',
+            'PAST_CLIMAX', 'LIVE_FEED',
+            'PAST_MOTION', 'PAST_CLIMAX',
+            'LIVE_FEED',   'PAST_CLIMAX',
+            'LIVE_FEED',   'PAST_MOTION',
+            'LIVE_FEED'
+          ];
+          const patternIdx = (lastKickIdx - 12) % cyclePattern.length;
+          currentTakeType = cyclePattern[patternIdx];
+
+          if (currentTakeType === 'PAST_CLIMAX') {
+            snapScale = 1.76;
+            isCloseUp = true;
+          } else if (currentTakeType === 'PAST_MOTION') {
+            snapScale = 1.42;
+          } else if (currentTakeType === 'PAST_SETUP') {
+            snapScale = 1.25;
+          } else {
+            snapScale = 1.12;
+          }
+        }
+        // Stage 3: Speed Ramp & Glitch Flash Cuts (Kicks 25 - 37: 9.62s - 12.83s)
+        else if (lastKickIdx < 38) {
+          // On kick transients (<90ms), inject rapid glitch cuts to past takes!
+          if (dtKick < 90) {
+            currentTakeType = (lastKickIdx % 2 === 0) ? 'PAST_CLIMAX' : 'PAST_MOTION';
+            snapScale = 1.70;
+            isCloseUp = (currentTakeType === 'PAST_CLIMAX');
+          } else {
+            currentTakeType = 'LIVE_FEED';
+            snapScale = 1.14;
+          }
+        }
+        // Stage 4: Climax Frenzy & Quad-Echo Surge (Kicks 38+: 12.83s - 14.5s)
+        else {
+          if (lastKickIdx % 2 === 0) {
+            currentTakeType = 'PAST_CLIMAX';
+            snapScale = 1.76;
+            isCloseUp = true;
+          } else {
+            currentTakeType = 'LIVE_FEED';
+            snapScale = 1.16;
+          }
         }
 
-        // Hard RGB Split
-        const isRgbSplit = dtKick < 60;
-
-        // Playhead motion progression
-        let speedMultiplier = isSpeedRampSection ? 1.8 : 1.0;
-        const actionProg = actionCount + Math.floor(((elapsed - 3570) / 1000) * 30 * speedMultiplier);
-        let currentIdx = actionProg;
-
-        // Glitch stutter twitch during speed ramp section
-        if (isSpeedRampSection && dtKick < 90) {
-          const twitch = (Math.floor(dtKick / 30) % 2 === 0) ? -2 : 0;
-          currentIdx += twitch;
+        // Punch kick scale transient
+        if (dtKick < 50 && !isCloseUp) {
+          snapScale = Math.max(snapScale, 1.26);
         }
 
-        const currentFrame = frames[currentIdx % poolCount] || frames[frames.length - 1] || initialRawFrames[0];
+        // Select the active frame based on the active take type
+        let activeFrame: FrameRecord;
+        if (currentTakeType === 'PAST_CLIMAX') {
+          // 3-frame micro-shatter around the peak climax moment
+          const microIdx = Math.max(0, climaxTake.length - 1 - (Math.floor(dtKick / 35) % Math.min(3, climaxTake.length)));
+          activeFrame = climaxTake[microIdx] || climaxTake[climaxTake.length - 1] || latestLiveFrame;
+        } else if (currentTakeType === 'PAST_MOTION') {
+          // Rapid forward movement playback
+          const motionIdx = Math.floor((dtKick / 40)) % motionTake.length;
+          activeFrame = motionTake[motionIdx] || motionTake[0] || latestLiveFrame;
+        } else if (currentTakeType === 'PAST_SETUP') {
+          const setupIdx = Math.floor((dtKick / 50)) % setupTake.length;
+          activeFrame = setupTake[setupIdx] || setupTake[0] || latestLiveFrame;
+        } else {
+          // Live camera feed
+          activeFrame = latestLiveFrame;
+        }
+
+        // Focus framing: lock onto eyes/face during close-ups, center during wide
+        let focusX = w / 2;
+        let focusY = h / 2;
+        if (isCloseUp) {
+          const liveEye = options.getCurrentEyeCenter ? options.getCurrentEyeCenter() : undefined;
+          const eye = liveEye || options.eyeCenter;
+          focusX = eye ? eye.x * w : w / 2;
+          focusY = eye ? eye.y * h : h * 0.38;
+        }
+
+        ctx.save();
+        // Strict boundary clip: eliminates any border bleed or side stripes
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.clip();
 
         // Apply violent 1-frame shake + instant snap scale
-        ctx.save();
-        ctx.translate(w / 2 + shakeX, h / 2 + shakeY);
+        ctx.translate(focusX + shakeX, focusY + shakeY);
         ctx.scale(snapScale, snapScale);
-        ctx.translate(-w / 2, -h / 2);
+        ctx.translate(-focusX, -focusY);
 
-        // --- GHOST ECHO TRAILS ---
-        // Trail 1: -12 frames (or -16 in quad echo)
-        const frame12Idx = Math.max(0, currentIdx - (isQuadEchoSection ? 16 : 12));
-        const frame12 = frames[frame12Idx % poolCount];
-        if (frame12 && frame12.bitmap) {
+        // --- SILVER HOLOGRAPHIC GHOST ECHO TRAILS (ZERO BLUE BORDERS) ---
+        const isQuadEcho = lastKickIdx >= 38;
+        // Trail 1: Ethereal silver motion echo (-8 frames)
+        const trail1Frame = liveFrames[Math.max(0, liveFrames.length - 8)] || liveFrames[0];
+        if (trail1Frame && trail1Frame.bitmap) {
           ctx.save();
           ctx.globalCompositeOperation = 'screen';
-          ctx.globalAlpha = 0.15;
-          ctx.translate(w / 2, h / 2);
-          ctx.scale(1.10, 1.10);
+          ctx.globalAlpha = 0.22;
+          ctx.filter = 'grayscale(90%) contrast(135%) brightness(112%)'; // silver holographic, ZERO cyan
+          ctx.translate(w / 2 - 8, h / 2);
           ctx.translate(-w / 2, -h / 2);
-          ctx.filter = 'contrast(130%) brightness(120%) hue-rotate(190deg)'; // cyan holographic trail
-          this.drawCover(ctx, frame12.bitmap, 0, 0, w, h, isMirrored);
+          this.drawCover(ctx, trail1Frame.bitmap, 0, 0, w, h, isMirrored);
           ctx.restore();
         }
 
-        // Trail 2: -6 frames (or -8 in quad echo)
-        const frame6Idx = Math.max(0, currentIdx - (isQuadEchoSection ? 8 : 6));
-        const frame6 = frames[frame6Idx % poolCount];
-        if (frame6 && frame6.bitmap) {
-          ctx.save();
-          ctx.globalCompositeOperation = 'screen';
-          ctx.globalAlpha = 0.35;
-          ctx.translate(w / 2, h / 2);
-          ctx.scale(1.05, 1.05);
-          ctx.translate(-w / 2, -h / 2);
-          ctx.filter = 'contrast(130%) brightness(115%) hue-rotate(160deg)';
-          this.drawCover(ctx, frame6.bitmap, 0, 0, w, h, isMirrored);
-          ctx.restore();
-        }
-
-        // Optional Trail 3 in quad echo section (-4 frames)
-        if (isQuadEchoSection) {
-          const frame4Idx = Math.max(0, currentIdx - 4);
-          const frame4 = frames[frame4Idx % poolCount];
-          if (frame4 && frame4.bitmap) {
+        // Trail 2: Secondary silver echo (-14 frames)
+        if (isQuadEcho || lastKickIdx < 12) {
+          const trail2Frame = liveFrames[Math.max(0, liveFrames.length - 14)] || liveFrames[0];
+          if (trail2Frame && trail2Frame.bitmap) {
             ctx.save();
             ctx.globalCompositeOperation = 'screen';
-            ctx.globalAlpha = 0.25;
-            ctx.translate(w / 2, h / 2);
-            ctx.scale(1.03, 1.03);
+            ctx.globalAlpha = 0.14;
+            ctx.filter = 'grayscale(90%) contrast(135%) brightness(112%)';
+            ctx.translate(w / 2 + 8, h / 2);
             ctx.translate(-w / 2, -h / 2);
-            ctx.filter = 'contrast(130%) brightness(120%) hue-rotate(220deg)';
-            this.drawCover(ctx, frame4.bitmap, 0, 0, w, h, isMirrored);
+            this.drawCover(ctx, trail2Frame.bitmap, 0, 0, w, h, isMirrored);
             ctx.restore();
           }
         }
 
-        // Current frame at 100% opacity
+        // Main frame rendering with clean commercial film color grading
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 1.0;
 
+        const isRgbSplit = dtKick < 55;
         if (isRgbSplit) {
-          // Hard ±15px chromatic split on kicks!
-          ctx.filter = 'drop-shadow(-15px 0 0 rgba(255, 0, 50, 0.95)) drop-shadow(15px 0 0 rgba(0, 240, 255, 0.95)) contrast(140%) saturate(120%)';
+          // Hard RGB chromatic split on bass kicks (strictly clipped with ZERO border bleed)
+          ctx.filter = 'drop-shadow(-6px 0 0 rgba(255, 30, 60, 0.7)) drop-shadow(6px 0 0 rgba(0, 180, 255, 0.7)) contrast(124%) saturate(112%)';
         } else {
-          ctx.filter = 'contrast(130%) saturate(105%) brightness(100%)';
+          ctx.filter = 'contrast(118%) saturate(110%) brightness(101%)';
         }
 
-        this.drawCover(ctx, currentFrame?.bitmap, 0, 0, w, h, isMirrored);
-        this.applyColdPhonkGrade(ctx, 0, 0, w, h);
-        this.drawHeavyVignette(ctx, w, h, 0.55);
+        this.drawCover(ctx, activeFrame?.bitmap, 0, 0, w, h, isMirrored);
+        this.applyCinematicGrade(ctx, 0, 0, w, h);
         ctx.restore();
 
-        ctx.restore(); // restore shake & snap scale
+        ctx.restore(); // restore shake, snap scale, and clip
 
         // 1-frame bleached white blast on main 808 drop impact (3.57s - 3.63s)
         if (elapsed >= 3570 && elapsed < 3630) {
@@ -897,31 +950,35 @@ export class SigmaEditRenderer {
           // 3-frame violent stutter loop
           const twitchPattern = [0, 1, 2, 1, 0, 1, 2, 1];
           const stutterOffset = twitchPattern[Math.floor((elapsed - 14500) / 33) % twitchPattern.length];
-          const outroBaseIdx = actionCount + Math.floor(((14500 - 3570) / 1000) * 30);
-          displayFrame = frames[(outroBaseIdx + stutterOffset) % poolCount] || frames[frames.length - 1] || initialRawFrames[0];
+          const pool = climaxTake.length > 3 ? climaxTake : liveFrames;
+          displayFrame = pool[(pool.length - 1 - stutterOffset + pool.length) % pool.length];
         } else {
-          displayFrame = frames[frames.length - 1] || initialRawFrames[0];
+          displayFrame = latestLiveFrame;
         }
 
         // Smooth ease transforms back to default
-        let outroScale = 1.10;
+        let outroScale = 1.12;
         let fadeAlpha = 1.0;
 
         if (elapsed >= 15200) {
           const tFade = Math.min(1, (elapsed - 15200) / Math.max(100, totalDuration - 15200));
-          outroScale = 1.10 - tFade * 0.10; // 1.10 -> 1.00
-          fadeAlpha = 1.0 - tFade * 0.4;    // gentle fade out
+          outroScale = 1.12 - tFade * 0.12; // 1.12 -> 1.00
+          fadeAlpha = 1.0 - tFade * 0.35;   // gentle fade out
         }
 
         ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.clip();
+
         ctx.translate(w / 2, h / 2);
         ctx.scale(outroScale, outroScale);
         ctx.translate(-w / 2, -h / 2);
         ctx.globalAlpha = fadeAlpha;
 
-        ctx.filter = 'contrast(120%) saturate(95%)';
+        ctx.filter = 'contrast(116%) saturate(106%) brightness(101%)';
         this.drawCover(ctx, displayFrame?.bitmap, 0, 0, w, h, isMirrored);
-        this.drawHeavyVignette(ctx, w, h, 0.45);
+        this.applyCinematicGrade(ctx, 0, 0, w, h);
         ctx.restore();
       }
 
