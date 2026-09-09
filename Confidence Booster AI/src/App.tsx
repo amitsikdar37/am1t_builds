@@ -77,6 +77,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     phonkAudio.preloadTomadaAudio();
     phonkAudio.preloadMoggedAudio();
+    phonkAudio.preloadMoggerAudio();
   }, []);
 
   // Handle window resizing so live canvas covers the entire display edge-to-edge
@@ -369,6 +370,9 @@ export const App: React.FC = () => {
     if (preset === 'ghost_trail_impact' || preset === 'parallax_dual_speed') {
       setSelectedTrack('montagem_tomada');
       phonkAudio.preloadTomadaAudio();
+    } else if (preset === 'dark_manga_strobe') {
+      setSelectedTrack('mogger');
+      phonkAudio.preloadMoggerAudio();
     } else {
       setSelectedTrack('marlon_mogged');
       phonkAudio.preloadMoggedAudio();
@@ -377,9 +381,12 @@ export const App: React.FC = () => {
 
   // Download Clip
   const handleDownloadClip = () => {
-    const filename = (selectedPreset === 'ghost_trail_impact' || selectedPreset === 'parallax_dual_speed')
-      ? `ghost_trail_edit_${Date.now()}.webm`
-      : `sigma_mog_edit_${Date.now()}.webm`;
+    let filename = `sigma_mog_edit_${Date.now()}.webm`;
+    if (selectedPreset === 'ghost_trail_impact' || selectedPreset === 'parallax_dual_speed') {
+      filename = `ghost_trail_edit_${Date.now()}.webm`;
+    } else if (selectedPreset === 'dark_manga_strobe') {
+      filename = `dark_manga_edit_${Date.now()}.webm`;
+    }
     clipRecorder.downloadLastClip(filename);
   };
 

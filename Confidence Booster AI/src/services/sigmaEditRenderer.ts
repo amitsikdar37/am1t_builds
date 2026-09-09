@@ -81,6 +81,28 @@ export class SigmaEditRenderer {
       ctx.drawImage(img, sx, sy, sw, sh, destX, destY, destW, destH);
     }
   }
+  /**
+   * Fluid 60fps frame blending to make slow motion buttery smooth without any lag or freezing
+   */
+  private drawBlendedFrame(
+    ctx: CanvasRenderingContext2D,
+    frameA: FrameRecord | null | undefined,
+    frameB: FrameRecord | null | undefined,
+    blendT: number,
+    w: number,
+    h: number,
+    isMirrored: boolean
+  ) {
+    if (frameA?.bitmap) {
+      this.drawCover(ctx, frameA.bitmap, 0, 0, w, h, isMirrored);
+    }
+    if (frameB?.bitmap && blendT > 0.02 && frameB !== frameA) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, Math.max(0, blendT));
+      this.drawCover(ctx, frameB.bitmap, 0, 0, w, h, isMirrored);
+      ctx.restore();
+    }
+  }
 
   public startEdit(options: EditRenderOptions) {
     this.stop();
@@ -88,6 +110,11 @@ export class SigmaEditRenderer {
 
     if (options.preset === 'ghost_trail_impact' || options.preset === 'parallax_dual_speed') {
       this.startGhostTrailImpact(options);
+      return;
+    }
+
+    if (options.preset === 'dark_manga_strobe') {
+      this.startDarkMangaStrobe(options);
       return;
     }
 
@@ -1055,6 +1082,310 @@ export class SigmaEditRenderer {
         ctx.filter = 'contrast(120%) brightness(97%) saturate(105%) hue-rotate(-5deg)';
         this.drawCover(ctx, displayFrame?.bitmap, 0, 0, w, h, isMirrored);
         this.applyCinematicGrade(ctx, 0, 0, w, h);
+        ctx.restore();
+      }
+
+      ctx.restore();
+
+      if (elapsed < totalDuration) {
+        this.animFrameId = requestAnimationFrame(renderLoop);
+      } else {
+        this.stop();
+        onComplete();
+      }
+    };
+
+    this.animFrameId = requestAnimationFrame(renderLoop);
+  }
+
+  /**
+   * Preset 3: Dark Manga Invert & Strobe Glitch
+   * - 0.0s - 3.0s: Smooth buttery slow motion opening with cinematic camera push
+   * - 3.0s - 10.58s: Exactly 16 beat-synchronized cuts where the face snaps in close and zooms out in slow motion on each beat
+   * - 10.58s - 15.07s: Extended beat groove + smooth outro reset back to live camera
+   * Synchronized precisely with the complete duration of mogger.mp3 (~15.07s)
+   */
+  private startDarkMangaStrobe(options: EditRenderOptions) {
+    const { canvas, isMirrored = false, onComplete, onDropImpact } = options;
+
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
+    const startTime = options.startTime ?? performance.now();
+    const totalDuration = options.durationMs ?? 15070; // Full duration of mogger.mp3
+    const dropBeatTime = 3000; // 3.0s: The 16 cuts start right on the beat at 3.0s
+
+    // Session start timestamp: Only frames recorded AFTER this timestamp are used!
+    const sessionStartTime = options.sessionStartTime ?? startTime;
+
+    // Exactly 16 beat-synced cut timestamps measured from mogger.mp3
+    const cutBeats = [
+      3000, 3460, 3900, 4260, 4840, 5280, 5980, 6420,
+      6840, 7200, 7600, 8040, 8480, 8860, 9420, 9840
+    ];
+
+    let dropFired = false;
+    let lastRenderedFrame: FrameRecord | null = null;
+    let prevCutFrame: FrameRecord | null = null;
+    let activeCutIdx = -1;
+
+    // Smooth focal center tracking to eliminate camera micro-jitter
+    let smoothFocusX = 0;
+    let smoothFocusY = 0;
+    let focusInitialized = false;
+
+    const renderLoop = (now: number) => {
+      if (!this.isRendering) return;
+
+      const elapsed = now - startTime;
+
+      if (elapsed >= dropBeatTime && !dropFired) {
+        dropFired = true;
+        onDropImpact();
+      }
+
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.save();
+      ctx.fillStyle = '#050508';
+      ctx.fillRect(0, 0, w, h);
+
+      // Strictly post-trigger session frames (zero pre-trigger footage!)
+      const rawSession = options.getSessionFrames ? options.getSessionFrames() : [];
+      const sessionFrames = rawSession.filter(
+        f => f && f.bitmap && f.bitmap.width > 0 && f.timestamp >= sessionStartTime
+      );
+      const availFrames = sessionFrames.length;
+
+      // Focus framing locked on face/eyes with smooth exponential interpolation
+      const liveEye = options.getCurrentEyeCenter ? options.getCurrentEyeCenter() : undefined;
+      const eye = liveEye || options.eyeCenter;
+      const targetFocusX = eye ? eye.x * w : w / 2;
+      const targetFocusY = eye ? eye.y * h : h * 0.40;
+
+      if (!focusInitialized) {
+        smoothFocusX = targetFocusX;
+        smoothFocusY = targetFocusY;
+        focusInitialized = true;
+      } else {
+        smoothFocusX += (targetFocusX - smoothFocusX) * 0.08;
+        smoothFocusY += (targetFocusY - smoothFocusY) * 0.08;
+      }
+
+      // ----------------------------------------------------
+      // SECTION 1: SMOOTH SLO-MO OPENING (0.0s - 3.0s)
+      // Plays user's post-trigger action with 60fps frame blending.
+      // Continuous camera push toward face (scale: 1.00 -> 1.28).
+      // ----------------------------------------------------
+      if (elapsed < 3000) {
+        const progress = elapsed / 3000;
+        // Camera smooth push toward face reaching 1.28 at 3.0s
+        const pushEase = 0.5 - 0.5 * Math.cos(Math.PI * progress);
+        const scale = 1.00 + pushEase * 0.28;
+
+        // Smooth slow-motion with 60fps frame interpolation (zero lag/freeze)
+        let frameA: FrameRecord | null = null;
+        let frameB: FrameRecord | null = null;
+        let subT = 0;
+
+        if (availFrames > 0) {
+          const targetPos = progress * Math.max(1, (availFrames - 1) * 0.55);
+          const idxA = Math.min(availFrames - 1, Math.max(0, Math.floor(targetPos)));
+          const idxB = Math.min(availFrames - 1, idxA + 1);
+          subT = targetPos - Math.floor(targetPos);
+          frameA = sessionFrames[idxA];
+          frameB = sessionFrames[idxB];
+        } else {
+          frameA = lastRenderedFrame;
+        }
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.clip();
+
+        ctx.translate(smoothFocusX, smoothFocusY);
+        ctx.scale(scale, scale);
+        ctx.translate(-smoothFocusX, -smoothFocusY);
+
+        ctx.filter = 'grayscale(100%) contrast(140%) brightness(98%)';
+        this.drawBlendedFrame(ctx, frameA, frameB, subT, w, h, isMirrored);
+
+        if (frameA) {
+          lastRenderedFrame = frameA;
+          prevCutFrame = frameA; // Seed transition frame for Cut 0 at 3.0s
+        }
+
+        ctx.restore();
+      }
+
+      // ----------------------------------------------------
+      // SECTION 2: 16 BEAT-SYNCED CUTS (3.0s - 10.58s)
+      // Exactly 16 smooth cuts in perfect sync with the beat.
+      //  - DISTINCT CUT MOMENTS: Alternates across 16 different poses/takes of the user!
+      //  - SMOOTH ZOOM OUT ON EACH CUT: Starts close (1.22) and smoothly glides out to 1.08 with zero bounce!
+      //  - 60FPS BLENDED SLOW MOTION: Buttery fluid slow motion with zero lag or freezing.
+      //  - 45ms cross-dissolve & soft 35ms beat flash marking each cut in sync with phonk kicks.
+      // ----------------------------------------------------
+      else if (elapsed >= 3000 && elapsed < 10580) {
+        // Determine active cut index (0 to 15)
+        let cutIdx = 0;
+        for (let i = 0; i < cutBeats.length; i++) {
+          if (elapsed >= cutBeats[i]) {
+            cutIdx = i;
+          }
+        }
+
+        // Capture outgoing frame on cut switch for smooth crossfade
+        if (cutIdx !== activeCutIdx) {
+          activeCutIdx = cutIdx;
+          if (lastRenderedFrame) {
+            prevCutFrame = lastRenderedFrame;
+          }
+        }
+
+        const tStart = cutBeats[cutIdx];
+        const tEnd = cutIdx < cutBeats.length - 1 ? cutBeats[cutIdx + 1] : 10580;
+        const cutDuration = Math.max(100, tEnd - tStart);
+        const cutElapsed = elapsed - tStart;
+        const cutProgress = Math.min(1, Math.max(0, cutElapsed / cutDuration));
+
+        // 1. CAMERA SMOOTHLY AND SLOWLY ZOOMS OUT ON EACH CUT (1.22 -> 1.08)
+        // Gentle quarter-sine deceleration: strictly zooms OUT with zero bouncing!
+        const startZoom = 1.22;
+        const endZoom = 1.08;
+        const zoomEase = Math.sin(cutProgress * (Math.PI / 2));
+        const currentZoom = startZoom - zoomEase * (startZoom - endZoom);
+
+        // 2. 16 DISTINCT NON-OVERLAPPING MOMENTS ACROSS RECORDED PERFORMANCE
+        // Alternates between different parts of the user's action so every beat is an unmistakable cut!
+        const momentPattern = [0, 8, 2, 10, 4, 12, 1, 9, 3, 11, 5, 13, 6, 14, 7, 15];
+        const momentSlot = momentPattern[cutIdx % 16];
+        const momentProgress = momentSlot / 16;
+        const momentStartIdx = Math.floor(momentProgress * Math.max(1, availFrames - 10));
+
+        // 3. BUTTERY SMOOTH 60FPS SLOW MOTION PLAYBACK
+        const framesInCut = Math.max(4, Math.min(8, Math.round(cutDuration / 75)));
+        const framePos = momentStartIdx + cutProgress * framesInCut;
+
+        const idxA = Math.min(availFrames - 1, Math.max(0, Math.floor(framePos)));
+        const idxB = Math.min(availFrames - 1, idxA + 1);
+        const subT = framePos - Math.floor(framePos);
+
+        const frameA = sessionFrames[idxA] || lastRenderedFrame;
+        const frameB = sessionFrames[idxB] || frameA;
+
+        // Smooth 45ms crossfade between cut boundaries
+        const transMs = 45;
+        const isCrossfading = prevCutFrame?.bitmap && cutElapsed < transMs;
+        const crossfadeAlpha = isCrossfading ? Math.min(1, Math.max(0, cutElapsed / transMs)) : 1.0;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.clip();
+
+        ctx.translate(smoothFocusX, smoothFocusY);
+        ctx.scale(currentZoom, currentZoom);
+        ctx.translate(-smoothFocusX, -smoothFocusY);
+
+        ctx.filter = 'grayscale(100%) contrast(140%) brightness(98%)';
+
+        if (isCrossfading && prevCutFrame?.bitmap) {
+          // Draw outgoing cut's frame
+          this.drawCover(ctx, prevCutFrame.bitmap, 0, 0, w, h, isMirrored);
+          // Dissolve incoming cut's interpolated frame on top
+          ctx.save();
+          ctx.globalAlpha = crossfadeAlpha;
+          this.drawBlendedFrame(ctx, frameA, frameB, subT, w, h, isMirrored);
+          ctx.restore();
+        } else {
+          this.drawBlendedFrame(ctx, frameA, frameB, subT, w, h, isMirrored);
+        }
+
+        // Soft, sleek exposure bloom on cut impact marking the beat kick (first 35ms)
+        if (cutElapsed < 35) {
+          const flashAlpha = 0.18 * (1 - cutElapsed / 35);
+          ctx.save();
+          ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+          ctx.fillRect(0, 0, w, h);
+          ctx.restore();
+        }
+
+        if (frameA) {
+          lastRenderedFrame = frameA;
+        }
+
+        ctx.restore();
+      }
+
+      // ----------------------------------------------------
+      // SECTION 3: EXTENDED GROOVE (10.58s - 13.5s)
+      // Continues smooth slow-motion replay of past moments.
+      // Camera gently drifts from 1.02 to 1.005 with ZERO bouncing.
+      // ----------------------------------------------------
+      else if (elapsed >= 10580 && elapsed < 13500) {
+        const grooveProgress = (elapsed - 10580) / (13500 - 10580);
+        const grooveEase = Math.sin(grooveProgress * (Math.PI / 2));
+        const grooveZoom = 1.02 - grooveEase * 0.015; // 1.02 -> 1.005 smoothly
+
+        const startIdx = Math.floor(availFrames * 0.65);
+        const targetPos = startIdx + grooveProgress * Math.max(1, (availFrames - 1 - startIdx) * 0.50);
+        const idxA = Math.min(availFrames - 1, Math.max(0, Math.floor(targetPos)));
+        const idxB = Math.min(availFrames - 1, idxA + 1);
+        const subT = targetPos - Math.floor(targetPos);
+
+        const frameA = sessionFrames[idxA] || lastRenderedFrame;
+        const frameB = sessionFrames[idxB] || frameA;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.clip();
+
+        ctx.translate(smoothFocusX, smoothFocusY);
+        ctx.scale(grooveZoom, grooveZoom);
+        ctx.translate(-smoothFocusX, -smoothFocusY);
+
+        ctx.filter = 'grayscale(100%) contrast(140%) brightness(98%)';
+        this.drawBlendedFrame(ctx, frameA, frameB, subT, w, h, isMirrored);
+
+        if (frameA) {
+          lastRenderedFrame = frameA;
+        }
+
+        ctx.restore();
+      }
+
+      // ----------------------------------------------------
+      // SECTION 4: OUTRO & CLEAN RESET (13.5s - totalDuration)
+      // Seamless ease-out from 1.005 to 1.00, restoring natural color,
+      // resetting cleanly into live camera feed as mogger.mp3 completes at 15.07s
+      // ----------------------------------------------------
+      else {
+        const outroT = Math.min(1, Math.max(0, (elapsed - 13500) / Math.max(100, totalDuration - 13500)));
+        const smoothOutro = 0.5 - 0.5 * Math.cos(Math.PI * outroT);
+        const outroScale = 1.005 - smoothOutro * 0.005; // 1.005 -> 1.000 seamlessly
+        const sat = Math.round(smoothOutro * 100);       // 0% -> 100% natural color
+        const cont = Math.round(140 - smoothOutro * 40); // 140% -> 100% contrast
+
+        const latestFrame = sessionFrames[availFrames - 1] || lastRenderedFrame;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.clip();
+
+        ctx.translate(smoothFocusX, smoothFocusY);
+        ctx.scale(outroScale, outroScale);
+        ctx.translate(-smoothFocusX, -smoothFocusY);
+
+        ctx.filter = `saturate(${sat}%) contrast(${cont}%)`;
+        if (latestFrame?.bitmap) {
+          this.drawCover(ctx, latestFrame.bitmap, 0, 0, w, h, isMirrored);
+          lastRenderedFrame = latestFrame;
+        }
+
         ctx.restore();
       }
 

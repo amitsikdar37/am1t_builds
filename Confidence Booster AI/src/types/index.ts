@@ -61,9 +61,9 @@ export interface PostTriggerMoments {
   allRecorded: FrameRecord[];    // All post-trigger frames
 }
 
-export type PhonkTrackId = 'marlon_mogged' | 'montagem_tomada' | 'tokyo_drift' | 'cyber_sigma' | 'gigachad_anthem';
+export type PhonkTrackId = 'marlon_mogged' | 'montagem_tomada' | 'tokyo_drift' | 'cyber_sigma' | 'gigachad_anthem' | 'mogger';
 
-export type EditPresetId = 'sigma_hard_snaps' | 'ghost_trail_impact' | 'parallax_dual_speed';
+export type EditPresetId = 'sigma_hard_snaps' | 'ghost_trail_impact' | 'parallax_dual_speed' | 'dark_manga_strobe';
 
 export interface EditPresetInfo {
   id: EditPresetId;

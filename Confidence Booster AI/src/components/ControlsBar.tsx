@@ -91,6 +91,18 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
           >
             <span>🗿 SIGMA SNAPS</span>
           </button>
+          <button
+            onClick={() => onChangePreset('dark_manga_strobe')}
+            disabled={isEditing}
+            className={`px-3 py-1 rounded-full transition-all flex items-center gap-1.5 ${
+              selectedPreset === 'dark_manga_strobe'
+                ? 'bg-gradient-to-r from-red-600 via-neutral-900 to-cyan-500 text-white font-bold shadow-md shadow-red-500/40 border border-red-500/40'
+                : 'text-gray-400 hover:text-white'
+            }`}
+            title="Dark Manga Invert & Strobe Glitch (Mogger Phonk)"
+          >
+            <span>⚡ DARK MANGA</span>
+          </button>
         </div>
 
         <div className="hidden sm:block h-5 w-[1px] bg-cyber-green/30" />
@@ -100,14 +112,22 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
           onClick={onForceTrigger}
           disabled={isEditing}
           className={`flex items-center gap-1.5 font-cyber font-bold text-xs md:text-sm px-3.5 py-1.5 rounded-full shadow-lg transition-all disabled:opacity-40 disabled:pointer-events-none ${
-            selectedPreset === 'ghost_trail_impact' || selectedPreset === 'parallax_dual_speed'
+            selectedPreset === 'dark_manga_strobe'
+              ? 'bg-gradient-to-r from-red-600 to-zinc-900 hover:from-red-500 hover:to-zinc-800 text-white shadow-red-500/40 border border-red-500/30'
+              : selectedPreset === 'ghost_trail_impact' || selectedPreset === 'parallax_dual_speed'
               ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-cyan-500/30'
               : 'bg-gradient-to-r from-red-600 to-cyber-pink hover:from-red-500 hover:to-pink-500 text-white shadow-cyber-pink/40'
           } hover:scale-105 active:scale-95`}
           title="Trigger edit immediately (Shortcut: SPACEBAR)"
         >
           <Zap className="w-4 h-4 fill-current text-yellow-300 animate-pulse" />
-          <span>{selectedPreset === 'ghost_trail_impact' || selectedPreset === 'parallax_dual_speed' ? 'FORCE GHOST DROP' : 'FORCE SIGMA DROP'}</span>
+          <span>
+            {selectedPreset === 'dark_manga_strobe'
+              ? 'FORCE MANGA DROP'
+              : selectedPreset === 'ghost_trail_impact' || selectedPreset === 'parallax_dual_speed'
+              ? 'FORCE GHOST DROP'
+              : 'FORCE SIGMA DROP'}
+          </span>
           <span className="hidden lg:inline text-[10px] bg-black/40 px-1.5 py-0.5 rounded font-mono font-normal">
             SPACE
           </span>

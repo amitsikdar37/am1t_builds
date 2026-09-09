@@ -40,6 +40,13 @@ export const PHONK_TRACKS: Record<PhonkTrackId, PhonkTrackInfo> = {
     bpm: 145,
     vibe: 'Triumphant Sigma Cowbell Anthem',
     dropDelaySeconds: 1.4,
+  },
+  mogger: {
+    id: 'mogger',
+    title: 'MOGGER (DARK MANGA 2026)',
+    bpm: 130,
+    vibe: 'Dark Manga Invert & Strobe Glitch',
+    dropDelaySeconds: 2.5,
   }
 };
 
@@ -56,10 +63,13 @@ class PhonkAudioEngine {
   private moggedAudioBuffer: AudioBuffer | null = null;
   // Custom audio file for Montagem Tomada parallax dual-speed edit
   private tomadaAudioBuffer: AudioBuffer | null = null;
+  // Custom audio file for Dark Manga Invert & Strobe Glitch
+  private moggerAudioBuffer: AudioBuffer | null = null;
   private currentAudioSource: AudioBufferSourceNode | null = null;
   private lowpassFilter: BiquadFilterNode | null = null;
   private isPreloadingAudio = false;
   private isPreloadingTomada = false;
+  private isPreloadingMogger = false;
 
   private initContext() {
     if (!this.ctx) {
@@ -141,6 +151,43 @@ class PhonkAudioEngine {
       }
     } finally {
       this.isPreloadingTomada = false;
+    }
+  }
+
+  /**
+   * Pre-loads and decodes the mogger.mp3 audio file for Dark Manga Invert preset
+   */
+  public async preloadMoggerAudio(): Promise<void> {
+    if (this.moggerAudioBuffer || this.isPreloadingMogger) return;
+    this.isPreloadingMogger = true;
+    this.initContext();
+
+    try {
+      const audioUrl = '/audios/mogger.mp3';
+      const response = await fetch(audioUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch mogger audio: ${response.statusText}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      if (this.ctx) {
+        this.moggerAudioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+        console.log('Mogger Audio loaded successfully! Duration:', this.moggerAudioBuffer.duration.toFixed(2), 's');
+      }
+    } catch (err) {
+      console.warn('Could not load mogger audio file, checking fallback path...', err);
+      try {
+        const fallbackUrl = '/src/audios/mogger.mp3';
+        const response = await fetch(fallbackUrl);
+        if (response.ok && this.ctx) {
+          const arrayBuffer = await response.arrayBuffer();
+          this.moggerAudioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+          console.log('Mogger fallback audio loaded successfully!');
+        }
+      } catch (fbErr) {
+        console.warn('Failed to load mogger fallback audio:', fbErr);
+      }
+    } finally {
+      this.isPreloadingMogger = false;
     }
   }
 
@@ -555,7 +602,42 @@ class PhonkAudioEngine {
       }
     }
 
-    // 2. Procedural Fallback if another track is picked
+    // 3. If using Mogger audio (Dark Manga Invert & Strobe Glitch Preset)
+    if (trackId === 'mogger') {
+      if (!this.moggerAudioBuffer) {
+        await this.preloadMoggerAudio();
+      }
+
+      if (this.moggerAudioBuffer && this.isPlaying) {
+        const durationMs = this.moggerAudioBuffer.duration * 1000;
+        const source = this.ctx.createBufferSource();
+        source.buffer = this.moggerAudioBuffer;
+        source.connect(this.masterGain!);
+        source.start(0);
+        this.currentAudioSource = source;
+        const audioStartTime = performance.now();
+
+        if (onEndedCallback) {
+          source.onended = () => {
+            if (this.isPlaying) {
+              onEndedCallback();
+            }
+          };
+        }
+
+        // Schedule Drop impact at 2.50s (2500ms) matching mogger.mp3 drop slam
+        const dropTimer = window.setTimeout(() => {
+          if (this.isPlaying && onDropCallback) {
+            onDropCallback();
+          }
+        }, 2500);
+        this.activeTimers.push(dropTimer);
+
+        return { startTime: audioStartTime, durationMs };
+      }
+    }
+
+    // 4. Procedural Fallback if another track is picked
     const track = PHONK_TRACKS[trackId] || PHONK_TRACKS.tokyo_drift;
     const startTime = this.ctx.currentTime + 0.05;
     const dropTime = startTime + track.dropDelaySeconds;
