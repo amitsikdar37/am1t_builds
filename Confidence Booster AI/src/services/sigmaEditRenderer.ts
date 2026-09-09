@@ -1,10 +1,12 @@
-import { FrameRecord, EditPresetId, MultiTakeClips } from '../types';
+import { FrameRecord, EditPresetId, MultiTakeClips, PostTriggerMoments } from '../types';
 
 export interface EditRenderOptions {
   canvas: HTMLCanvasElement;
   frames?: FrameRecord[];
-  actionFrames?: FrameRecord[]; // captured physical action (drinking / glasses adjust)
-  multiTakes?: MultiTakeClips;   // structured past takes (setup, motion, climax) for beat-synced montage!
+  actionFrames?: FrameRecord[]; // captured physical action
+  multiTakes?: MultiTakeClips;
+  sessionStartTime?: number;    // exact trigger timestamp when live session started
+  getPostTriggerMoments?: (nowTimestamp: number) => PostTriggerMoments; // dynamically extracts moments recorded AFTER trigger!
   getSessionFrames?: () => FrameRecord[];
   getCurrentEyeCenter?: () => { x: number; y: number } | undefined;
   actionType: 'drink' | 'glasses' | 'manual';
@@ -328,9 +330,9 @@ export class SigmaEditRenderer {
   }
 
   /**
-   * Professional Commercial Phonk Color Grading
-   * Delivers punchy S-curve contrast, healthy natural skin tones, and rich neutral crushed blacks.
-   * ZERO cyan or blue border artifacts.
+   * High-End Commercial Cinema Color Grading
+   * Eliminates cheap/muddy webcam look, counteracts yellowish incandescent room casts,
+   * adds filmic S-curves, healthy warm skin tones, and rich optical depth.
    */
   private applyCinematicGrade(
     ctx: CanvasRenderingContext2D,
@@ -344,25 +346,31 @@ export class SigmaEditRenderer {
 
     ctx.save();
 
-    // 1. Subtle warm-golden highlight / cool-neutral shadow tone mapping (soft-light)
-    ctx.globalCompositeOperation = 'soft-light';
-    const filmGrad = ctx.createLinearGradient(x, y, x, y + height);
-    filmGrad.addColorStop(0, 'rgba(255, 235, 210, 0.08)'); // subtle warm highlight glow
-    filmGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
-    filmGrad.addColorStop(1, 'rgba(12, 12, 18, 0.12)');     // neutral deep film shadow density
-    ctx.fillStyle = filmGrad;
+    // 1. Shadow Depth & Clean Black Crush (removes muddy webcam sensor noise in dark areas)
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgba(16, 14, 20, 0.12)';
     ctx.fillRect(x, y, width, height);
 
-    // 2. Pure Neutral Optical Dark Vignette (Smooth feathered edge darkness, NEVER colored blue)
+    // 2. Filmic Tone S-Curve & Color Balance (Warm amber face glow + neutral cinematic shadows)
+    ctx.globalCompositeOperation = 'soft-light';
+    const toneGrad = ctx.createLinearGradient(x, y, x, y + height);
+    toneGrad.addColorStop(0, 'rgba(255, 200, 150, 0.16)'); // rich golden highlight warmth
+    toneGrad.addColorStop(0.42, 'rgba(255, 180, 130, 0.09)'); // healthy skin tone enrichment
+    toneGrad.addColorStop(1, 'rgba(12, 14, 22, 0.20)');     // deep charcoal shadow anchor
+    ctx.fillStyle = toneGrad;
+    ctx.fillRect(x, y, width, height);
+
+    // 3. Optical Cinema Vignette (Feathered lens falloff focusing attention on the subject)
     ctx.globalCompositeOperation = 'source-over';
     const cx = x + width / 2;
-    const cy = y + height * 0.48;
-    const rInner = Math.min(width, height) * 0.35;
-    const rOuter = Math.max(width, height) * 0.72;
+    const cy = y + height * 0.44;
+    const rInner = Math.min(width, height) * 0.32;
+    const rOuter = Math.max(width, height) * 0.70;
     const vignette = ctx.createRadialGradient(cx, cy, rInner, cx, cy, rOuter);
     vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    vignette.addColorStop(0.68, 'rgba(0, 0, 0, 0.18)');
-    vignette.addColorStop(1, 'rgba(0, 0, 0, 0.52)'); // pure neutral black, zero blue
+    vignette.addColorStop(0.55, 'rgba(0, 0, 0, 0.08)');
+    vignette.addColorStop(0.82, 'rgba(0, 0, 0, 0.32)');
+    vignette.addColorStop(1, 'rgba(0, 0, 0, 0.60)'); // smooth feathered neutral dark border
     ctx.fillStyle = vignette;
     ctx.fillRect(x, y, width, height);
 
@@ -437,6 +445,10 @@ export class SigmaEditRenderer {
     }
 
     ctx.save();
+    // Strict boundary clip: eliminates any border bleed or side stripes
+    ctx.beginPath();
+    ctx.rect(0, 0, w, h);
+    ctx.clip();
 
     // Instant scale transform + violent jagged shake (Hard Cut Jump)
     ctx.translate(focusX + shakeX, focusY + shakeY);
@@ -615,17 +627,6 @@ export class SigmaEditRenderer {
       13550, 13790, 14010, 14220, 14460, 14700, 14920
     ];
 
-    // Multi-Take Clips: structured past takes (climax, motion, setup) and full action clip
-    const multiTakes = options.multiTakes;
-    const allActionFrames = (multiTakes?.allAction && multiTakes.allAction.length > 5)
-      ? multiTakes.allAction
-      : ((options.actionFrames && options.actionFrames.length > 5) ? options.actionFrames : initialRawFrames);
-    const actionCount = Math.max(1, allActionFrames.length);
-
-    const climaxTake = (multiTakes?.climax && multiTakes.climax.length > 0) ? multiTakes.climax : allActionFrames;
-    const motionTake = (multiTakes?.motion && multiTakes.motion.length > 0) ? multiTakes.motion : allActionFrames;
-    const setupTake = (multiTakes?.setup && multiTakes.setup.length > 0) ? multiTakes.setup : allActionFrames;
-
     let dropFired = false;
     let frozenFrameRecord: FrameRecord | null = null;
 
@@ -642,25 +643,27 @@ export class SigmaEditRenderer {
       const w = canvas.width;
       const h = canvas.height;
       ctx.save();
-      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#050508';
+      ctx.fillRect(0, 0, w, h);
 
       // Dynamically fetch live present camera frames
       const liveFrames = getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
       const latestLiveFrame = liveFrames[liveFrames.length - 1] || initialRawFrames[0];
 
+      // Dynamically extract moments that happened AFTER the trigger action
+      const postMoments = options.getPostTriggerMoments ? options.getPostTriggerMoments(now) : undefined;
+
       // ----------------------------------------------------
-      // PHASE 1: THE ACTION SETUP & TENSION (0.0s - 3.25s)
-      // Replays the physical action (taking a drink / touching glasses)
+      // PHASE 1: THE ACTION SETUP & LIVE RECORDING (0.0s - 3.25s)
+      // Displays & records the user performing their action live after trigger!
       // ----------------------------------------------------
       if (elapsed < 3250) {
         // Continuous slow zoom toward the eyes/action (scale: 1.0 -> 1.15)
         const tZoom = elapsed / 3250;
         const scale = 1.0 + tZoom * 0.15;
 
-        // Smoothly replay the captured physical action up to the climax
-        const actionRatio = Math.min(1, Math.max(0, elapsed / 3250));
-        const frameIdx = Math.floor(actionRatio * (actionCount - 1));
-        const frame = allActionFrames[frameIdx] || allActionFrames[0];
+        // Render the LIVE webcam feed in real time as the user performs their action!
+        const frame = latestLiveFrame;
 
         ctx.save();
         ctx.beginPath();
@@ -672,38 +675,21 @@ export class SigmaEditRenderer {
         ctx.translate(-w / 2, -h / 2);
 
         // Professional Film Grade: rich natural skin tones, crisp contrast, ZERO cyan tint
-        ctx.filter = 'contrast(118%) saturate(110%) brightness(101%)';
+        ctx.filter = 'contrast(125%) brightness(96%) saturate(106%) hue-rotate(-5deg)';
         this.drawCover(ctx, frame?.bitmap, 0, 0, w, h, isMirrored);
         this.applyCinematicGrade(ctx, 0, 0, w, h);
-
-        // Action badge in bottom corner
-        ctx.save();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-        ctx.fillRect(16, h - 38, 200, 24);
-        ctx.strokeStyle = '#00ff66';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(16, h - 38, 200, 24);
-        ctx.fillStyle = '#00ff66';
-        ctx.font = 'bold 10px monospace';
-        const actionLabel = options.actionType === 'drink'
-          ? '⚡ ACTION: HYDRATION SIP'
-          : options.actionType === 'glasses'
-          ? '⚡ ACTION: GLASSES ADJUST'
-          : '⚡ ACTION: DETECTED';
-        ctx.fillText(actionLabel, 24, h - 22);
-        ctx.restore();
 
         ctx.restore();
       }
 
       // ----------------------------------------------------
       // PHASE 2: THE PRE-DROP "HALT" (3.25s - 3.57s)
-      // Freezes right on the peak of the action (cup on mouth / glasses on nose)
+      // Freezes on the peak moment of the action you just performed live in Phase 1!
       // ----------------------------------------------------
       else if (elapsed >= 3250 && elapsed < 3570) {
-        // Freeze Frame: Hold the video playhead completely static on the peak action frame for 0.32s
+        // Freeze Frame: Hold the video playhead on the peak post-trigger action frame
         if (!frozenFrameRecord) {
-          frozenFrameRecord = allActionFrames[actionCount - 1] || allActionFrames[0];
+          frozenFrameRecord = latestLiveFrame;
         }
 
         // Zoom Pop: Instant hard step to scale(1.25)
@@ -725,7 +711,7 @@ export class SigmaEditRenderer {
         if (elapsed < 3350) {
           ctx.filter = 'invert(100%) contrast(130%)';
         } else if (elapsed < 3450) {
-          ctx.filter = 'contrast(125%) saturate(105%)';
+          ctx.filter = 'contrast(125%) saturate(106%) brightness(96%) hue-rotate(-5deg)';
         } else {
           ctx.filter = 'grayscale(100%) contrast(240%) brightness(105%)';
         }
@@ -736,8 +722,8 @@ export class SigmaEditRenderer {
       }
 
       // ----------------------------------------------------
-      // PHASE 3: THE DROP & MULTI-TAKE MONTAGE (3.57s - 14.5s)
-      // Dynamically merges past saved clip moments with live webcam video on beats!
+      // PHASE 3: THE DROP & RANDOM POST-TRIGGER MONTAGE (3.57s - 14.5s)
+      // Randomly merges post-trigger saved moments with live video on beat kicks!
       // ----------------------------------------------------
       else if (elapsed >= 3570 && elapsed < 14500) {
         // Find most recent kick
@@ -767,73 +753,46 @@ export class SigmaEditRenderer {
           }
         }
 
-        // === MULTI-TAKE MONTAGE CUT SEQUENCER ===
-        // Rhythmically cuts between past saved moments and live webcam movements!
-        type TakeType = 'PAST_CLIMAX' | 'PAST_MOTION' | 'PAST_SETUP' | 'LIVE_FEED';
+        // === RANDOM POST-TRIGGER MOMENT SELECTOR ===
+        // Randomly cuts between live present video and the moments saved AFTER trigger:
+        type TakeType = 'LIVE_FEED' | 'POST_CLIMAX' | 'POST_MOTION' | 'POST_START' | 'POST_DROP_RECENT';
         let currentTakeType: TakeType = 'LIVE_FEED';
         let snapScale = 1.12;
         let isCloseUp = false;
 
-        // Stage 1: Initial Drop Shock (Kicks 0 - 11: 3.57s - 6.45s)
-        if (lastKickIdx < 12) {
-          if (lastKickIdx === 0 || lastKickIdx === 2 || lastKickIdx === 6 || lastKickIdx === 10) {
-            currentTakeType = 'PAST_CLIMAX'; // Flash cut to peak sip / intense gaze!
-            snapScale = 1.72;
-            isCloseUp = true;
-          } else if (lastKickIdx === 4 || lastKickIdx === 8) {
-            currentTakeType = 'PAST_MOTION'; // Flash cut to raising drink / glasses movement
-            snapScale = 1.40;
-          } else {
-            currentTakeType = 'LIVE_FEED';   // Cut back to user reacting live
+        // Kick 0 (Main 808 Drop Slam): Always slam into the peak post-trigger climax (sip / pose)!
+        if (lastKickIdx === 0) {
+          currentTakeType = 'POST_CLIMAX';
+          snapScale = 1.74;
+          isCloseUp = true;
+        } else if (lastKickIdx === 1) {
+          // Kick 1: Cut to live reaction
+          currentTakeType = 'LIVE_FEED';
+          snapScale = 1.12;
+        } else {
+          // Deterministic pseudo-random seed per kick (stable for the duration of the kick)
+          const seed = (lastKickIdx * 23 + 17) % 100;
+          if (seed < 36) {
+            // 36% chance: Live present webcam movement
+            currentTakeType = 'LIVE_FEED';
             snapScale = 1.12;
-          }
-        }
-        // Stage 2: Rapid-Fire Multi-Take Montage (Kicks 12 - 24: 6.45s - 9.62s)
-        else if (lastKickIdx < 25) {
-          const cyclePattern: TakeType[] = [
-            'PAST_SETUP',  'LIVE_FEED',
-            'PAST_MOTION', 'LIVE_FEED',
-            'PAST_CLIMAX', 'LIVE_FEED',
-            'PAST_MOTION', 'PAST_CLIMAX',
-            'LIVE_FEED',   'PAST_CLIMAX',
-            'LIVE_FEED',   'PAST_MOTION',
-            'LIVE_FEED'
-          ];
-          const patternIdx = (lastKickIdx - 12) % cyclePattern.length;
-          currentTakeType = cyclePattern[patternIdx];
-
-          if (currentTakeType === 'PAST_CLIMAX') {
+          } else if (seed < 62) {
+            // 26% chance: Post-trigger climax (peak sip / direct gaze)
+            currentTakeType = 'POST_CLIMAX';
             snapScale = 1.76;
             isCloseUp = true;
-          } else if (currentTakeType === 'PAST_MOTION') {
+          } else if (seed < 80) {
+            // 18% chance: Post-trigger motion take (raising cup / hand movement stutter)
+            currentTakeType = 'POST_MOTION';
             snapScale = 1.42;
-          } else if (currentTakeType === 'PAST_SETUP') {
+          } else if (seed < 90) {
+            // 10% chance: Post-trigger start take (initial reaction)
+            currentTakeType = 'POST_START';
             snapScale = 1.25;
           } else {
-            snapScale = 1.12;
-          }
-        }
-        // Stage 3: Speed Ramp & Glitch Flash Cuts (Kicks 25 - 37: 9.62s - 12.83s)
-        else if (lastKickIdx < 38) {
-          // On kick transients (<90ms), inject rapid glitch cuts to past takes!
-          if (dtKick < 90) {
-            currentTakeType = (lastKickIdx % 2 === 0) ? 'PAST_CLIMAX' : 'PAST_MOTION';
-            snapScale = 1.70;
-            isCloseUp = (currentTakeType === 'PAST_CLIMAX');
-          } else {
-            currentTakeType = 'LIVE_FEED';
-            snapScale = 1.14;
-          }
-        }
-        // Stage 4: Climax Frenzy & Quad-Echo Surge (Kicks 38+: 12.83s - 14.5s)
-        else {
-          if (lastKickIdx % 2 === 0) {
-            currentTakeType = 'PAST_CLIMAX';
-            snapScale = 1.76;
-            isCloseUp = true;
-          } else {
-            currentTakeType = 'LIVE_FEED';
-            snapScale = 1.16;
+            // 10% chance: Recent drop moment (captured 1-2s ago during drop)
+            currentTakeType = 'POST_DROP_RECENT';
+            snapScale = 1.48;
           }
         }
 
@@ -842,19 +801,39 @@ export class SigmaEditRenderer {
           snapScale = Math.max(snapScale, 1.26);
         }
 
+        // Available post-trigger moment pools
+        const climaxPool = (postMoments?.climaxMoment && postMoments.climaxMoment.length > 0)
+          ? postMoments.climaxMoment
+          : (frozenFrameRecord ? [frozenFrameRecord] : [latestLiveFrame]);
+
+        const motionPool = (postMoments?.motionMoment && postMoments.motionMoment.length > 0)
+          ? postMoments.motionMoment
+          : climaxPool;
+
+        const startPool = (postMoments?.startMoment && postMoments.startMoment.length > 0)
+          ? postMoments.startMoment
+          : motionPool;
+
+        const dropPool = (postMoments?.dropMoments && postMoments.dropMoments.length > 0)
+          ? postMoments.dropMoments[postMoments.dropMoments.length - 1]
+          : climaxPool;
+
         // Select the active frame based on the active take type
         let activeFrame: FrameRecord;
-        if (currentTakeType === 'PAST_CLIMAX') {
+        if (currentTakeType === 'POST_CLIMAX') {
           // 3-frame micro-shatter around the peak climax moment
-          const microIdx = Math.max(0, climaxTake.length - 1 - (Math.floor(dtKick / 35) % Math.min(3, climaxTake.length)));
-          activeFrame = climaxTake[microIdx] || climaxTake[climaxTake.length - 1] || latestLiveFrame;
-        } else if (currentTakeType === 'PAST_MOTION') {
+          const microIdx = Math.max(0, climaxPool.length - 1 - (Math.floor(dtKick / 35) % Math.min(3, climaxPool.length)));
+          activeFrame = climaxPool[microIdx] || climaxPool[climaxPool.length - 1] || latestLiveFrame;
+        } else if (currentTakeType === 'POST_MOTION') {
           // Rapid forward movement playback
-          const motionIdx = Math.floor((dtKick / 40)) % motionTake.length;
-          activeFrame = motionTake[motionIdx] || motionTake[0] || latestLiveFrame;
-        } else if (currentTakeType === 'PAST_SETUP') {
-          const setupIdx = Math.floor((dtKick / 50)) % setupTake.length;
-          activeFrame = setupTake[setupIdx] || setupTake[0] || latestLiveFrame;
+          const motionIdx = Math.floor((dtKick / 40)) % motionPool.length;
+          activeFrame = motionPool[motionIdx] || motionPool[0] || latestLiveFrame;
+        } else if (currentTakeType === 'POST_START') {
+          const startIdx = Math.floor((dtKick / 50)) % startPool.length;
+          activeFrame = startPool[startIdx] || startPool[0] || latestLiveFrame;
+        } else if (currentTakeType === 'POST_DROP_RECENT') {
+          const dropIdx = Math.floor((dtKick / 45)) % dropPool.length;
+          activeFrame = dropPool[dropIdx] || dropPool[0] || latestLiveFrame;
         } else {
           // Live camera feed
           activeFrame = latestLiveFrame;
@@ -918,13 +897,24 @@ export class SigmaEditRenderer {
 
         const isRgbSplit = dtKick < 55;
         if (isRgbSplit) {
-          // Hard RGB chromatic split on bass kicks (strictly clipped with ZERO border bleed)
-          ctx.filter = 'drop-shadow(-6px 0 0 rgba(255, 30, 60, 0.7)) drop-shadow(6px 0 0 rgba(0, 180, 255, 0.7)) contrast(124%) saturate(112%)';
+          // Hard punch contrast & saturation on bass kick hit
+          ctx.filter = 'contrast(138%) brightness(101%) saturate(114%) hue-rotate(-5deg)';
         } else {
-          ctx.filter = 'contrast(118%) saturate(110%) brightness(101%)';
+          ctx.filter = 'contrast(125%) brightness(96%) saturate(106%) hue-rotate(-5deg)';
         }
 
         this.drawCover(ctx, activeFrame?.bitmap, 0, 0, w, h, isMirrored);
+
+        // Optical chromatic punch on bass hits (ZERO drop-shadow / ZERO blue fringes)
+        if (isRgbSplit && activeFrame?.bitmap) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          ctx.globalAlpha = 0.22;
+          ctx.filter = 'contrast(140%) brightness(115%)';
+          this.drawCover(ctx, activeFrame.bitmap, -5, 0, w, h, isMirrored);
+          ctx.restore();
+        }
+
         this.applyCinematicGrade(ctx, 0, 0, w, h);
         ctx.restore();
 
@@ -946,12 +936,15 @@ export class SigmaEditRenderer {
       else {
         let displayFrame: FrameRecord;
 
+        const climaxPool = (postMoments?.climaxMoment && postMoments.climaxMoment.length > 0)
+          ? postMoments.climaxMoment
+          : (frozenFrameRecord ? [frozenFrameRecord] : [latestLiveFrame]);
+
         if (elapsed < 15200) {
-          // 3-frame violent stutter loop
+          // 3-frame violent stutter loop of the post-trigger climax
           const twitchPattern = [0, 1, 2, 1, 0, 1, 2, 1];
           const stutterOffset = twitchPattern[Math.floor((elapsed - 14500) / 33) % twitchPattern.length];
-          const pool = climaxTake.length > 3 ? climaxTake : liveFrames;
-          displayFrame = pool[(pool.length - 1 - stutterOffset + pool.length) % pool.length];
+          displayFrame = climaxPool[(climaxPool.length - 1 - stutterOffset + climaxPool.length) % climaxPool.length];
         } else {
           displayFrame = latestLiveFrame;
         }
@@ -976,7 +969,7 @@ export class SigmaEditRenderer {
         ctx.translate(-w / 2, -h / 2);
         ctx.globalAlpha = fadeAlpha;
 
-        ctx.filter = 'contrast(116%) saturate(106%) brightness(101%)';
+        ctx.filter = 'contrast(120%) brightness(97%) saturate(105%) hue-rotate(-5deg)';
         this.drawCover(ctx, displayFrame?.bitmap, 0, 0, w, h, isMirrored);
         this.applyCinematicGrade(ctx, 0, 0, w, h);
         ctx.restore();

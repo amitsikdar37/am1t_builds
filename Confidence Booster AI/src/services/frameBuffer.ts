@@ -1,4 +1,4 @@
-import { FrameRecord, MultiTakeClips } from '../types';
+import { FrameRecord, MultiTakeClips, PostTriggerMoments } from '../types';
 
 export class RollingFrameBuffer {
   private buffer: FrameRecord[] = [];
@@ -217,6 +217,58 @@ export class RollingFrameBuffer {
     if (takes.setup) this.releaseClip(takes.setup);
     if (takes.motion) this.releaseClip(takes.motion);
     if (takes.climax) this.releaseClip(takes.climax);
+  }
+
+  /**
+   * Dynamically extracts and categorizes moments that occurred AFTER the trigger timestamp:
+   * - startMoment: The user's initial reaction/posture right after trigger (150ms - 1200ms)
+   * - motionMoment: The action movement (e.g. raising cup/hand) (1200ms - 2600ms)
+   * - climaxMoment: The peak action right before the drop (2600ms - 3350ms)
+   * - dropMoments: Discrete micro-clips captured in real time as the drop plays (3570ms+)
+   */
+  public getPostTriggerMoments(sessionStartTime: number, _nowTimestamp?: number): PostTriggerMoments {
+    const valid = this.sessionFrames.filter(
+      f => f && f.bitmap && f.bitmap.width > 0 && f.timestamp >= sessionStartTime - 50
+    );
+
+    const startMoment: FrameRecord[] = [];
+    const motionMoment: FrameRecord[] = [];
+    const climaxMoment: FrameRecord[] = [];
+    const dropMoments: FrameRecord[][] = [];
+
+    let currentDropChunk: FrameRecord[] = [];
+
+    for (const f of valid) {
+      const dt = f.timestamp - sessionStartTime;
+      if (dt >= 150 && dt < 1200) {
+        startMoment.push(f);
+      } else if (dt >= 1200 && dt < 2600) {
+        motionMoment.push(f);
+      } else if (dt >= 2600 && dt <= 3350) {
+        climaxMoment.push(f);
+      } else if (dt > 3570) {
+        currentDropChunk.push(f);
+        if (currentDropChunk.length >= 15) {
+          dropMoments.push([...currentDropChunk]);
+          currentDropChunk = [];
+        }
+      }
+    }
+    if (currentDropChunk.length > 5) {
+      dropMoments.push(currentDropChunk);
+    }
+
+    // Fallbacks if moments are not yet populated
+    const fallback = valid.length > 0 ? valid : this.buffer.filter(f => f.bitmap && f.bitmap.width > 0);
+    const lastFrame = fallback.length > 0 ? [fallback[fallback.length - 1]] : [];
+
+    return {
+      startMoment: startMoment.length > 0 ? startMoment : (fallback.length > 0 ? fallback.slice(0, Math.min(10, fallback.length)) : lastFrame),
+      motionMoment: motionMoment.length > 0 ? motionMoment : (fallback.length > 0 ? fallback.slice(Math.max(0, Math.floor(fallback.length * 0.3)), Math.floor(fallback.length * 0.7)) : lastFrame),
+      climaxMoment: climaxMoment.length > 0 ? climaxMoment : lastFrame,
+      dropMoments,
+      allRecorded: valid.length > 0 ? valid : fallback
+    };
   }
 
   public getFrameCount(): number {

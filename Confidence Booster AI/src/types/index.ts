@@ -53,6 +53,14 @@ export interface MultiTakeClips {
   allAction: FrameRecord[]; // Full pre-roll action clip (for Phase 1 & 2)
 }
 
+export interface PostTriggerMoments {
+  startMoment: FrameRecord[];    // Initial reaction / glance (0.2s - 1.2s after trigger)
+  motionMoment: FrameRecord[];   // Movement (e.g. raising cup/hand) (1.2s - 2.6s after trigger)
+  climaxMoment: FrameRecord[];   // Peak action right before drop (2.6s - 3.25s after trigger)
+  dropMoments: FrameRecord[][];  // Discrete micro-clips captured during the drop
+  allRecorded: FrameRecord[];    // All post-trigger frames
+}
+
 export type PhonkTrackId = 'marlon_mogged' | 'montagem_tomada' | 'tokyo_drift' | 'cyber_sigma' | 'gigachad_anthem';
 
 export type EditPresetId = 'sigma_hard_snaps' | 'ghost_trail_impact' | 'parallax_dual_speed';

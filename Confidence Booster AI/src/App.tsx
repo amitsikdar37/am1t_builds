@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Camera, AlertCircle, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-import { TriggerMode, FaceData, PhonkTrackId, FrameRecord, EditPresetId, MultiTakeClips } from './types';
+import { TriggerMode, FaceData, PhonkTrackId, FrameRecord, EditPresetId } from './types';
 import { cameraManager } from './services/cameraManager';
 import { frameBuffer } from './services/frameBuffer';
 import { visionDetector } from './services/visionDetector';
@@ -56,7 +56,6 @@ export const App: React.FC = () => {
 
   // Active replay frames ref to protect from premature GPU memory release
   const activeReplayFramesRef = useRef<FrameRecord[] | null>(null);
-  const activeMultiTakesRef = useRef<MultiTakeClips | null>(null);
 
   // Frame and FPS tracking
   const frameCountRef = useRef(0);
@@ -106,20 +105,16 @@ export const App: React.FC = () => {
       return;
     }
 
-    // Grab structured multi-take clips: setup take, motion take, climax take, and full action clip
-    const multiTakes = frameBuffer.getMultiTakeClips(5000);
-    activeMultiTakesRef.current = multiTakes;
-    activeReplayFramesRef.current = multiTakes.allAction;
-
-    // Start live progressive session with full 3500ms pre-roll so action frames are preserved
+    // Start live progressive recording session starting right now (from trigger moment onwards)!
     frameBuffer.stopLiveSession();
-    frameBuffer.startLiveSession(3500);
+    frameBuffer.startLiveSession(150); // 150ms buffer ensures frames are immediately ready
+    const sessionStartTime = frameBuffer.getSessionStartTimestamp();
 
-    // Lock PIP state into EDITING for a quick 200ms target lock (eliminates the 1.8s dead wait!)
+    // Lock PIP state into EDITING for a quick 200ms target lock
     pipStateRef.current = 'EDITING';
     setPipState('EDITING');
 
-    console.log(`[ConfidenceBooster] Action triggered (${actionType.toUpperCase()})! Captured ${multiTakes.allAction.length} multi-take frames.`);
+    console.log(`[ConfidenceBooster] Action triggered (${actionType.toUpperCase()})! Live recording started at timestamp ${sessionStartTime.toFixed(0)}.`);
 
     // Fast 200ms punchy transition to PLAYING
     window.setTimeout(() => {
@@ -159,10 +154,6 @@ export const App: React.FC = () => {
 
           // Free GPU memory safely
           frameBuffer.stopLiveSession();
-          if (activeMultiTakesRef.current) {
-            frameBuffer.releaseMultiTakes(activeMultiTakesRef.current);
-            activeMultiTakesRef.current = null;
-          }
           if (activeReplayFramesRef.current) {
             frameBuffer.releaseClip(activeReplayFramesRef.current);
             activeReplayFramesRef.current = null;
@@ -191,8 +182,9 @@ export const App: React.FC = () => {
             preset: stateRef.current.selectedPreset,
             startTime: audioStartTime,
             durationMs,
-            actionFrames: multiTakes.allAction,
-            multiTakes,
+            sessionStartTime,
+            getPostTriggerMoments: (nowTimestamp: number) =>
+              frameBuffer.getPostTriggerMoments(sessionStartTime, nowTimestamp),
             getSessionFrames: () => frameBuffer.getSessionFrames(),
             getCurrentEyeCenter: () => {
               const f = stateRef.current.faceData;
