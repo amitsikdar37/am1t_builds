@@ -12,7 +12,8 @@ import {
   Eye,
   Coffee,
   Layers,
-  Loader2
+  Loader2,
+  Radio
 } from 'lucide-react';
 import { TriggerMode, EditPresetId } from '../types';
 
@@ -23,6 +24,7 @@ interface ControlsBarProps {
   soundMuted: boolean;
   onToggleSound: () => void;
   onOpenSoundboard: () => void;
+  onOpenObsModal: () => void;
   triggerMode: TriggerMode;
   onChangeTriggerMode: (mode: TriggerMode) => void;
   selectedPreset: EditPresetId;
@@ -43,6 +45,7 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
   soundMuted,
   onToggleSound,
   onOpenSoundboard,
+  onOpenObsModal,
   triggerMode,
   onChangeTriggerMode,
   selectedPreset,
@@ -220,6 +223,16 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
           >
             <Music className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">TRACKS</span>
+          </button>
+
+          {/* OBS Studio / Live Broadcast Connect Button */}
+          <button
+            onClick={onOpenObsModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyber-cyan/80 hover:border-white text-xs font-mono text-cyber-cyan hover:text-white transition-all shadow-md shadow-cyber-cyan/20"
+            title="Connect to OBS Virtual Camera, Google Meet, Teams, OmeTV"
+          >
+            <Radio className="w-3.5 h-3.5 text-cyber-cyan animate-pulse" />
+            <span className="font-bold">CONNECT OBS</span>
           </button>
         </div>
 

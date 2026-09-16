@@ -10,6 +10,8 @@ interface PipPlayerProps {
   onDownload: () => void;
   canDownload: boolean;
   isConverting?: boolean;
+  takeoverMode?: 'pip' | 'fullscreen';
+  isZeroUi?: boolean;
 }
 
 export const PipPlayer: React.FC<PipPlayerProps> = ({
@@ -18,21 +20,40 @@ export const PipPlayer: React.FC<PipPlayerProps> = ({
   onSkip,
   onDownload,
   canDownload,
-  isConverting = false
+  isConverting = false,
+  takeoverMode = 'fullscreen',
+  isZeroUi = false
 }) => {
   const isPlaying = state === 'PLAYING';
   const isEditing = state === 'EDITING';
+  const isFullscreen = isPlaying && takeoverMode === 'fullscreen';
+
+  // In Zero-UI mode, hide the standby radar box completely so OBS captures only the clean camera!
+  if (isZeroUi && !isPlaying && !isEditing) {
+    return (
+      <canvas
+        ref={editCanvasRef}
+        className="hidden pointer-events-none opacity-0"
+      />
+    );
+  }
 
   return (
     <div
-      className={`absolute transition-all duration-300 ease-out z-20 overflow-hidden font-mono ${
-        isPlaying
-          ? 'top-4 right-4 bottom-20 w-[42%] max-w-lg bg-black border-2 border-cyber-green shadow-2xl shadow-cyber-green/40 rounded-sm flex flex-col'
-          : 'top-4 right-4 w-52 h-36 md:w-64 md:h-44 bg-[#05080e]/90 border border-cyber-green/80 backdrop-blur-md rounded-sm'
+      className={`absolute transition-all duration-300 ease-out overflow-hidden font-mono ${
+        isFullscreen
+          ? 'inset-0 w-screen h-screen z-40 bg-black flex flex-col border-none shadow-none rounded-none'
+          : isPlaying
+          ? 'top-4 right-4 bottom-20 w-[42%] max-w-lg bg-black border-2 border-cyber-green shadow-2xl shadow-cyber-green/40 rounded-sm flex flex-col z-20'
+          : 'top-4 right-4 w-52 h-36 md:w-64 md:h-44 bg-[#05080e]/90 border border-cyber-green/80 backdrop-blur-md rounded-sm z-20'
       }`}
     >
       {/* Top Header Label */}
-      <div className="flex items-center justify-between px-2.5 py-1 bg-black/80 border-b border-cyber-green/30 text-[10px] text-cyber-green z-30 flex-shrink-0 select-none">
+      <div className={`flex items-center justify-between px-2.5 py-1 text-[10px] text-cyber-green z-30 select-none ${
+        isFullscreen
+          ? 'absolute top-3 right-4 bg-black/70 backdrop-blur-md rounded border border-cyber-green/40 opacity-50 hover:opacity-100 transition-opacity gap-3'
+          : 'bg-black/80 border-b border-cyber-green/30 flex-shrink-0'
+      }`}>
         <div className="flex items-center gap-2">
           <span className="font-bold flex items-center gap-1.5">
             <span
@@ -44,7 +65,7 @@ export const PipPlayer: React.FC<PipPlayerProps> = ({
                   : 'bg-cyber-green'
               }`}
             />
-            {isPlaying ? 'EDIT PLAYBACK' : isEditing ? 'EDITING...' : 'MONITOR'}
+            {isPlaying ? (isFullscreen ? 'STREAM EDIT LIVE' : 'EDIT PLAYBACK') : isEditing ? 'EDITING...' : 'MONITOR'}
           </span>
         </div>
 
@@ -125,7 +146,7 @@ export const PipPlayer: React.FC<PipPlayerProps> = ({
         {/* Video Canvas (Always mounted so ref is never null!) */}
         <canvas
           ref={editCanvasRef}
-          className={`w-full h-full object-contain transition-opacity duration-300 ${
+          className={`w-full h-full ${isFullscreen ? 'object-cover' : 'object-contain'} transition-opacity duration-300 ${
             isPlaying ? 'opacity-100 block' : 'opacity-0 pointer-events-none hidden'
           }`}
         />

@@ -1,4 +1,5 @@
 import { FrameRecord, EditPresetId, MultiTakeClips, PostTriggerMoments } from '../types';
+import { unthrottledDriver } from './unthrottledDriver';
 
 export interface EditRenderOptions {
   canvas: HTMLCanvasElement;
@@ -22,6 +23,8 @@ export interface EditRenderOptions {
 export class SigmaEditRenderer {
   private isRendering = false;
   private animFrameId: number | null = null;
+  private unregisterWorkerTick: (() => void) | null = null;
+  private currentTargetWin: Window | null = null;
   private moggedImage: HTMLImageElement | null = null;
   private moggedImageLoaded = false;
 
@@ -159,6 +162,11 @@ export class SigmaEditRenderer {
     let frozenMoggedFrame: FrameRecord | null = null;
     let frozenEyeCenter: { x: number; y: number } | undefined = undefined;
 
+    const targetWin = (canvas.ownerDocument && canvas.ownerDocument.defaultView) ? canvas.ownerDocument.defaultView : window;
+    this.currentTargetWin = targetWin;
+    let lastRenderTime = 0;
+    let safeRenderLoop: (now: number) => void;
+
     const renderLoop = (now: number) => {
       if (!this.isRendering) return;
 
@@ -185,7 +193,7 @@ export class SigmaEditRenderer {
       // Dynamically fetch current valid frames from the live session
       const currentFrames = getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
       if (currentFrames.length === 0) {
-        this.animFrameId = requestAnimationFrame(renderLoop);
+        this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
         ctx.restore();
         return;
       }
@@ -356,14 +364,23 @@ export class SigmaEditRenderer {
       ctx.restore();
 
       if (elapsed < totalDuration) {
-        this.animFrameId = requestAnimationFrame(renderLoop);
+        this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
       } else {
-        this.isRendering = false;
+        this.stop();
         onComplete();
       }
     };
 
-    this.animFrameId = requestAnimationFrame(renderLoop);
+    safeRenderLoop = (now: number) => {
+      if (!this.isRendering) return;
+      if (now - lastRenderTime < 10) return;
+      lastRenderTime = now;
+      unthrottledDriver.recordRafTick(now);
+      renderLoop(now);
+    };
+
+    this.unregisterWorkerTick = unthrottledDriver.register(safeRenderLoop);
+    this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
   }
 
   private getLastKickIndex(beatKicks: number[], elapsed: number): number {
@@ -671,6 +688,11 @@ export class SigmaEditRenderer {
     let dropFired = false;
     let frozenFrameRecord: FrameRecord | null = null;
     let lastRenderedFrame: FrameRecord | null = null;
+
+    const targetWin = (canvas.ownerDocument && canvas.ownerDocument.defaultView) ? canvas.ownerDocument.defaultView : window;
+    this.currentTargetWin = targetWin;
+    let lastRenderTime = 0;
+    let safeRenderLoop: (now: number) => void;
 
     const renderLoop = (now: number) => {
       if (!this.isRendering) return;
@@ -1088,14 +1110,23 @@ export class SigmaEditRenderer {
       ctx.restore();
 
       if (elapsed < totalDuration) {
-        this.animFrameId = requestAnimationFrame(renderLoop);
+        this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
       } else {
         this.stop();
         onComplete();
       }
     };
 
-    this.animFrameId = requestAnimationFrame(renderLoop);
+    safeRenderLoop = (now: number) => {
+      if (!this.isRendering) return;
+      if (now - lastRenderTime < 10) return;
+      lastRenderTime = now;
+      unthrottledDriver.recordRafTick(now);
+      renderLoop(now);
+    };
+
+    this.unregisterWorkerTick = unthrottledDriver.register(safeRenderLoop);
+    this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
   }
 
   /**
@@ -1133,6 +1164,11 @@ export class SigmaEditRenderer {
     let smoothFocusX = 0;
     let smoothFocusY = 0;
     let focusInitialized = false;
+
+    const targetWin = (canvas.ownerDocument && canvas.ownerDocument.defaultView) ? canvas.ownerDocument.defaultView : window;
+    this.currentTargetWin = targetWin;
+    let lastRenderTime = 0;
+    let safeRenderLoop: (now: number) => void;
 
     const renderLoop = (now: number) => {
       if (!this.isRendering) return;
@@ -1392,22 +1428,37 @@ export class SigmaEditRenderer {
       ctx.restore();
 
       if (elapsed < totalDuration) {
-        this.animFrameId = requestAnimationFrame(renderLoop);
+        this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
       } else {
         this.stop();
         onComplete();
       }
     };
 
-    this.animFrameId = requestAnimationFrame(renderLoop);
+    safeRenderLoop = (now: number) => {
+      if (!this.isRendering) return;
+      if (now - lastRenderTime < 10) return;
+      lastRenderTime = now;
+      unthrottledDriver.recordRafTick(now);
+      renderLoop(now);
+    };
+
+    this.unregisterWorkerTick = unthrottledDriver.register(safeRenderLoop);
+    this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
   }
 
   public stop() {
     this.isRendering = false;
+    if (this.unregisterWorkerTick) {
+      this.unregisterWorkerTick();
+      this.unregisterWorkerTick = null;
+    }
     if (this.animFrameId) {
-      cancelAnimationFrame(this.animFrameId);
+      const win = this.currentTargetWin || window;
+      win.cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
     }
+    this.currentTargetWin = null;
   }
 }
 
