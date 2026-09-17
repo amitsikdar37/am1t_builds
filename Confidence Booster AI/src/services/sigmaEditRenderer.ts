@@ -68,20 +68,39 @@ export class SigmaEditRenderer {
     if (!img || img.width === 0 || img.height === 0) return;
     const imgW = img.width;
     const imgH = img.height;
-    const scale = Math.max(destW / imgW, destH / imgH);
-    const sw = Math.min(imgW, destW / scale);
-    const sh = Math.min(imgH, destH / scale);
-    const sx = Math.max(0, (imgW - sw) / 2);
-    const sy = Math.max(0, (imgH - sh) / 2);
+
+    let scale: number;
+    let sw: number, sh: number, sx: number, sy: number;
+    let drawX = destX, drawY = destY, drawW = destW, drawH = destH;
+
+    if (imgW > imgH && destH > destW) {
+      // Landscape video on tall portrait phone: avoid 4x zoom!
+      const targetAspect = Math.min(imgW / imgH, Math.max(0.75, destW / destH));
+      sw = Math.min(imgW, imgH * targetAspect);
+      sh = imgH;
+      sx = (imgW - sw) / 2;
+      sy = 0;
+      scale = destW / sw;
+      drawW = destW;
+      drawH = sh * scale;
+      drawX = destX;
+      drawY = destY + Math.max(0, (destH - drawH) / 2);
+    } else {
+      scale = Math.max(destW / imgW, destH / imgH);
+      sw = Math.min(imgW, destW / scale);
+      sh = Math.min(imgH, destH / scale);
+      sx = Math.max(0, (imgW - sw) / 2);
+      sy = Math.max(0, (imgH - sh) / 2);
+    }
 
     if (mirror) {
       ctx.save();
-      ctx.translate(destX + destW, destY);
+      ctx.translate(drawX + drawW, drawY);
       ctx.scale(-1, 1);
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, destW, destH);
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, drawW, drawH);
       ctx.restore();
     } else {
-      ctx.drawImage(img, sx, sy, sw, sh, destX, destY, destW, destH);
+      ctx.drawImage(img, sx, sy, sw, sh, drawX, drawY, drawW, drawH);
     }
   }
   /**

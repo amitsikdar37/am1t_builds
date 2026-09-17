@@ -11,33 +11,64 @@ export interface CubeFaceData {
   box: { x: number; y: number; width: number; height: number };
 }
 
+export interface RenderTransform {
+  sx: number;
+  sy: number;
+  sw: number;
+  sh: number;
+  dx: number;
+  dy: number;
+  dw: number;
+  dh: number;
+  vw: number;
+  vh: number;
+}
+
 /**
  * Renders a true 3D wireframe target cube around the user's face with perspective projection
- * Accurately aligns when camera is mirrored or non-mirrored!
+ * Accurately aligns when camera is mirrored or non-mirrored, across both mobile and desktop screens!
  */
 export function draw3dTargetCube(
   ctx: CanvasRenderingContext2D,
   face: CubeFaceData,
   canvasWidth: number,
   canvasHeight: number,
-  isMirrored = false
+  isMirrored = false,
+  transform?: RenderTransform
 ) {
   if (!face.detected) {
     return;
   }
 
-  const w = canvasWidth;
-  const h = canvasHeight;
-
-  // Face center in canvas coordinates (accounting for horizontal mirror)
   const rawEyeX = (face.leftEye.x + face.rightEye.x) / 2;
-  const eyeCenterX = isMirrored ? (1 - rawEyeX) : rawEyeX;
-  const eyeCenterY = (face.leftEye.y + face.rightEye.y) / 2;
-  const cx = eyeCenterX * w;
-  const cy = (eyeCenterY * 0.75 + face.noseBridge.y * 0.25) * h;
+  const rawEyeY = (face.leftEye.y + face.rightEye.y) / 2;
+  const rawCenterY = rawEyeY * 0.75 + face.noseBridge.y * 0.25;
+
+  let cx: number;
+  let cy: number;
+  let baseDimension: number;
+
+  if (transform && transform.sw > 0 && transform.sh > 0) {
+    const { sx, sy, sw, sh, dx, dy, dw, dh, vw, vh } = transform;
+    const pixelX = rawEyeX * vw;
+    const pixelY = rawCenterY * vh;
+
+    const relX = (pixelX - sx) / sw;
+    const relY = (pixelY - sy) / sh;
+
+    const effectiveRelX = isMirrored ? (1 - relX) : relX;
+    cx = dx + effectiveRelX * dw;
+    cy = dy + relY * dh;
+    baseDimension = dw * (vw / sw);
+  } else {
+    const eyeCenterX = isMirrored ? (1 - rawEyeX) : rawEyeX;
+    cx = eyeCenterX * canvasWidth;
+    cy = rawCenterY * canvasHeight;
+    baseDimension = canvasWidth;
+  }
 
   // Size of cube proportional to face
-  const halfSize = Math.max(50, face.box.width * w * 0.42);
+  const halfSize = Math.max(45, face.box.width * baseDimension * 0.42);
   const s = halfSize;
   const depth = halfSize * 0.95;
 

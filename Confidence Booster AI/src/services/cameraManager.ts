@@ -15,12 +15,15 @@ export class CameraManager {
     this.stopStream();
 
     const isMobile = mobileDetector.isMobile();
+    const isPortrait = typeof window !== 'undefined' && window.innerHeight > window.innerWidth;
+
     const constraints: MediaStreamConstraints = {
       video: isMobile
         ? {
             facingMode: this.facingMode,
-            width: { ideal: 720, max: 1280 },
-            height: { ideal: 1280, max: 1280 },
+            aspectRatio: isPortrait ? { ideal: 9 / 16 } : { ideal: 16 / 9 },
+            width: isPortrait ? { ideal: 720 } : { ideal: 1280 },
+            height: isPortrait ? { ideal: 1280 } : { ideal: 720 },
             frameRate: { ideal: 30, max: 30 }
           }
         : {
@@ -45,8 +48,22 @@ export class CameraManager {
 
       return stream;
     } catch (err) {
-      console.error('Failed to acquire webcam stream:', err);
-      throw err;
+      console.warn('Initial camera constraints failed, attempting fallback constraints:', err);
+      const fallbackConstraints: MediaStreamConstraints = {
+        video: { facingMode: this.facingMode },
+        audio: false
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+      this.currentStream = stream;
+
+      if (this.videoElement) {
+        this.videoElement.srcObject = stream;
+        this.videoElement.playsInline = true;
+        this.videoElement.muted = true;
+        await this.videoElement.play();
+      }
+
+      return stream;
     }
   }
 

@@ -435,7 +435,9 @@ export const App: React.FC = () => {
 
                       // Draw 3D wireframe target cube directly on projector feed
                       if (currentFace.detected) {
-                        draw3dTargetCube(pCtx, currentFace, pw, ph, isMirrored);
+                        draw3dTargetCube(pCtx, currentFace, pw, ph, isMirrored, {
+                          sx, sy, sw, sh, dx: 0, dy: 0, dw: pw, dh: ph, vw, vh
+                        });
                       }
                     }
                   }
@@ -454,25 +456,58 @@ export const App: React.FC = () => {
               ctx.save();
               ctx.clearRect(0, 0, cw, ch);
 
-              const scale = Math.max(cw / vw, ch / vh);
-              const sw = cw / scale;
-              const sh = ch / scale;
-              const sx = Math.max(0, (vw - sw) / 2);
-              const sy = Math.max(0, (vh - sh) / 2);
+              let scale: number;
+              let sw: number, sh: number, sx: number, sy: number;
+              let dx = 0, dy = 0, dw = cw, dh = ch;
+
+              const isLandscapeOnPortrait = (vw > vh) && (ch > cw);
+
+              if (isLandscapeOnPortrait) {
+                // Prevent extreme 4x zoom on mobile smartphones!
+                // If the camera hardware outputs landscape (e.g. 1280x720) on a tall phone (400x850),
+                // frame the video comfortably with a natural 3:4 portrait crop so the user's entire
+                // head, hair, cheeks, neck, and shoulders are in frame with ZERO forehead zoom!
+                const videoAspect = vw / vh;
+                const targetAspect = Math.min(videoAspect, Math.max(0.75, cw / ch));
+                sw = Math.min(vw, vh * targetAspect);
+                sh = vh;
+                sx = (vw - sw) / 2;
+                sy = 0;
+
+                scale = cw / sw;
+                dw = cw;
+                dh = sh * scale;
+                dx = 0;
+                dy = Math.max(0, (ch - dh) / 2);
+              } else {
+                scale = Math.max(cw / vw, ch / vh);
+                sw = cw / scale;
+                sh = ch / scale;
+                sx = Math.max(0, (vw - sw) / 2);
+                sy = Math.max(0, (vh - sh) / 2);
+                dx = 0;
+                dy = 0;
+                dw = cw;
+                dh = ch;
+              }
 
               if (isMirrored) {
-                ctx.translate(cw, 0);
+                ctx.translate(dx + dw, dy);
                 ctx.scale(-1, 1);
+                ctx.drawImage(video, sx, sy, sw, sh, 0, 0, dw, dh);
+              } else {
+                ctx.drawImage(video, sx, sy, sw, sh, dx, dy, dw, dh);
               }
-              ctx.drawImage(video, sx, sy, sw, sh, 0, 0, cw, ch);
 
               ctx.fillStyle = 'rgba(0, 255, 102, 0.02)';
-              ctx.fillRect(0, 0, cw, ch);
+              ctx.fillRect(dx, dy, dw, dh);
               ctx.restore();
 
-              // Draw 3D Target Cube
+              // Draw 3D Target Cube accurately aligned to the visible video rectangle!
               if (currentFace.detected) {
-                draw3dTargetCube(ctx, currentFace, cw, ch, isMirrored);
+                draw3dTargetCube(ctx, currentFace, cw, ch, isMirrored, {
+                  sx, sy, sw, sh, dx, dy, dw, dh, vw, vh
+                });
               }
             }
           }
