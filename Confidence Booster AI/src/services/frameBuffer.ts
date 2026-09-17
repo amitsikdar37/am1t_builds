@@ -1,9 +1,10 @@
 import { FrameRecord, MultiTakeClips, PostTriggerMoments } from '../types';
+import { mobileDetector } from './mobileDetector';
 
 export class RollingFrameBuffer {
   private buffer: FrameRecord[] = [];
-  private maxDurationMs = 7500; // retain sliding 7.5 seconds of video to hold rich past takes
   private isCapturing = true;
+  private isPushing = false; // Mutex to prevent multiple async createImageBitmap calls from stacking
 
   // Bitmaps that are actively being used by an edit replay clip or live session.
   // DO NOT close these bitmaps when shifting out of buffer!
@@ -82,13 +83,15 @@ export class RollingFrameBuffer {
    * Pushes a new video frame into the rolling buffer and active live session
    */
   public async pushFrame(video: HTMLVideoElement): Promise<void> {
-    if (!this.isCapturing || video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
+    if (this.isPushing || !this.isCapturing || video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
       return;
     }
 
+    this.isPushing = true;
     try {
-      // Limit resolution to a balanced 720p or 640p for blistering 60fps rendering without memory bloat
-      const targetWidth = Math.min(video.videoWidth, 854);
+      // Dynamic target width: 480px on mobile (sharp and uses 75% less GPU RAM), 854px on desktop
+      const maxW = mobileDetector.getBufferTargetWidth();
+      const targetWidth = Math.min(video.videoWidth, maxW);
       const targetHeight = Math.round(targetWidth * (video.videoHeight / video.videoWidth));
 
       if (targetWidth <= 0 || targetHeight <= 0) return;
@@ -119,8 +122,9 @@ export class RollingFrameBuffer {
         this.sessionFrames.push(frameRecord);
       }
 
-      // Prune frames older than maxDurationMs
-      const cutoff = now - this.maxDurationMs;
+      // Prune frames older than maxDurationMs (3800ms on mobile, 6500ms on desktop)
+      const maxDuration = mobileDetector.getMaxBufferDurationMs();
+      const cutoff = now - maxDuration;
       while (this.buffer.length > 0 && this.buffer[0].timestamp < cutoff) {
         const oldFrame = this.buffer.shift();
         if (oldFrame) {
@@ -132,6 +136,8 @@ export class RollingFrameBuffer {
       }
     } catch {
       // Ignore frame grab exceptions if camera is transitioning
+    } finally {
+      this.isPushing = false;
     }
   }
 

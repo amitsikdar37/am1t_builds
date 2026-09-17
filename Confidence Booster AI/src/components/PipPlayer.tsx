@@ -28,8 +28,8 @@ export const PipPlayer: React.FC<PipPlayerProps> = ({
   const isEditing = state === 'EDITING';
   const isFullscreen = isPlaying && takeoverMode === 'fullscreen';
 
-  // In Zero-UI mode, hide the standby radar box completely so OBS captures only the clean camera!
-  if (isZeroUi && !isPlaying && !isEditing) {
+  // When not playing or editing, hide the player completely so the webcam feed is clean and unobstructed!
+  if (!isPlaying && !isEditing) {
     return (
       <canvas
         ref={editCanvasRef}
@@ -49,11 +49,12 @@ export const PipPlayer: React.FC<PipPlayerProps> = ({
       }`}
     >
       {/* Top Header Label */}
-      <div className={`flex items-center justify-between px-2.5 py-1 text-[10px] text-cyber-green z-30 select-none ${
-        isFullscreen
-          ? 'absolute top-3 right-4 bg-black/70 backdrop-blur-md rounded border border-cyber-green/40 opacity-50 hover:opacity-100 transition-opacity gap-3'
-          : 'bg-black/80 border-b border-cyber-green/30 flex-shrink-0'
-      }`}>
+      {!isZeroUi && (
+        <div className={`flex items-center justify-between px-2.5 py-1 text-[10px] text-cyber-green z-30 select-none ${
+          isFullscreen
+            ? 'absolute top-3 right-4 bg-black/70 backdrop-blur-md rounded border border-cyber-green/40 opacity-50 hover:opacity-100 transition-opacity gap-3'
+            : 'bg-black/80 border-b border-cyber-green/30 flex-shrink-0'
+        }`}>
         <div className="flex items-center gap-2">
           <span className="font-bold flex items-center gap-1.5">
             <span
@@ -99,6 +100,7 @@ export const PipPlayer: React.FC<PipPlayerProps> = ({
           </div>
         )}
       </div>
+      )}
 
       {/* Main Container */}
       <div className="relative flex-1 w-full h-full overflow-hidden bg-black flex items-center justify-center">

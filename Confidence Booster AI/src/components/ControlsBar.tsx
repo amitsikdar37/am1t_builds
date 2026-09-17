@@ -67,8 +67,8 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
   };
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 max-w-5xl w-[96%] md:w-auto">
-      <div className="bg-[#0b0f17]/90 border border-cyber-green/40 backdrop-blur-lg px-3 py-2 md:px-5 md:py-2.5 rounded-full shadow-2xl shadow-black/80 flex flex-wrap items-center justify-center gap-2 md:gap-3 text-white">
+    <div className="fixed bottom-3 md:bottom-4 left-1/2 -translate-x-1/2 z-30 max-w-5xl w-[96%] md:w-auto">
+      <div className="bg-[#0b0f17]/95 border border-cyber-green/40 backdrop-blur-lg px-2.5 py-2 md:px-5 md:py-2.5 rounded-2xl md:rounded-full shadow-2xl shadow-black/80 flex flex-wrap items-center justify-center gap-1.5 md:gap-3 text-white">
         
         {/* Style Preset Selector */}
         <div className="flex items-center bg-gray-900/90 p-0.5 rounded-full border border-gray-700 text-[11px] font-mono">
@@ -219,7 +219,7 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
           <button
             onClick={onOpenSoundboard}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-gray-900 hover:bg-gray-800 border border-gray-700 hover:border-cyber-pink text-xs font-mono text-cyber-pink transition-all"
-            title="Open Phonk tracks and meme soundboard"
+            title="Phonk soundtracks & audio volume"
           >
             <Music className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">TRACKS</span>
@@ -232,7 +232,8 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
             title="Connect to OBS Virtual Camera, Google Meet, Teams, OmeTV"
           >
             <Radio className="w-3.5 h-3.5 text-cyber-cyan animate-pulse" />
-            <span className="font-bold">CONNECT OBS</span>
+            <span className="font-bold hidden sm:inline">CONNECT OBS</span>
+            <span className="font-bold sm:hidden">OBS</span>
           </button>
         </div>
 

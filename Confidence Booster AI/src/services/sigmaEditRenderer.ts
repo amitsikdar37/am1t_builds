@@ -165,7 +165,6 @@ export class SigmaEditRenderer {
     const targetWin = (canvas.ownerDocument && canvas.ownerDocument.defaultView) ? canvas.ownerDocument.defaultView : window;
     this.currentTargetWin = targetWin;
     let lastRenderTime = 0;
-    let safeRenderLoop: (now: number) => void;
 
     const renderLoop = (now: number) => {
       if (!this.isRendering) return;
@@ -193,7 +192,6 @@ export class SigmaEditRenderer {
       // Dynamically fetch current valid frames from the live session
       const currentFrames = getFrames().filter(f => f && f.bitmap && f.bitmap.width > 0);
       if (currentFrames.length === 0) {
-        this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
         ctx.restore();
         return;
       }
@@ -363,24 +361,35 @@ export class SigmaEditRenderer {
 
       ctx.restore();
 
-      if (elapsed < totalDuration) {
-        this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
-      } else {
+      if (elapsed >= totalDuration) {
         this.stop();
         onComplete();
       }
     };
 
-    safeRenderLoop = (now: number) => {
+    const onWorkerTick = (now: number) => {
       if (!this.isRendering) return;
-      if (now - lastRenderTime < 10) return;
+      if (now - lastRenderTime < 13) return;
       lastRenderTime = now;
-      unthrottledDriver.recordRafTick(now);
       renderLoop(now);
     };
 
-    this.unregisterWorkerTick = unthrottledDriver.register(safeRenderLoop);
-    this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
+    const onRafTick = (now: number) => {
+      if (!this.isRendering) return;
+      unthrottledDriver.recordRafTick(now);
+      if (now - lastRenderTime < 13) {
+        this.animFrameId = targetWin.requestAnimationFrame(onRafTick);
+        return;
+      }
+      lastRenderTime = now;
+      renderLoop(now);
+      if (this.isRendering) {
+        this.animFrameId = targetWin.requestAnimationFrame(onRafTick);
+      }
+    };
+
+    this.unregisterWorkerTick = unthrottledDriver.register(onWorkerTick);
+    this.animFrameId = targetWin.requestAnimationFrame(onRafTick);
   }
 
   private getLastKickIndex(beatKicks: number[], elapsed: number): number {
@@ -692,7 +701,6 @@ export class SigmaEditRenderer {
     const targetWin = (canvas.ownerDocument && canvas.ownerDocument.defaultView) ? canvas.ownerDocument.defaultView : window;
     this.currentTargetWin = targetWin;
     let lastRenderTime = 0;
-    let safeRenderLoop: (now: number) => void;
 
     const renderLoop = (now: number) => {
       if (!this.isRendering) return;
@@ -1109,24 +1117,35 @@ export class SigmaEditRenderer {
 
       ctx.restore();
 
-      if (elapsed < totalDuration) {
-        this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
-      } else {
+      if (elapsed >= totalDuration) {
         this.stop();
         onComplete();
       }
     };
 
-    safeRenderLoop = (now: number) => {
+    const onWorkerTick = (now: number) => {
       if (!this.isRendering) return;
-      if (now - lastRenderTime < 10) return;
+      if (now - lastRenderTime < 13) return;
       lastRenderTime = now;
-      unthrottledDriver.recordRafTick(now);
       renderLoop(now);
     };
 
-    this.unregisterWorkerTick = unthrottledDriver.register(safeRenderLoop);
-    this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
+    const onRafTick = (now: number) => {
+      if (!this.isRendering) return;
+      unthrottledDriver.recordRafTick(now);
+      if (now - lastRenderTime < 13) {
+        this.animFrameId = targetWin.requestAnimationFrame(onRafTick);
+        return;
+      }
+      lastRenderTime = now;
+      renderLoop(now);
+      if (this.isRendering) {
+        this.animFrameId = targetWin.requestAnimationFrame(onRafTick);
+      }
+    };
+
+    this.unregisterWorkerTick = unthrottledDriver.register(onWorkerTick);
+    this.animFrameId = targetWin.requestAnimationFrame(onRafTick);
   }
 
   /**
@@ -1168,7 +1187,6 @@ export class SigmaEditRenderer {
     const targetWin = (canvas.ownerDocument && canvas.ownerDocument.defaultView) ? canvas.ownerDocument.defaultView : window;
     this.currentTargetWin = targetWin;
     let lastRenderTime = 0;
-    let safeRenderLoop: (now: number) => void;
 
     const renderLoop = (now: number) => {
       if (!this.isRendering) return;
@@ -1427,24 +1445,35 @@ export class SigmaEditRenderer {
 
       ctx.restore();
 
-      if (elapsed < totalDuration) {
-        this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
-      } else {
+      if (elapsed >= totalDuration) {
         this.stop();
         onComplete();
       }
     };
 
-    safeRenderLoop = (now: number) => {
+    const onWorkerTick = (now: number) => {
       if (!this.isRendering) return;
-      if (now - lastRenderTime < 10) return;
+      if (now - lastRenderTime < 13) return;
       lastRenderTime = now;
-      unthrottledDriver.recordRafTick(now);
       renderLoop(now);
     };
 
-    this.unregisterWorkerTick = unthrottledDriver.register(safeRenderLoop);
-    this.animFrameId = targetWin.requestAnimationFrame(safeRenderLoop);
+    const onRafTick = (now: number) => {
+      if (!this.isRendering) return;
+      unthrottledDriver.recordRafTick(now);
+      if (now - lastRenderTime < 13) {
+        this.animFrameId = targetWin.requestAnimationFrame(onRafTick);
+        return;
+      }
+      lastRenderTime = now;
+      renderLoop(now);
+      if (this.isRendering) {
+        this.animFrameId = targetWin.requestAnimationFrame(onRafTick);
+      }
+    };
+
+    this.unregisterWorkerTick = unthrottledDriver.register(onWorkerTick);
+    this.animFrameId = targetWin.requestAnimationFrame(onRafTick);
   }
 
   public stop() {

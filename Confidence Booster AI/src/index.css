@@ -11,6 +11,21 @@ body {
   background-color: #05070a;
   color: #00ff66;
   overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Mobile Touch & Performance Optimization (Eliminates 300ms tap delay & gray flickers) */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a, input, select {
+  touch-action: manipulation;
+}
+
+canvas {
+  touch-action: none;
 }
 
 /* Cyberpunk Glows and Text Shadows */

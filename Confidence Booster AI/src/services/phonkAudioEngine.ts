@@ -1,4 +1,5 @@
 import { PhonkTrackId, PhonkTrackInfo } from '../types';
+import { broadcastAudio } from './broadcastAudioEngine';
 
 export interface AudioPlaybackInfo {
   startTime: number;
@@ -74,7 +75,7 @@ class PhonkAudioEngine {
   private initContext() {
     if (!this.ctx) {
       const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      this.ctx = new AudioCtxClass();
+      this.ctx = new AudioCtxClass({ sampleRate: 48000 });
       
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.volume, this.ctx.currentTime);
@@ -87,6 +88,37 @@ class PhonkAudioEngine {
     }
     if (this.ctx.state === 'suspended') {
       this.ctx.resume();
+    }
+  }
+
+  private keepAliveOscillator: OscillatorNode | null = null;
+
+  /**
+   * Starts an inaudible audio keep-alive oscillator.
+   * Tells Chrome & Windows OS that this tab has active media playback,
+   * exempting it from Windows 11 EcoQoS (Efficiency Mode) and background timer clamping!
+   */
+  public startKeepAlive(): void {
+    this.initContext();
+    if (!this.ctx || this.keepAliveOscillator) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const silentGain = this.ctx.createGain();
+      // 18 Hz infrasound (sub-audible to human ear, speaker physical rolloff < 40Hz)
+      // Gain 0.003 exceeds Chromium's internal TabAudioTracker kSilenceThreshold (0.001f)
+      // to keep tab classified as ACTIVE MEDIA PLAYBACK without making audible sound!
+      silentGain.gain.setValueAtTime(0.003, this.ctx.currentTime);
+      osc.frequency.setValueAtTime(18, this.ctx.currentTime);
+      osc.connect(silentGain);
+      silentGain.connect(this.ctx.destination);
+      osc.start();
+      this.keepAliveOscillator = osc;
+
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
+    } catch (e) {
+      console.warn('[PhonkAudioEngine] Could not start keep-alive oscillator:', e);
     }
   }
 
@@ -216,6 +248,28 @@ class PhonkAudioEngine {
 
   public getVolume(): number {
     return this.volume;
+  }
+
+  public getContext(): AudioContext | null {
+    this.initContext();
+    return this.ctx;
+  }
+
+  public connectBroadcastNode(node: AudioNode) {
+    this.initContext();
+    if (this.masterGain) {
+      try {
+        this.masterGain.connect(node);
+      } catch (e) {}
+    }
+  }
+
+  public disconnectBroadcastNode(node: AudioNode) {
+    if (this.masterGain) {
+      try {
+        this.masterGain.disconnect(node);
+      } catch (e) {}
+    }
   }
 
   // --- Sound Generation Primitives ---
@@ -442,6 +496,83 @@ class PhonkAudioEngine {
     this.playKick(now, 1.2);
   }
 
+  private ensureBroadcastPhonkBuffer(
+    buffer: AudioBuffer,
+    offsetSec = 0,
+    durationSec?: number,
+    filterConfig?: {
+      startFreq: number;
+      midFreq: number;
+      endFreq: number;
+      midTime: number;
+      endTime: number;
+    }
+  ): void {
+    if (broadcastAudio.getIsBroadcasting()) {
+      broadcastAudio.playPhonkBuffer(buffer, offsetSec, durationSec, filterConfig);
+    } else {
+      broadcastAudio.startBroadcast().then(() => {
+        broadcastAudio.playPhonkBuffer(buffer, offsetSec, durationSec, filterConfig);
+      }).catch(e => console.warn('[PhonkAudioEngine] Auto-start broadcast error:', e));
+    }
+  }
+
+  private ensureBroadcastProceduralDrop(delaySeconds: number): void {
+    if (broadcastAudio.getIsBroadcasting()) {
+      broadcastAudio.playProceduralDrop(delaySeconds);
+    } else {
+      broadcastAudio.startBroadcast().then(() => {
+        broadcastAudio.playProceduralDrop(delaySeconds);
+      }).catch(e => console.warn('[PhonkAudioEngine] Auto-start broadcast drop error:', e));
+    }
+  }
+
+  /**
+   * Plays the real iconic Phonk beat drop (Montagem Tomada 808 drop)
+   * into masterGain (Headphones) AND broadcastAudio (CABLE Input) for instant verification!
+   */
+  public async playQuickPhonkTest(): Promise<void> {
+    this.initContext();
+    if (this.ctx && this.ctx.state === 'suspended') {
+      await this.ctx.resume();
+    }
+    this.stop();
+
+    // Ensure Montagem Tomada buffer is preloaded
+    if (!this.tomadaAudioBuffer) {
+      await this.preloadTomadaAudio();
+    }
+
+    const buffer = this.tomadaAudioBuffer || this.moggedAudioBuffer;
+    if (buffer && this.ctx && this.masterGain) {
+      this.isPlaying = true;
+      const hSource = this.ctx.createBufferSource();
+      hSource.buffer = buffer;
+      hSource.connect(this.masterGain);
+      // Start right at 3.2s for 4.2s (the iconic "TOMADA" vocal tag right into the massive 808 drop!)
+      hSource.start(0, 3.2, 4.2);
+      this.currentAudioSource = hSource;
+
+      // Always stream into CABLE Input (auto-starts broadcast if not yet running!)
+      this.ensureBroadcastPhonkBuffer(buffer, 3.2, 4.2);
+
+      const timer = window.setTimeout(() => {
+        this.stop();
+      }, 4250);
+      this.activeTimers.push(timer);
+    } else {
+      // Procedural fallback if audio file still loading
+      if (!this.ctx || !this.masterGain) return;
+      const now = this.ctx.currentTime;
+      this.playPhonkCowbell(now, 740, 0.7);
+      this.playPhonkCowbell(now + 0.2, 880, 0.75);
+      this.playBassDropImpact(0.55);
+      this.playKick(now + 0.55, 1.3);
+      this.play808Sub(now + 0.55, 1.2, 46.2, 55.0, 1.0);
+      this.ensureBroadcastProceduralDrop(0.55);
+    }
+  }
+
   // --- Voice / Meme Soundboard Line ---
   public playMemeSound(soundName: string) {
     this.initContext();
@@ -504,6 +635,9 @@ class PhonkAudioEngine {
     onEndedCallback?: () => void
   ): Promise<AudioPlaybackInfo> {
     this.initContext();
+    if (this.ctx && this.ctx.state === 'suspended') {
+      await this.ctx.resume();
+    }
     this.stop();
     this.isPlaying = true;
 
@@ -536,10 +670,19 @@ class PhonkAudioEngine {
         filter.connect(this.masterGain!);
         this.lowpassFilter = filter;
 
-        // Play the complete 15.94s audio track from 0 to completion!
+        // Play the complete 15.94s audio track from 0 to completion in headphones!
         source.start(0);
         this.currentAudioSource = source;
         const audioStartTime = performance.now();
+
+        // Also broadcast directly to CABLE Input with matching filter (auto-starts broadcast if needed!)
+        this.ensureBroadcastPhonkBuffer(this.tomadaAudioBuffer, 0, this.tomadaAudioBuffer.duration, {
+          startFreq: 420,
+          midFreq: 3600,
+          endFreq: 20000,
+          midTime: 3.4,
+          endTime: 3.57
+        });
 
         if (onEndedCallback) {
           source.onended = () => {
@@ -575,6 +718,9 @@ class PhonkAudioEngine {
         source.start(0);
         this.currentAudioSource = source;
         const audioStartTime = performance.now();
+
+        // Also broadcast directly to CABLE Input (auto-starts broadcast if needed!)
+        this.ensureBroadcastPhonkBuffer(this.moggedAudioBuffer, 0, this.moggedAudioBuffer.duration);
 
         if (onEndedCallback) {
           source.onended = () => {
@@ -616,6 +762,9 @@ class PhonkAudioEngine {
         source.start(0);
         this.currentAudioSource = source;
         const audioStartTime = performance.now();
+
+        // Also broadcast directly to CABLE Input (auto-starts broadcast if needed!)
+        this.ensureBroadcastPhonkBuffer(this.moggerAudioBuffer, 0, this.moggerAudioBuffer.duration);
 
         if (onEndedCallback) {
           source.onended = () => {
@@ -664,6 +813,9 @@ class PhonkAudioEngine {
     this.activeTimers.push(dropTimer);
 
     this.playBassDropImpact(track.dropDelaySeconds);
+    if (broadcastAudio.getIsBroadcasting()) {
+      broadcastAudio.playProceduralDrop(track.dropDelaySeconds);
+    }
 
     const cowbellNotes = [740, 880, 988, 1109, 880, 740, 659, 740, 988, 1109, 1319, 1109];
     const dropLengthBeats = 16;
@@ -733,6 +885,8 @@ class PhonkAudioEngine {
       } catch {}
       this.lowpassFilter = null;
     }
+
+    broadcastAudio.stopPhonkBuffer();
   }
 }
 

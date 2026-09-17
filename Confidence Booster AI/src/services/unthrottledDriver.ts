@@ -47,8 +47,9 @@ export class UnthrottledDriver {
 
       this.worker.onmessage = (e: MessageEvent<number>) => {
         const now = e.data || performance.now();
-        // If document is hidden, or if requestAnimationFrame has stalled for more than 24ms, fire ticks via worker!
-        if (typeof document !== 'undefined' && (document.hidden || now - this.lastRafTime > 24)) {
+        // If native requestAnimationFrame has stalled for >= 18ms (e.g. background tab, unfocused, or minimized),
+        // drive frames via the unthrottled Web Worker thread at locked 60 FPS!
+        if (now - this.lastRafTime >= 18) {
           this.dispatchTick(now);
         }
       };

@@ -1,3 +1,5 @@
+import { mobileDetector } from './mobileDetector';
+
 export class CameraManager {
   private currentStream: MediaStream | null = null;
   private videoElement: HTMLVideoElement | null = null;
@@ -12,13 +14,21 @@ export class CameraManager {
   public async startStream(): Promise<MediaStream> {
     this.stopStream();
 
+    const isMobile = mobileDetector.isMobile();
     const constraints: MediaStreamConstraints = {
-      video: {
-        facingMode: this.facingMode,
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30, max: 60 }
-      },
+      video: isMobile
+        ? {
+            facingMode: this.facingMode,
+            width: { ideal: 720, max: 1280 },
+            height: { ideal: 1280, max: 1280 },
+            frameRate: { ideal: 30, max: 30 }
+          }
+        : {
+            facingMode: this.facingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30, max: 60 }
+          },
       audio: false
     };
 
@@ -62,6 +72,10 @@ export class CameraManager {
 
   public getIsMirrored(): boolean {
     return this.isMirrored;
+  }
+
+  public getStream(): MediaStream | null {
+    return this.currentStream;
   }
 
   public stopStream() {

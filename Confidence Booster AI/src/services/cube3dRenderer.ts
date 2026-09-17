@@ -1,3 +1,5 @@
+import { mobileDetector } from './mobileDetector';
+
 export interface CubeFaceData {
   detected: boolean;
   pitch: number;
@@ -92,42 +94,50 @@ export function draw3dTargetCube(
 
   ctx.save();
   ctx.strokeStyle = '#00ff66';
-  ctx.lineWidth = 2.5;
-  ctx.shadowColor = '#00ff66';
-  ctx.shadowBlur = 8;
+  ctx.lineWidth = 2.0;
 
-  const drawLine = (p1: [number, number], p2: [number, number]) => {
-    ctx.beginPath();
-    ctx.moveTo(p1[0], p1[1]);
-    ctx.lineTo(p2[0], p2[1]);
-    ctx.stroke();
-  };
+  const isMobile = mobileDetector.isMobile();
+  if (!isMobile) {
+    ctx.shadowColor = '#00ff66';
+    ctx.shadowBlur = 6;
+  }
+
+  // Single batched path for all 12 cube edges + crosshair (1 draw call instead of 13!)
+  ctx.beginPath();
 
   // Front face (4 edges)
-  drawLine(points2D[0], points2D[1]);
-  drawLine(points2D[1], points2D[2]);
-  drawLine(points2D[2], points2D[3]);
-  drawLine(points2D[3], points2D[0]);
+  ctx.moveTo(points2D[0][0], points2D[0][1]);
+  ctx.lineTo(points2D[1][0], points2D[1][1]);
+  ctx.lineTo(points2D[2][0], points2D[2][1]);
+  ctx.lineTo(points2D[3][0], points2D[3][1]);
+  ctx.closePath();
 
   // Back face (4 edges)
-  drawLine(points2D[4], points2D[5]);
-  drawLine(points2D[5], points2D[6]);
-  drawLine(points2D[6], points2D[7]);
-  drawLine(points2D[7], points2D[4]);
+  ctx.moveTo(points2D[4][0], points2D[4][1]);
+  ctx.lineTo(points2D[5][0], points2D[5][1]);
+  ctx.lineTo(points2D[6][0], points2D[6][1]);
+  ctx.lineTo(points2D[7][0], points2D[7][1]);
+  ctx.closePath();
 
   // 4 Depth connector edges
-  drawLine(points2D[0], points2D[4]);
-  drawLine(points2D[1], points2D[5]);
-  drawLine(points2D[2], points2D[6]);
-  drawLine(points2D[3], points2D[7]);
+  ctx.moveTo(points2D[0][0], points2D[0][1]);
+  ctx.lineTo(points2D[4][0], points2D[4][1]);
+
+  ctx.moveTo(points2D[1][0], points2D[1][1]);
+  ctx.lineTo(points2D[5][0], points2D[5][1]);
+
+  ctx.moveTo(points2D[2][0], points2D[2][1]);
+  ctx.lineTo(points2D[6][0], points2D[6][1]);
+
+  ctx.moveTo(points2D[3][0], points2D[3][1]);
+  ctx.lineTo(points2D[7][0], points2D[7][1]);
 
   // Center subtle crosshair
-  ctx.lineWidth = 1;
-  ctx.beginPath();
   ctx.moveTo(cx - 8, cy);
   ctx.lineTo(cx + 8, cy);
   ctx.moveTo(cx, cy - 8);
   ctx.lineTo(cx, cy + 8);
+
   ctx.stroke();
 
   // Find lowest projected point for text label

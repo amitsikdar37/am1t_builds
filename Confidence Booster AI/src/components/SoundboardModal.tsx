@@ -12,17 +12,6 @@ interface SoundboardModalProps {
   onVolumeChange: (vol: number) => void;
 }
 
-const MEME_SOUNDS = [
-  { id: 'What the sigma', label: 'WHAT THE SIGMA', icon: '🗿' },
-  { id: 'Sigma male rule number one: Never break eye contact', label: 'SIGMA RULE #1', icon: '🐺' },
-  { id: 'Gigachad mode activated', label: 'GIGACHAD MODE', icon: '💪' },
-  { id: 'Emotional damage', label: 'EMOTIONAL DAMAGE', icon: '💀' },
-  { id: 'bass_cannon', label: 'BASS CANNON 808', icon: '🔊' },
-  { id: 'vinyl_scratch', label: 'VINYL SCRATCH', icon: '💿' },
-  { id: 'System override. Confidence level maximum.', label: 'SYSTEM OVERRIDE', icon: '⚡' },
-  { id: 'Target acquired. Absolute alpha detected.', label: 'TARGET ACQUIRED', icon: '🎯' },
-];
-
 export const SoundboardModal: React.FC<SoundboardModalProps> = ({
   isOpen,
   onClose,
@@ -120,34 +109,6 @@ export const SoundboardModal: React.FC<SoundboardModalProps> = ({
               );
             })}
           </div>
-        </div>
-
-        {/* Meme Soundboard FX */}
-        <div className="flex flex-col gap-2">
-          <span className="text-xs text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-            <Volume2 className="w-3.5 h-3.5 text-cyber-cyan" />
-            INSTANT MEME VOICE LINES & FX:
-          </span>
-
-          <div className="grid grid-cols-2 gap-2">
-            {MEME_SOUNDS.map((sound) => (
-              <button
-                key={sound.id}
-                onClick={() => phonkAudio.playMemeSound(sound.id)}
-                className="flex items-center gap-2 p-2 rounded border border-gray-800 bg-gray-900/80 hover:border-cyber-cyan hover:bg-cyber-cyan/15 transition-all text-left text-xs font-mono group"
-              >
-                <span className="text-base group-hover:scale-125 transition-transform">{sound.icon}</span>
-                <span className="truncate group-hover:text-cyber-cyan text-gray-200 text-[11px] font-bold">
-                  {sound.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center pt-1 border-t border-cyber-green/20 text-[10px] text-gray-500">
-          POWERED BY WEB AUDIO SYNTHESIS // ZERO LATENCY
         </div>
 
       </div>

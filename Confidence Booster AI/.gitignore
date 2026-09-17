@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Production build output
+dist/
+build/
+
+# Local audio test batch scripts & binaries (kept locally on machine, not pushed to repo)
+ENABLE_STREAMER_MIC.bat
+RESTORE_DEFAULT_MIC.bat
+tools/
+*.exe
+
+# Local environment & config
+.env
+.env.local
+.env.*.local
+
+# OS & Editor artifacts
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
