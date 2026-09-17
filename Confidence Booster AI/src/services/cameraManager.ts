@@ -1,5 +1,3 @@
-import { mobileDetector } from './mobileDetector';
-
 export class CameraManager {
   private currentStream: MediaStream | null = null;
   private videoElement: HTMLVideoElement | null = null;
@@ -14,30 +12,32 @@ export class CameraManager {
   public async startStream(): Promise<MediaStream> {
     this.stopStream();
 
-    const isMobile = mobileDetector.isMobile();
-    const isPortrait = typeof window !== 'undefined' && window.innerHeight > window.innerWidth;
-
     const constraints: MediaStreamConstraints = {
-      video: isMobile
-        ? {
-            facingMode: this.facingMode,
-            aspectRatio: isPortrait ? { ideal: 9 / 16 } : { ideal: 16 / 9 },
-            width: isPortrait ? { ideal: 720 } : { ideal: 1280 },
-            height: isPortrait ? { ideal: 1280 } : { ideal: 720 },
-            frameRate: { ideal: 30, max: 30 }
-          }
-        : {
-            facingMode: this.facingMode,
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            frameRate: { ideal: 30, max: 60 }
-          },
+      video: {
+        facingMode: this.facingMode,
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30 }
+      },
       audio: false
     };
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       this.currentStream = stream;
+
+      // Force camera hardware to zoom all the way out (minimum zoom / widest FOV)
+      const [track] = stream.getVideoTracks();
+      if (track) {
+        try {
+          const capabilities = (track.getCapabilities && track.getCapabilities()) as any;
+          if (capabilities && capabilities.zoom && typeof capabilities.zoom.min === 'number') {
+            await (track as any).applyConstraints({
+              advanced: [{ zoom: capabilities.zoom.min }]
+            });
+          }
+        } catch (e) {}
+      }
 
       if (this.videoElement) {
         this.videoElement.srcObject = stream;
@@ -55,6 +55,18 @@ export class CameraManager {
       };
       const stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
       this.currentStream = stream;
+
+      const [track] = stream.getVideoTracks();
+      if (track) {
+        try {
+          const capabilities = (track.getCapabilities && track.getCapabilities()) as any;
+          if (capabilities && capabilities.zoom && typeof capabilities.zoom.min === 'number') {
+            await (track as any).applyConstraints({
+              advanced: [{ zoom: capabilities.zoom.min }]
+            });
+          }
+        } catch (e) {}
+      }
 
       if (this.videoElement) {
         this.videoElement.srcObject = stream;

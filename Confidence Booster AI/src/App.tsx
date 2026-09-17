@@ -456,57 +456,47 @@ export const App: React.FC = () => {
               ctx.save();
               ctx.clearRect(0, 0, cw, ch);
 
-              let scale: number;
-              let sw: number, sh: number, sx: number, sy: number;
-              let dx = 0, dy = 0, dw = cw, dh = ch;
+              // 100% fullscreen cover with ZERO black borders!
+              const scale = Math.max(cw / vw, ch / vh);
+              const sw = cw / scale;
+              const sh = ch / scale;
 
-              const isLandscapeOnPortrait = (vw > vh) && (ch > cw);
+              // Face-aware auto-framing: keep the user's face centered and upright
+              let sx = (vw - sw) / 2;
+              let sy = (vh - sh) / 2;
 
-              if (isLandscapeOnPortrait) {
-                // Prevent extreme 4x zoom on mobile smartphones!
-                // If the camera hardware outputs landscape (e.g. 1280x720) on a tall phone (400x850),
-                // frame the video comfortably with a natural 3:4 portrait crop so the user's entire
-                // head, hair, cheeks, neck, and shoulders are in frame with ZERO forehead zoom!
-                const videoAspect = vw / vh;
-                const targetAspect = Math.min(videoAspect, Math.max(0.75, cw / ch));
-                sw = Math.min(vw, vh * targetAspect);
-                sh = vh;
-                sx = (vw - sw) / 2;
-                sy = 0;
+              if (currentFace.detected) {
+                const rawFaceX = (currentFace.leftEye.x + currentFace.rightEye.x) / 2;
+                const rawFaceY = (currentFace.leftEye.y + currentFace.rightEye.y) / 2;
+                const facePixelX = rawFaceX * vw;
+                const facePixelY = rawFaceY * vh;
 
-                scale = cw / sw;
-                dw = cw;
-                dh = sh * scale;
-                dx = 0;
-                dy = Math.max(0, (ch - dh) / 2);
-              } else {
-                scale = Math.max(cw / vw, ch / vh);
-                sw = cw / scale;
-                sh = ch / scale;
-                sx = Math.max(0, (vw - sw) / 2);
-                sy = Math.max(0, (vh - sh) / 2);
-                dx = 0;
-                dy = 0;
-                dw = cw;
-                dh = ch;
+                if (vw > sw) {
+                  // Keep face horizontally centered within crop bounds
+                  sx = Math.max(0, Math.min(vw - sw, facePixelX - sw / 2));
+                }
+                if (vh > sh) {
+                  // Keep eyes and face positioned comfortably in upper half (38% from top)
+                  sy = Math.max(0, Math.min(vh - sh, facePixelY - sh * 0.38));
+                }
               }
 
               if (isMirrored) {
-                ctx.translate(dx + dw, dy);
+                ctx.translate(cw, 0);
                 ctx.scale(-1, 1);
-                ctx.drawImage(video, sx, sy, sw, sh, 0, 0, dw, dh);
+                ctx.drawImage(video, sx, sy, sw, sh, 0, 0, cw, ch);
               } else {
-                ctx.drawImage(video, sx, sy, sw, sh, dx, dy, dw, dh);
+                ctx.drawImage(video, sx, sy, sw, sh, 0, 0, cw, ch);
               }
 
               ctx.fillStyle = 'rgba(0, 255, 102, 0.02)';
-              ctx.fillRect(dx, dy, dw, dh);
+              ctx.fillRect(0, 0, cw, ch);
               ctx.restore();
 
-              // Draw 3D Target Cube accurately aligned to the visible video rectangle!
+              // Draw 3D Target Cube accurately aligned to canvas coordinates!
               if (currentFace.detected) {
                 draw3dTargetCube(ctx, currentFace, cw, ch, isMirrored, {
-                  sx, sy, sw, sh, dx, dy, dw, dh, vw, vh
+                  sx, sy, sw, sh, dx: 0, dy: 0, dw: cw, dh: ch, vw, vh
                 });
               }
             }
