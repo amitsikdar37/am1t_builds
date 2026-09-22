@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Force Study AI - Fullscreen Cyber Study Monitor</title>
-  <meta name="description" content="AI-powered fullscreen study monitor that tracks user actions using camera and plays scolding meme audios when smartphone is touched." />
+  <title>Force Study AI - Precision Vision Study Monitor</title>
+  <meta name="description" content="AI-powered fullscreen study monitor with precision tracking and aesthetic scolding audio feedback." />
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- TensorFlow.js & COCO-SSD -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
@@ -25,161 +25,167 @@
 </head>
 <body class="bg-black text-slate-100 w-screen h-screen overflow-hidden font-sans selection:bg-rose-500 selection:text-white select-none">
 
-  <!-- Flash Screen Overlay when triggered -->
-  <div id="alarmOverlay" class="fixed inset-0 pointer-events-none z-40 transition-opacity duration-300 opacity-0 border-[16px] border-red-600">
-    <div class="w-full h-full bg-red-600/20 animate-pulse"></div>
-  </div>
+  <!-- Subtle Cinematic Ambient Vignette (Soft glowing edges on scold trigger) -->
+  <div id="alarmOverlay" class="fixed inset-0 pointer-events-none z-30 transition-all duration-700 opacity-0"></div>
 
-  <!-- FULLSCREEN VIDEO & CANVAS CONTAINER -->
-  <div id="videoContainer" class="fixed inset-0 w-full h-full bg-slate-950 overflow-hidden z-0">
-    <!-- Video element filling 100% of the screen -->
+  <!-- FULLSCREEN CAMERA & HUD VIEWPORT -->
+  <div id="videoContainer" class="fixed inset-0 w-full h-full bg-black overflow-hidden z-0">
     <video id="webcam" playsinline autoplay muted class="absolute inset-0 w-full h-full object-cover"></video>
-    
-    <!-- HUD Drawing Canvas Overlay -->
     <canvas id="outputCanvas" class="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none"></canvas>
 
-    <!-- Camera Inactive / Hero Placeholder -->
-    <div id="cameraPlaceholder" class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-md p-6 text-center">
-      <div class="w-24 h-24 rounded-3xl bg-gradient-to-tr from-rose-500/20 to-amber-500/20 border border-rose-500/30 flex items-center justify-center text-5xl mb-6 shadow-2xl shadow-rose-500/20 animate-pulse">
-        📹
+    <!-- Sleek Studio Welcome Screen -->
+    <div id="cameraPlaceholder" class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-xl p-6 text-center">
+      <div class="relative mb-6">
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-slate-900 to-slate-800 border border-white/10 flex items-center justify-center text-3xl shadow-2xl">
+          <span class="text-rose-400">⚡</span>
+        </div>
+        <div class="absolute -inset-1 rounded-2xl bg-rose-500/20 blur-xl -z-10 animate-pulse"></div>
       </div>
-      <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-3">
-        Force Study AI <span class="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-amber-400">Cyber Monitor</span>
+      
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-2">
+        Force Study AI <span class="text-xs font-mono px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-slate-400 font-normal">v2.0</span>
       </h1>
-      <p class="text-sm sm:text-base text-slate-400 max-w-lg mb-8 leading-relaxed">
-        Full-screen AI study tracker. Automatically locks onto you with smart tracking and instantly blasts scolding memes whenever you touch your smartphone.
+      <p class="text-xs sm:text-sm text-slate-400 max-w-md mb-8 leading-relaxed">
+        High-precision neural study monitor. Locks onto your focus and interjects with scolding meme audios the moment your smartphone is touched.
       </p>
-      <button id="heroStartBtn" class="px-8 py-4 rounded-2xl bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-bold text-base shadow-xl shadow-rose-500/30 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-3">
-        <span class="text-xl">⚡</span> Start Fullscreen Study Session
+      
+      <button id="heroStartBtn" class="px-7 py-3.5 rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-semibold text-xs tracking-wide shadow-2xl hover:shadow-white/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2.5">
+        <span>▶</span> Initiate Study Session
       </button>
-      <div class="mt-6 flex items-center gap-4 text-xs text-slate-500">
-        <span>✓ 100% Local In-Browser AI</span>
-        <span>&bull;</span>
-        <span>✓ Zero-Repeat Meme Audio</span>
-        <span>&bull;</span>
-        <span>✓ Live Face/Body Tracking</span>
+
+      <div class="mt-8 flex items-center gap-5 text-[11px] text-slate-500 font-mono">
+        <span>● NEURAL TRACKING</span>
+        <span>● ZERO DUPLICATES</span>
+        <span>● LOCAL INFERENCE</span>
       </div>
     </div>
 
-    <!-- Active Scolding Alert Banner (Pop up on camera) -->
-    <div id="scoldBanner" class="absolute inset-x-6 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 bottom-8 z-30 transform translate-y-36 opacity-0 transition-all duration-300 pointer-events-none max-w-xl w-full">
-      <div class="bg-red-600/95 backdrop-blur-md text-white p-5 rounded-2xl shadow-2xl border-2 border-red-400 flex items-center gap-4 animate-bounce">
-        <span class="text-4xl animate-spin">🚨</span>
+    <!-- Aesthetic Scolding HUD Alert Toast (Slides in smoothly from top) -->
+    <div id="scoldBanner" class="absolute top-20 left-1/2 -translate-x-1/2 z-40 transform -translate-y-20 opacity-0 transition-all duration-500 ease-out pointer-events-none w-[92%] max-w-lg">
+      <div class="bg-slate-950/90 backdrop-blur-2xl border border-rose-500/40 rounded-2xl shadow-2xl p-4 flex items-center gap-4 shadow-rose-950/40">
+        <!-- Pulse Indicator Icon -->
+        <div class="relative flex-shrink-0 w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 text-lg">
+          <span>📵</span>
+          <span class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+        </div>
+
+        <!-- Scolding Title & Info -->
         <div class="flex-1 min-w-0">
-          <div class="flex items-center justify-between gap-2">
-            <h3 class="font-black text-lg uppercase tracking-wider text-white">PHONE TOUCH DETECTED!</h3>
-            <span class="text-xs font-mono bg-black/50 px-2.5 py-0.5 rounded-full text-red-200 border border-red-400/40">SCOLDING ACTIVE</span>
+          <div class="flex items-center gap-2">
+            <span class="text-[9px] font-mono tracking-widest uppercase text-rose-400 font-bold">
+              INTERCEPTED // SCOLDING ACTIVE
+            </span>
+            <span class="text-[9px] font-mono text-slate-500">&bull;</span>
+            <span class="text-[9px] font-mono text-slate-400">Put phone down</span>
           </div>
-          <p id="scoldMessage" class="text-sm text-red-100 font-medium truncate mt-1">
+          <p id="scoldMessage" class="text-xs font-semibold text-slate-100 truncate mt-0.5">
             "Abe Padhai Likhai me Dhyan Do..."
           </p>
+        </div>
+
+        <!-- Equalizer Audio Bars Animation -->
+        <div class="flex-shrink-0 flex items-end gap-1 h-6 px-2 py-1 bg-black/40 rounded-lg border border-white/5">
+          <div class="audio-bar"></div>
+          <div class="audio-bar"></div>
+          <div class="audio-bar"></div>
+          <div class="audio-bar"></div>
+          <div class="audio-bar"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- FLOATING MINIMALIST HUD HEADER (Always Visible on Top of Video) -->
+  <!-- FLOATING MINIMALIST HUD HEADER -->
   <header class="fixed top-0 inset-x-0 z-30 p-4 flex items-center justify-between pointer-events-none">
     
     <!-- Left: Brand & Status Pill -->
     <div class="flex items-center gap-3 pointer-events-auto">
-      <div class="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl">
-        <span class="text-lg">📵</span>
-        <div class="hidden sm:block">
-          <h2 class="text-xs font-bold text-white tracking-wide">Force Study AI</h2>
-          <p class="text-[9px] text-slate-400 font-mono">CYBER TRACKER</p>
-        </div>
-        <div class="h-4 w-px bg-white/10 mx-1 hidden sm:block"></div>
-        <!-- Status Indicator -->
-        <div id="statusBadge" class="flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-900/80 border border-slate-700 text-slate-300">
-          <span class="w-2 h-2 rounded-full bg-slate-500" id="statusDot"></span>
-          <span id="statusText">System Idle</span>
+      <div class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl transition">
+        <span class="text-xs">📵</span>
+        <span class="text-xs font-semibold text-white tracking-tight">Force Study</span>
+        <div class="h-3 w-px bg-white/10"></div>
+        <div id="statusBadge" class="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
+          <span class="w-1.5 h-1.5 rounded-full bg-slate-500" id="statusDot"></span>
+          <span id="statusText">Idle</span>
         </div>
       </div>
     </div>
 
-    <!-- Center: Floating Timer & Distraction Counter -->
+    <!-- Center: Session Metrics Pill -->
     <div class="hidden md:flex items-center gap-2 pointer-events-auto">
-      <!-- Session Timer -->
-      <div class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl">
-        <span class="text-xs text-slate-400">⏱️</span>
-        <span id="studyTimerDisplay" class="font-mono text-sm font-bold text-emerald-400">00:00:00</span>
-      </div>
-
-      <!-- Slacking Counter -->
-      <div class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl">
-        <span class="text-xs text-slate-400">🚨 Caught:</span>
-        <span id="distractionCount" class="font-mono text-sm font-bold text-rose-500">0</span>
+      <div class="flex items-center gap-4 px-4 py-1.5 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl text-xs font-mono">
+        <div class="flex items-center gap-1.5 text-slate-300">
+          <span class="text-slate-500">TIMER:</span>
+          <span id="studyTimerDisplay" class="text-emerald-400 font-semibold">00:00:00</span>
+        </div>
+        <div class="h-3 w-px bg-white/10"></div>
+        <div class="flex items-center gap-1.5 text-slate-300">
+          <span class="text-slate-500">SLACKING:</span>
+          <span id="distractionCount" class="text-rose-400 font-semibold">0</span>
+        </div>
       </div>
     </div>
 
-    <!-- Right: Action Buttons -->
+    <!-- Right: Precision Controls -->
     <div class="flex items-center gap-2 pointer-events-auto">
-      
-      <!-- Open Metadata Drawer Button -->
-      <button id="openDrawerBtn" class="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-black/60 hover:bg-slate-900/80 backdrop-blur-xl border border-white/15 text-slate-200 hover:text-white shadow-2xl text-xs font-semibold transition active:scale-95" title="Open Stats, Meme Voices & Settings">
+      <button id="openDrawerBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-xl border border-white/10 text-slate-300 hover:text-white text-xs font-medium transition active:scale-95" title="Open Stats & Voices Drawer">
         <span>📊</span>
-        <span class="hidden sm:inline">Stats & Voices</span>
+        <span class="hidden sm:inline text-[11px]">Dashboard</span>
       </button>
 
-      <!-- Flip Camera Toggle -->
-      <button id="mirrorToggleBtn" class="p-2 rounded-2xl bg-black/60 hover:bg-slate-900/80 backdrop-blur-xl border border-white/15 text-slate-200 shadow-2xl text-xs transition active:scale-95" title="Mirror Camera">
+      <button id="mirrorToggleBtn" class="w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-xl border border-white/10 text-slate-300 flex items-center justify-center text-xs transition active:scale-95" title="Mirror Camera">
         🪞
       </button>
 
-      <!-- Browser Fullscreen Toggle -->
-      <button id="fullscreenToggleBtn" class="p-2 rounded-2xl bg-black/60 hover:bg-slate-900/80 backdrop-blur-xl border border-white/15 text-slate-200 shadow-2xl text-xs transition active:scale-95" title="Toggle Fullscreen Window">
+      <button id="fullscreenToggleBtn" class="w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-xl border border-white/10 text-slate-300 flex items-center justify-center text-xs transition active:scale-95" title="Toggle Fullscreen">
         ⛶
       </button>
 
-      <!-- Toggle Session (Start / Stop) -->
-      <button id="toggleSessionBtn" class="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white shadow-xl shadow-rose-500/20 text-xs font-bold transition active:scale-95">
+      <button id="toggleSessionBtn" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white hover:bg-slate-200 text-slate-950 font-semibold text-xs transition shadow-lg active:scale-95">
         <span id="btnIcon">▶</span>
-        <span id="btnText" class="hidden sm:inline">Start Session</span>
+        <span id="btnText" class="hidden sm:inline">Start</span>
       </button>
-
     </div>
 
   </header>
 
-  <!-- FLOATING MINIMALIST BOTTOM BAR (Diagnostics & Quick Info) -->
+  <!-- FLOATING MINIMALIST BOTTOM BAR -->
   <footer class="fixed bottom-0 inset-x-0 z-30 p-4 flex items-center justify-between pointer-events-none">
     <div class="flex items-center gap-2 pointer-events-auto">
-      <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-mono bg-black/60 backdrop-blur-xl text-emerald-400 border border-white/10" id="fpsCounter">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-        <span>FPS: --</span>
-      </span>
-      <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-mono bg-black/60 backdrop-blur-xl text-slate-300 border border-white/10" id="modelStatus">
-        AI: Loading...
-      </span>
+      <div class="flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-mono bg-black/40 backdrop-blur-xl text-slate-400 border border-white/10">
+        <span id="fpsCounter" class="flex items-center gap-1.5 text-emerald-400">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span>30 FPS</span>
+        </span>
+        <span class="text-white/10">|</span>
+        <span id="modelStatus" class="text-slate-300">Neural Engine: Ready</span>
+      </div>
     </div>
 
     <div class="pointer-events-auto">
-      <div id="quickScoldIndicator" class="px-3.5 py-1.5 rounded-xl text-[11px] font-mono bg-black/60 backdrop-blur-xl text-slate-400 border border-white/10 truncate max-w-xs">
-        Ready for studying
+      <div id="quickScoldIndicator" class="px-3 py-1 rounded-full text-[10px] font-mono bg-black/40 backdrop-blur-xl text-slate-400 border border-white/10 truncate max-w-xs">
+        Ready for study
       </div>
     </div>
   </footer>
 
   <!-- SLIDE-OUT METADATA & CONTROLS DRAWER -->
-  <!-- Backdrop -->
-  <div id="drawerBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity duration-300 opacity-0 pointer-events-none"></div>
+  <div id="drawerBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 transition-opacity duration-300 opacity-0 pointer-events-none"></div>
 
-  <!-- Drawer Container -->
-  <aside id="metadataDrawer" class="fixed top-0 right-0 bottom-0 w-full sm:w-96 max-w-full bg-slate-900/95 backdrop-blur-2xl border-l border-slate-800 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col overflow-hidden">
+  <aside id="metadataDrawer" class="fixed top-0 right-0 bottom-0 w-full sm:w-96 max-w-full bg-slate-950/95 backdrop-blur-2xl border-l border-white/10 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col overflow-hidden">
     
     <!-- Drawer Header -->
-    <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
+    <div class="p-5 border-b border-white/10 flex items-center justify-between bg-black/30">
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center text-sm shadow-md">
+        <div class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-sm">
           📊
         </div>
         <div>
-          <h3 class="font-bold text-sm text-white">Study Dashboard & Voices</h3>
-          <p class="text-[10px] text-slate-400">Manage settings, stats & audio</p>
+          <h3 class="font-semibold text-xs tracking-wide text-white uppercase">Study Analytics</h3>
+          <p class="text-[10px] text-slate-400 font-mono">Performance & Meme Pool</p>
         </div>
       </div>
-      <button id="closeDrawerBtn" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm transition" title="Close Drawer">
+      <button id="closeDrawerBtn" class="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-xs transition" title="Close Drawer">
         ✕
       </button>
     </div>
@@ -189,25 +195,25 @@
       
       <!-- Section 1: Study Metrics -->
       <div>
-        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
-          <span>📈</span> Session Analytics
+        <h4 class="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5">
+          <span>●</span> Session Metrics
         </h4>
-        <div class="grid grid-cols-2 gap-2.5">
-          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-            <span class="text-[10px] text-slate-400 block">Total Focus Time</span>
-            <span id="drawerTimerDisplay" class="text-xl font-bold font-mono text-emerald-400 mt-1 block">00:00:00</span>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
+            <span class="text-[10px] text-slate-500 font-mono block uppercase">Focus Duration</span>
+            <span id="drawerTimerDisplay" class="text-lg font-bold font-mono text-emerald-400 mt-0.5 block">00:00:00</span>
           </div>
-          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-            <span class="text-[10px] text-slate-400 block">Slacking Caught</span>
-            <span id="drawerSlackingDisplay" class="text-xl font-bold font-mono text-rose-500 mt-1 block">0 times</span>
+          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
+            <span class="text-[10px] text-slate-500 font-mono block uppercase">Times Caught</span>
+            <span id="drawerSlackingDisplay" class="text-lg font-bold font-mono text-rose-400 mt-0.5 block">0</span>
           </div>
-          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-            <span class="text-[10px] text-slate-400 block">Vision Status</span>
-            <span id="phoneStatusText" class="text-xs font-bold font-mono text-slate-400 mt-1 block truncate">NO PHONE</span>
+          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
+            <span class="text-[10px] text-slate-500 font-mono block uppercase">Phone Sight</span>
+            <span id="phoneStatusText" class="text-xs font-mono text-slate-300 mt-0.5 block truncate">NO PHONE</span>
           </div>
-          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-            <span class="text-[10px] text-slate-400 block">Touch Proximity</span>
-            <span id="touchStatusText" class="text-xs font-bold font-mono text-slate-400 mt-1 block truncate">NO TOUCH</span>
+          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
+            <span class="text-[10px] text-slate-500 font-mono block uppercase">Touch Contact</span>
+            <span id="touchStatusText" class="text-xs font-mono text-slate-300 mt-0.5 block truncate">NO TOUCH</span>
           </div>
         </div>
       </div>
@@ -215,66 +221,64 @@
       <!-- Section 2: Meme Voices Pool -->
       <div>
         <div class="flex items-center justify-between mb-2">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-            <span>🔊</span> Meme Voices Pool
+          <h4 class="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+            <span>●</span> Scolding Pool (Equalized)
           </h4>
-          <span id="voiceCountBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400">
-            0 sounds
+          <span id="voiceCountBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-400">
+            4 sounds
           </span>
         </div>
         <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">
-          Every phone touch triggers a distinct meme without repeating.
+          Mastered at equal volume. Rotates non-repeating distinct audio every touch.
         </p>
 
-        <!-- Voice List Container -->
-        <div id="voiceList" class="space-y-2 max-h-52 overflow-y-auto pr-1 custom-scrollbar">
-          <div class="text-xs text-slate-500 py-3 text-center">Loading sounds...</div>
-        </div>
+        <!-- Voice List -->
+        <div id="voiceList" class="space-y-2 max-h-52 overflow-y-auto pr-1 custom-scrollbar"></div>
 
         <!-- Currently Playing -->
-        <div class="mt-3 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
-          <span class="text-[10px] text-slate-500 block uppercase font-semibold">Active Scold Sound</span>
-          <span id="currentSoundDisplay" class="text-xs font-mono text-amber-400 truncate block mt-0.5">
-            Waiting for trigger...
+        <div class="mt-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+          <span class="text-[9px] text-slate-500 block uppercase font-mono tracking-wider">Active Meme Audio</span>
+          <span id="currentSoundDisplay" class="text-xs font-mono text-amber-300/90 truncate block mt-0.5">
+            Awaiting first touch...
           </span>
         </div>
       </div>
 
-      <!-- Section 3: Detection Controls -->
+      <!-- Section 3: Detection Settings -->
       <div class="space-y-4">
-        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-          <span>⚙️</span> Detection Controls
+        <h4 class="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+          <span>●</span> System Configuration
         </h4>
 
-        <!-- Trigger Condition Mode -->
+        <!-- Mode Toggle -->
         <div>
           <label class="block text-xs font-medium text-slate-300 mb-1.5">Trigger Condition</label>
           <div class="grid grid-cols-2 gap-2">
-            <button type="button" id="modeTouch" class="mode-btn active px-2.5 py-2 rounded-xl text-xs font-medium border text-center transition">
-              ✋ Hand Touching Phone
+            <button type="button" id="modeTouch" class="mode-btn active px-2.5 py-2 rounded-xl text-xs font-medium border text-center">
+              ✋ Hand Touch
             </button>
-            <button type="button" id="modeAny" class="mode-btn px-2.5 py-2 rounded-xl text-xs font-medium border text-center transition">
-              📱 Any Phone Visible
+            <button type="button" id="modeAny" class="mode-btn px-2.5 py-2 rounded-xl text-xs font-medium border text-center">
+              📱 Any Phone
             </button>
           </div>
           <p class="text-[10px] text-slate-500 mt-1" id="modeHint">
-            Recommended: Triggers only when your hand touches or holds the phone.
+            Hand Touch: Triggers only when your fingers/hand physically touch the phone.
           </p>
         </div>
 
         <!-- Volume Slider -->
         <div>
           <div class="flex justify-between text-xs text-slate-300 mb-1">
-            <span>Meme Audio Volume</span>
+            <span>Audio Volume</span>
             <span id="volumeVal" class="font-mono text-rose-400">100%</span>
           </div>
           <input type="range" id="volumeSlider" min="0" max="100" value="100" class="w-full accent-rose-500 cursor-pointer" />
         </div>
 
-        <!-- Confidence Slider -->
+        <!-- Sensitivity Slider -->
         <div>
           <div class="flex justify-between text-xs text-slate-300 mb-1">
-            <span>Phone Detection Confidence</span>
+            <span>Detection Confidence</span>
             <span id="confVal" class="font-mono text-slate-400">55%</span>
           </div>
           <input type="range" id="confSlider" min="30" max="85" value="55" class="w-full accent-rose-500 cursor-pointer" />
@@ -282,24 +286,22 @@
 
         <!-- Camera Selector -->
         <div>
-          <label for="cameraSelect" class="block text-xs font-medium text-slate-300 mb-1.5">Camera Source</label>
-          <select id="cameraSelect" class="w-full bg-slate-950 border border-slate-800 text-xs rounded-xl px-3 py-2.5 text-slate-300 focus:outline-none focus:border-rose-500 truncate">
+          <label for="cameraSelect" class="block text-xs font-medium text-slate-300 mb-1.5">Camera Hardware</label>
+          <select id="cameraSelect" class="w-full bg-black border border-white/10 text-xs rounded-xl px-3 py-2 text-slate-300 focus:outline-none focus:border-rose-500 truncate">
             <option value="">Default Camera</option>
           </select>
         </div>
 
         <!-- Manual Test Scold Button -->
-        <button id="simulateTouchBtn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center justify-center gap-2 transition">
-          <span>🧪</span> Test Scolding Sound
+        <button id="simulateTouchBtn" class="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white text-xs font-medium flex items-center justify-center gap-2 transition">
+          <span>🔊</span> Test Next Scolding Sound
         </button>
-
       </div>
 
     </div>
 
-    <!-- Drawer Footer -->
-    <div class="p-4 border-t border-slate-800 text-center bg-slate-950/40">
-      <span class="text-[11px] text-slate-500">Force Study AI &bull; Stop slacking & focus</span>
+    <div class="p-3 border-t border-white/5 text-center bg-black/20">
+      <span class="text-[10px] font-mono text-slate-500">FORCE STUDY AI // ZERO DISTRACTION</span>
     </div>
 
   </aside>

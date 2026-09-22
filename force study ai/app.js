@@ -273,10 +273,10 @@ function setupAudioEvents() {
     STATE.scoldState = 'WAIT_RELEASE';
     STATE.releaseCounter = 0;
 
-    DOM.scoldBanner.classList.add('translate-y-36', 'opacity-0');
-    DOM.alarmOverlay.classList.remove('opacity-100');
+    // Smoothly slide toast out and remove ambient glow
+    DOM.scoldBanner.classList.add('-translate-y-20', 'opacity-0');
+    DOM.alarmOverlay.classList.remove('scold-ambient-active', 'opacity-100');
     DOM.alarmOverlay.classList.add('opacity-0');
-    document.body.classList.remove('shake-active');
 
     updateSystemStatus('cooling_down', 'Put phone down to resume');
     DOM.currentSoundDisplay.innerText = `Finished: ${STATE.lastPlayedVoice?.title || ''}`;
@@ -287,7 +287,7 @@ function setupAudioEvents() {
   audioPlayer.addEventListener('error', (e) => {
     console.error('[ForceStudyAI] Audio playback error:', e);
     STATE.scoldState = 'IDLE';
-    DOM.alarmOverlay.classList.remove('opacity-100');
+    DOM.alarmOverlay.classList.remove('scold-ambient-active', 'opacity-100');
     DOM.alarmOverlay.classList.add('opacity-0');
     updateSystemStatus('studying', 'Studying peacefully');
   });
@@ -304,21 +304,20 @@ function triggerMemeScold(sourceDesc = "Camera Detection") {
   STATE.distractionCount++;
   
   DOM.distractionCount.innerText = STATE.distractionCount;
-  DOM.drawerSlackingDisplay.innerText = `${STATE.distractionCount} times`;
+  DOM.drawerSlackingDisplay.innerText = `${STATE.distractionCount}`;
 
-  // Visual Alert Effects
+  // Smooth Cinematic Ambient Edge Vignette
   DOM.alarmOverlay.classList.remove('opacity-0');
-  DOM.alarmOverlay.classList.add('opacity-100');
-  document.body.classList.add('shake-active');
+  DOM.alarmOverlay.classList.add('scold-ambient-active', 'opacity-100');
 
-  // Show Scolding Banner
+  // Slide down sleek top HUD toast
   DOM.scoldMessage.innerText = `"${voice.title}"`;
-  DOM.scoldBanner.classList.remove('translate-y-36', 'opacity-0');
+  DOM.scoldBanner.classList.remove('-translate-y-20', 'opacity-0');
 
   // Status Displays
-  updateSystemStatus('scolding', '🚨 PHONE TOUCH DETECTED!');
-  DOM.currentSoundDisplay.innerText = `🗣️ Scolding: ${voice.title}`;
-  DOM.quickScoldIndicator.innerText = `🚨 SCOLDING: ${voice.title}`;
+  updateSystemStatus('scolding', 'DISTRACTION INTERCEPTED');
+  DOM.currentSoundDisplay.innerText = `Playing: ${voice.title}`;
+  DOM.quickScoldIndicator.innerText = `Scolding: ${voice.title}`;
 
   // Play Audio
   audioPlayer.src = voice.url;
@@ -655,9 +654,12 @@ function handleScoldingStateMachine(isTriggerConditionMet) {
 }
 
 /**
- * Smooth User Tracking Square (Cyber Reticle)
- * Tracks the user in real time with smooth linear interpolation (lerp).
- * Renders high-tech corner brackets, center target, and status tag.
+ * Precision Minimalist User Tracking Reticle
+ * Apple Vision Pro / Futuristic Sensor Aesthetic:
+ * - Ultra-fine 1.5px corner brackets with micro-dots
+ * - Transparent interior (no muddy box fill)
+ * - Micro-HUD telemetry tags (User ID, Attentive status, Focus score)
+ * - Smooth kinematic motion dampening (lerp 0.14)
  */
 function updateAndDrawUserTracker(personBox, isAlertActive) {
   const tracker = STATE.userTracker;
@@ -665,10 +667,10 @@ function updateAndDrawUserTracker(personBox, isAlertActive) {
   if (personBox) {
     const screenBox = videoBoxToScreen(personBox);
     
-    // Create an upper-body / head-centered square
-    const boxSize = Math.max(screenBox.w * 0.95, screenBox.h * 0.7);
+    // Balanced upper-body frame
+    const boxSize = Math.max(screenBox.w * 0.9, screenBox.h * 0.65);
     const centerX = screenBox.x + screenBox.w / 2;
-    const centerY = screenBox.y + screenBox.h * 0.38; // Focus on upper body / head
+    const centerY = screenBox.y + screenBox.h * 0.36;
 
     tracker.targetX = centerX - boxSize / 2;
     tracker.targetY = centerY - boxSize / 2;
@@ -681,8 +683,8 @@ function updateAndDrawUserTracker(personBox, isAlertActive) {
       tracker.active = true;
     }
 
-    // Smooth LERP (Linear Interpolation)
-    const lerpSpeed = 0.18;
+    // Smooth fluid motion interpolation
+    const lerpSpeed = 0.14;
     tracker.currentX += (tracker.targetX - tracker.currentX) * lerpSpeed;
     tracker.currentY += (tracker.targetY - tracker.currentY) * lerpSpeed;
     tracker.currentSize += (tracker.targetSize - tracker.currentSize) * lerpSpeed;
@@ -698,24 +700,29 @@ function updateAndDrawUserTracker(personBox, isAlertActive) {
   const x = tracker.currentX;
   const y = tracker.currentY;
   const size = tracker.currentSize;
-  const bracketLen = Math.min(45, size * 0.22);
+  const bracketLen = Math.min(26, size * 0.15);
 
   ctx.save();
   ctx.globalAlpha = tracker.alpha;
 
-  // Color Theme: Emerald/Cyan when studying, Bright Neon Red on distraction alert
-  const primaryColor = isAlertActive ? '#ef4444' : '#10b981';
-  const secondaryColor = isAlertActive ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.08)';
+  // Minimalist Color Palette: Ice Cyan for Focus, Coral Rose for Distraction
+  const primaryColor = isAlertActive ? '#f43f5e' : '#38bdf8';
+  const glowColor = isAlertActive ? 'rgba(244, 63, 94, 0.4)' : 'rgba(56, 189, 248, 0.3)';
 
-  // Faint background box
-  ctx.fillStyle = secondaryColor;
-  ctx.fillRect(x, y, size, size);
+  // 1. Subtle Faint Border (Very low opacity guide)
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = isAlertActive ? 'rgba(244, 63, 94, 0.15)' : 'rgba(255, 255, 255, 0.08)';
+  ctx.setLineDash([4, 6]);
+  ctx.strokeRect(x, y, size, size);
+  ctx.setLineDash([]); // Reset dash
 
-  // High-Tech Corner Brackets ┌ ┐ └ ┘
-  ctx.lineWidth = 3.5;
+  // 2. High-Precision Corner Brackets
+  ctx.lineWidth = 1.8;
   ctx.strokeStyle = primaryColor;
-  ctx.shadowColor = primaryColor;
-  ctx.shadowBlur = isAlertActive ? 20 : 10;
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur = 8;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
 
   // Top-Left ┌
   ctx.beginPath();
@@ -745,71 +752,137 @@ function updateAndDrawUserTracker(personBox, isAlertActive) {
   ctx.lineTo(x + size, y + size - bracketLen);
   ctx.stroke();
 
-  // Center Reticle Crosshair
-  const cx = x + size / 2;
-  const cy = y + size / 2;
-  const crossLen = 12;
-  ctx.lineWidth = 1.5;
+  // 3. Micro Corner Vertex Dots
+  ctx.fillStyle = primaryColor;
+  const dotR = 1.5;
+  const corners = [[x, y], [x + size, y], [x, y + size], [x + size, y + size]];
+  for (const [cx, cy] of corners) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, dotR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 4. Subtle Center Targeting Reticle
+  const midX = x + size / 2;
+  const midY = y + size / 2;
+  const tickLen = 7;
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = isAlertActive ? 'rgba(244, 63, 94, 0.6)' : 'rgba(56, 189, 248, 0.4)';
   ctx.beginPath();
-  ctx.moveTo(cx - crossLen, cy);
-  ctx.lineTo(cx + crossLen, cy);
-  ctx.moveTo(cx, cy - crossLen);
-  ctx.lineTo(cx, cy + crossLen);
+  ctx.moveTo(midX - tickLen, midY); ctx.lineTo(midX - 2, midY);
+  ctx.moveTo(midX + 2, midY); ctx.lineTo(midX + tickLen, midY);
+  ctx.moveTo(midX, midY - tickLen); ctx.lineTo(midX, midY - 2);
+  ctx.moveTo(midX, midY + 2); ctx.lineTo(midX, midY + tickLen);
   ctx.stroke();
 
-  // Target Status Tag Banner at Top of Square
-  const tagText = isAlertActive ? '🚨 DISTRACTED: PHONE DETECTED' : '🎯 STUDENT TRACKED: FOCUSED 📚';
-  ctx.font = 'bold 12px "JetBrains Mono", monospace';
-  const tagMetrics = ctx.measureText(tagText);
-  const tagWidth = tagMetrics.width + 18;
-  const tagHeight = 24;
-
-  ctx.fillStyle = primaryColor;
-  ctx.beginPath();
-  ctx.roundRect(x, Math.max(10, y - tagHeight - 6), tagWidth, tagHeight, 6);
-  ctx.fill();
-
-  ctx.fillStyle = '#ffffff';
+  // 5. Micro HUD Telemetry Tags (Clean glass style)
   ctx.shadowBlur = 0;
-  ctx.fillText(tagText, x + 9, Math.max(10, y - tagHeight - 6) + 16);
+  ctx.font = '500 9px "JetBrains Mono", monospace';
+
+  // Left Tag: Subject ID
+  const tagLeft = isAlertActive ? '[ DISTRACTION INTERCEPTED ]' : '[ SUBJECT: STUDENT ]';
+  ctx.fillStyle = isAlertActive ? '#fda4af' : '#94a3b8';
+  ctx.fillText(tagLeft, x + 2, Math.max(12, y - 6));
+
+  // Right Status Pill: Attentive vs Alert
+  const statusLabel = isAlertActive ? '● ALERT' : '● ATTENTIVE';
+  const statusWidth = ctx.measureText(statusLabel).width;
+  ctx.fillStyle = primaryColor;
+  ctx.fillText(statusLabel, x + size - statusWidth - 2, Math.max(12, y - 6));
+
+  // Bottom Telemetry: Focus Lock
+  const bottomLabel = isAlertActive ? 'PROTOCOL: ACTIVE' : 'FOCUS: 99.4%';
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.6)';
+  ctx.fillText(bottomLabel, x + 2, y + size + 12);
 
   ctx.restore();
 }
 
-// --- Draw Phone Highlight Box ---
+/**
+ * Precision Smartphone Detection Frame
+ * Minimalist outline with subtle corner accents and hand connection tether
+ */
 function drawPhoneBox(bbox, score, isTouching) {
   const screenBox = videoBoxToScreen(bbox);
   const { x, y, w, h } = screenBox;
   const ctx = DOM.ctx;
 
   ctx.save();
-  ctx.lineWidth = isTouching ? 4 : 2;
-  ctx.strokeStyle = isTouching ? '#ef4444' : '#f59e0b';
-  ctx.fillStyle = isTouching ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.15)';
+  const boxColor = isTouching ? '#f43f5e' : '#f59e0b';
+  
+  // 1. Subtle Bounding Box
+  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = boxColor;
+  ctx.fillStyle = isTouching ? 'rgba(244, 63, 94, 0.08)' : 'rgba(245, 158, 11, 0.04)';
+  ctx.shadowColor = boxColor;
+  ctx.shadowBlur = isTouching ? 12 : 4;
 
   ctx.beginPath();
-  ctx.roundRect(x, y, w, h, 8);
+  ctx.roundRect(x, y, w, h, 6);
   ctx.fill();
   ctx.stroke();
 
-  if (isTouching) {
-    ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = 20;
-    ctx.stroke();
-  }
-
-  // Label
-  const label = isTouching ? `🚨 PHONE TOUCHED (${Math.round(score * 100)}%)` : `📱 Phone (${Math.round(score * 100)}%)`;
-  ctx.font = 'bold 11px "JetBrains Mono", monospace';
-  const textWidth = ctx.measureText(label).width;
-
-  ctx.fillStyle = isTouching ? '#ef4444' : '#f59e0b';
+  // 2. Corner tick accents
+  const tick = Math.min(10, Math.min(w, h) * 0.25);
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.roundRect(x, Math.max(0, y - 22), textWidth + 14, 20, 4);
-  ctx.fill();
+  // Top-left
+  ctx.moveTo(x, y + tick); ctx.lineTo(x, y); ctx.lineTo(x + tick, y);
+  // Bottom-right
+  ctx.moveTo(x + w - tick, y + h); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w, y + h - tick);
+  ctx.stroke();
 
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(label, x + 7, Math.max(14, y - 8));
+  // 3. Elegant Dark Glass Pill Label
+  ctx.shadowBlur = 0;
+  ctx.font = '500 9px "JetBrains Mono", monospace';
+  const labelText = isTouching 
+    ? `INTERCEPTED · ${Math.round(score * 100)}%` 
+    : `SMARTPHONE · ${Math.round(score * 100)}%`;
+  
+  const textWidth = ctx.measureText(labelText).width;
+  const pillW = textWidth + 14;
+  const pillH = 18;
+  const pillY = Math.max(4, y - pillH - 3);
+
+  ctx.fillStyle = 'rgba(3, 7, 18, 0.85)';
+  ctx.strokeStyle = boxColor;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(x, pillY, pillW, pillH, 4);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = isTouching ? '#fda4af' : '#fef3c7';
+  ctx.fillText(labelText, x + 7, pillY + 12);
+
+  // 4. Laser Interaction Tether if Hand is Touching
+  if (isTouching && STATE.lastHandLandmarks && STATE.lastHandLandmarks.length > 0) {
+    const hand = STATE.lastHandLandmarks[0];
+    if (hand && hand[8]) { // Index fingertip
+      const screenPt = videoBoxToScreen([
+        hand[8].x * STATE.videoWidth, 
+        hand[8].y * STATE.videoHeight, 
+        0, 0
+      ]);
+
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = 'rgba(244, 63, 94, 0.7)';
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath();
+      ctx.moveTo(screenPt.x, screenPt.y);
+      ctx.lineTo(x + w / 2, y + h / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Fingertip micro pulse dot
+      ctx.fillStyle = '#f43f5e';
+      ctx.shadowColor = '#f43f5e';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(screenPt.x, screenPt.y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 
   ctx.restore();
 }

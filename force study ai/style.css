@@ -1,4 +1,4 @@
-/* Custom Styles for Force Study AI - Cyber Monitor */
+/* Force Study AI - Minimalist & Aesthetic Cyber Monitor Styles */
 :root {
   --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -10,7 +10,7 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: #000000;
+  background-color: #030712;
   color: #f8fafc;
   overflow: hidden;
   margin: 0;
@@ -21,27 +21,33 @@ code, pre, .font-mono {
   font-family: var(--font-mono);
 }
 
-/* Custom Scrollbar */
+/* Custom Minimal Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
+  width: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(15, 23, 42, 0.3);
   border-radius: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.6);
+  background: rgba(100, 116, 139, 0.4);
   border-radius: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.9);
+  background: rgba(148, 163, 184, 0.7);
 }
 
-/* Drawer States */
+/* Drawer Transitions */
+#metadataDrawer {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
 #metadataDrawer.drawer-open {
   transform: translateX(0);
 }
 
+#drawerBackdrop {
+  transition: opacity 0.35s ease;
+}
 #drawerBackdrop.backdrop-open {
   opacity: 1;
   pointer-events: auto;
@@ -49,51 +55,74 @@ code, pre, .font-mono {
 
 /* Mode Button Selection */
 .mode-btn {
-  background-color: rgba(15, 23, 42, 0.8);
-  border-color: rgba(51, 65, 85, 0.8);
+  background-color: rgba(15, 23, 42, 0.6);
+  border-color: rgba(51, 65, 85, 0.6);
   color: #94a3b8;
+  transition: all 0.2s ease;
 }
 .mode-btn:hover {
-  background-color: rgba(30, 41, 59, 0.8);
+  background-color: rgba(30, 41, 59, 0.7);
   color: #f1f5f9;
 }
 .mode-btn.active {
-  background-color: rgba(244, 63, 94, 0.15);
-  border-color: #f43f5e;
+  background-color: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.6);
   color: #fda4af;
+  box-shadow: 0 0 15px rgba(244, 63, 94, 0.15);
 }
 
-/* Mirrored Video (when toggled) */
+/* Mirrored Video */
 .mirrored {
   transform: scaleX(-1);
 }
 
-/* Screen Shake on Detection */
-@keyframes screenShake {
-  0% { transform: translate(0, 0); }
-  20% { transform: translate(-5px, 5px); }
-  40% { transform: translate(5px, -5px); }
-  60% { transform: translate(-4px, -4px); }
-  80% { transform: translate(4px, 4px); }
-  100% { transform: translate(0, 0); }
+/* Cinematic Ambient Scolding Glow (Replaces ugly border and screen shake) */
+@keyframes ambientVignettePulse {
+  0%, 100% {
+    box-shadow: inset 0 0 100px 20px rgba(225, 29, 72, 0.35), inset 0 0 40px 10px rgba(244, 63, 94, 0.2);
+  }
+  50% {
+    box-shadow: inset 0 0 140px 35px rgba(225, 29, 72, 0.5), inset 0 0 60px 20px rgba(244, 63, 94, 0.35);
+  }
 }
 
-.shake-active {
-  animation: screenShake 0.4s ease-in-out infinite;
+.scold-ambient-active {
+  animation: ambientVignettePulse 2s ease-in-out infinite alternate;
+}
+
+/* Audio Waveform Equalizer Bars Animation */
+.audio-bar {
+  display: inline-block;
+  width: 3px;
+  background: linear-gradient(to top, #f43f5e, #fb7185);
+  border-radius: 2px;
+  animation: soundBars 1s ease-in-out infinite alternate;
+}
+.audio-bar:nth-child(1) { height: 8px; animation-delay: 0.1s; }
+.audio-bar:nth-child(2) { height: 18px; animation-delay: 0.3s; }
+.audio-bar:nth-child(3) { height: 14px; animation-delay: 0.2s; }
+.audio-bar:nth-child(4) { height: 22px; animation-delay: 0.4s; }
+.audio-bar:nth-child(5) { height: 10px; animation-delay: 0.15s; }
+
+@keyframes soundBars {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1.1); }
 }
 
 /* Voice item hover effects */
 .voice-item {
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .voice-item:hover {
-  background-color: rgba(30, 41, 59, 0.9);
-  transform: translateX(2px);
+  background-color: rgba(30, 41, 59, 0.85);
+  border-color: rgba(100, 116, 139, 0.5);
+  transform: translateY(-1px);
 }
 .voice-item.playing {
-  border-color: #f59e0b;
-  background-color: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.6);
+  background-color: rgba(245, 158, 11, 0.08);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.1);
 }
 .voice-item.played {
-  opacity: 0.75;
+  opacity: 0.7;
 }
