@@ -1,14 +1,20 @@
-/* Custom Styles for Force Study AI */
+/* Custom Styles for Force Study AI - Cyber Monitor */
 :root {
   --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
   font-family: var(--font-sans);
-  background-color: #020617;
+  background-color: #000000;
   color: #f8fafc;
-  overflow-x: hidden;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
 }
 
 code, pre, .font-mono {
@@ -17,28 +23,38 @@ code, pre, .font-mono {
 
 /* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(15, 23, 42, 0.4);
   border-radius: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.5);
+  background: rgba(71, 85, 105, 0.6);
   border-radius: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.8);
+  background: rgba(100, 116, 139, 0.9);
+}
+
+/* Drawer States */
+#metadataDrawer.drawer-open {
+  transform: translateX(0);
+}
+
+#drawerBackdrop.backdrop-open {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* Mode Button Selection */
 .mode-btn {
-  background-color: rgba(30, 41, 59, 0.5);
+  background-color: rgba(15, 23, 42, 0.8);
   border-color: rgba(51, 65, 85, 0.8);
   color: #94a3b8;
 }
 .mode-btn:hover {
-  background-color: rgba(51, 65, 85, 0.5);
+  background-color: rgba(30, 41, 59, 0.8);
   color: #f1f5f9;
 }
 .mode-btn.active {
@@ -52,13 +68,13 @@ code, pre, .font-mono {
   transform: scaleX(-1);
 }
 
-/* Alarm & Shake Animations */
+/* Screen Shake on Detection */
 @keyframes screenShake {
   0% { transform: translate(0, 0); }
-  20% { transform: translate(-4px, 4px); }
-  40% { transform: translate(4px, -4px); }
-  60% { transform: translate(-3px, -3px); }
-  80% { transform: translate(3px, 3px); }
+  20% { transform: translate(-5px, 5px); }
+  40% { transform: translate(5px, -5px); }
+  60% { transform: translate(-4px, -4px); }
+  80% { transform: translate(4px, 4px); }
   100% { transform: translate(0, 0); }
 }
 
@@ -66,31 +82,17 @@ code, pre, .font-mono {
   animation: screenShake 0.4s ease-in-out infinite;
 }
 
-/* Pulsing Alarm Glow */
-@keyframes alarmGlow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.6), inset 0 0 15px rgba(239, 68, 68, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 40px rgba(239, 68, 68, 0.9), inset 0 0 30px rgba(239, 68, 68, 0.8);
-  }
-}
-
-.alarm-pulsing {
-  animation: alarmGlow 0.8s ease-in-out infinite alternate;
-}
-
 /* Voice item hover effects */
 .voice-item {
   transition: all 0.2s ease;
 }
 .voice-item:hover {
-  background-color: rgba(30, 41, 59, 0.8);
+  background-color: rgba(30, 41, 59, 0.9);
   transform: translateX(2px);
 }
 .voice-item.playing {
   border-color: #f59e0b;
-  background-color: rgba(245, 158, 11, 0.12);
+  background-color: rgba(245, 158, 11, 0.15);
 }
 .voice-item.played {
   opacity: 0.75;
