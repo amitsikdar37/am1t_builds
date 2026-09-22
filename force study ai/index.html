@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Force Study AI - Phone Tracker & Meme Scolder</title>
+  <meta name="description" content="AI-powered study monitor that uses your webcam to detect smartphone touching and plays hilarious scolding meme audios." />
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- TensorFlow.js & COCO-SSD -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
+
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-rose-500 selection:text-white">
+
+  <!-- Background Ambient Glow -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    <div class="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl"></div>
+    <div class="absolute top-1/3 -right-40 w-96 h-96 bg-rose-600/15 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-40 left-1/3 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl"></div>
+  </div>
+
+  <!-- Flash Overlay when triggered -->
+  <div id="alarmOverlay" class="fixed inset-0 pointer-events-none z-50 transition-opacity duration-300 opacity-0 border-[14px] border-red-600">
+    <div class="w-full h-full bg-red-600/20 animate-pulse"></div>
+  </div>
+
+  <div class="relative z-10 flex flex-col min-h-screen">
+    
+    <!-- Header -->
+    <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md px-6 py-4 sticky top-0 z-40">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center text-xl shadow-lg shadow-rose-500/20">
+            📵
+          </div>
+          <div>
+            <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent flex items-center gap-2">
+              Force Study AI <span class="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-300 font-mono">MEME SCOLDER</span>
+            </h1>
+            <p class="text-xs text-slate-400">Touch your phone & get instantly scolded by legendary memes</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Session Status Pill -->
+          <div id="statusBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300">
+            <span class="w-2 h-2 rounded-full bg-slate-500" id="statusDot"></span>
+            <span id="statusText">System Idle</span>
+          </div>
+
+          <!-- Quick Audio Mute Toggle -->
+          <button id="muteBtn" class="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-colors" title="Mute/Unmute Audio">
+            <span id="muteIcon">🔊</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="max-w-7xl mx-auto w-full p-4 lg:p-6 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Left Column: Camera Viewport (Col 8) -->
+      <section class="lg:col-span-8 flex flex-col gap-4">
+        
+        <!-- Live Camera Box -->
+        <div class="relative bg-slate-900/90 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl flex flex-col group">
+          
+          <!-- Top Bar inside Camera View -->
+          <div class="absolute top-0 inset-x-0 z-20 flex items-center justify-between p-4 bg-gradient-to-b from-slate-950/80 via-slate-950/40 to-transparent">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-black/60 backdrop-blur-md text-emerald-400 border border-emerald-500/30" id="fpsCounter">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>FPS: --</span>
+              </span>
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono bg-black/60 backdrop-blur-md text-slate-300 border border-slate-700" id="modelStatus">
+                AI: Initializing...
+              </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button id="mirrorToggleBtn" class="px-2.5 py-1 rounded-md text-xs bg-black/60 backdrop-blur-md hover:bg-black/90 border border-slate-700 text-slate-300 transition" title="Mirror Camera">
+                🪞 Flip
+              </button>
+              <button id="overlayToggleBtn" class="px-2.5 py-1 rounded-md text-xs bg-black/60 backdrop-blur-md hover:bg-black/90 border border-slate-700 text-slate-300 transition" title="Toggle AI Boxes">
+                🎯 Overlays: ON
+              </button>
+            </div>
+          </div>
+
+          <!-- Video & Canvas Wrapper -->
+          <div class="relative aspect-video w-full bg-black flex items-center justify-center overflow-hidden">
+            <!-- Hidden Video Feed Element -->
+            <video id="webcam" playsinline autoplay muted class="absolute inset-0 w-full h-full object-cover"></video>
+            
+            <!-- Visual Render Canvas -->
+            <canvas id="outputCanvas" class="absolute inset-0 w-full h-full object-cover z-10"></canvas>
+
+            <!-- Initial Idle / Placeholder Screen -->
+            <div id="cameraPlaceholder" class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/95 p-6 text-center">
+              <div class="w-20 h-20 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-4xl mb-4 animate-bounce">
+                📹
+              </div>
+              <h2 class="text-xl font-bold text-white mb-2">Camera Feed Inactive</h2>
+              <p class="text-sm text-slate-400 max-w-md mb-6">
+                Click <strong class="text-rose-400">"Start Study Session"</strong> below to activate camera tracking. Whenever you touch your smartphone while studying, a scolding meme will instantly yell at you!
+              </p>
+              <button id="heroStartBtn" class="px-6 py-3 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-semibold shadow-lg shadow-rose-500/25 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2">
+                <span>⚡</span> Start Study Session
+              </button>
+            </div>
+
+            <!-- Active Scolding Alert Banner (Pop up inside camera) -->
+            <div id="scoldBanner" class="absolute inset-x-4 bottom-4 z-30 transform translate-y-28 opacity-0 transition-all duration-300 pointer-events-none">
+              <div class="bg-red-600 text-white p-4 rounded-xl shadow-2xl border-2 border-red-400 flex items-center gap-4 animate-bounce">
+                <span class="text-4xl animate-spin">🚨</span>
+                <div class="flex-1">
+                  <div class="flex items-center justify-between">
+                    <h3 class="font-extrabold text-lg uppercase tracking-wide">PHONE TOUCH DETECTED!</h3>
+                    <span class="text-xs font-mono bg-black/40 px-2 py-0.5 rounded">SCOLDING ACTIVE</span>
+                  </div>
+                  <p id="scoldMessage" class="text-sm text-red-100 font-medium truncate">
+                    "Abe Padhai Likhai me Dhyan Do..."
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Camera Action Controls -->
+          <div class="p-4 bg-slate-900 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <button id="toggleSessionBtn" class="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-semibold transition shadow-md shadow-rose-500/20 flex items-center gap-2">
+                <span id="btnIcon">▶</span> <span id="btnText">Start Study Session</span>
+              </button>
+              
+              <button id="simulateTouchBtn" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium border border-slate-700 transition" title="Test audio scolding trigger manually">
+                🧪 Test Scold
+              </button>
+            </div>
+
+            <!-- Camera device selector -->
+            <div class="flex items-center gap-2">
+              <label for="cameraSelect" class="text-xs text-slate-400 hidden sm:inline">Camera:</label>
+              <select id="cameraSelect" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-2 text-slate-300 focus:outline-none focus:border-rose-500 max-w-[180px] truncate">
+                <option value="">Default Camera</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Metrics & Session Info Bar -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          
+          <div class="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3.5 flex flex-col justify-between">
+            <span class="text-xs text-slate-400 font-medium">Study Timer</span>
+            <span id="studyTimerDisplay" class="text-2xl font-bold font-mono text-emerald-400 mt-1">00:00:00</span>
+            <span class="text-[10px] text-slate-500 mt-0.5">Focus time</span>
+          </div>
+
+          <div class="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3.5 flex flex-col justify-between">
+            <span class="text-xs text-slate-400 font-medium">Slacking Count</span>
+            <div class="flex items-baseline gap-1 mt-1">
+              <span id="distractionCount" class="text-2xl font-bold font-mono text-rose-500">0</span>
+              <span class="text-xs text-slate-500">times</span>
+            </div>
+            <span class="text-[10px] text-slate-500 mt-0.5">Phone touches caught</span>
+          </div>
+
+          <div class="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3.5 flex flex-col justify-between">
+            <span class="text-xs text-slate-400 font-medium">Phone In Sight</span>
+            <span id="phoneStatusText" class="text-sm font-bold font-mono text-slate-400 mt-2">NO PHONE</span>
+            <span class="text-[10px] text-slate-500 mt-0.5">Vision status</span>
+          </div>
+
+          <div class="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3.5 flex flex-col justify-between">
+            <span class="text-xs text-slate-400 font-medium">Hand Touching Phone</span>
+            <span id="touchStatusText" class="text-sm font-bold font-mono text-slate-400 mt-2">NO TOUCH</span>
+            <span class="text-[10px] text-slate-500 mt-0.5">Proximity check</span>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- Right Column: Meme Sounds & Settings Panel (Col 4) -->
+      <section class="lg:col-span-4 flex flex-col gap-4">
+        
+        <!-- Meme Voices Playlist Box -->
+        <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-5 shadow-xl flex flex-col flex-1">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">🔊</span>
+              <h2 class="font-bold text-sm text-slate-200">Meme Voices Pool</h2>
+            </div>
+            <span id="voiceCountBadge" class="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400">
+              0 sounds
+            </span>
+          </div>
+
+          <p class="text-xs text-slate-400 mb-3 leading-relaxed">
+            Every phone touch plays a <strong class="text-rose-400">distinct sound</strong> from your <code class="text-slate-300 font-mono text-[11px] bg-slate-800 px-1 py-0.5 rounded">voices/</code> folder without repeating!
+          </p>
+
+          <!-- Voice List Container -->
+          <div id="voiceList" class="flex flex-col gap-2 overflow-y-auto max-h-56 pr-1 custom-scrollbar mb-4">
+            <div class="text-xs text-slate-500 py-4 text-center">Loading sounds from voices folder...</div>
+          </div>
+
+          <!-- Current Sound Status -->
+          <div class="mt-auto pt-3 border-t border-slate-800/80">
+            <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Now Scolding With</div>
+            <div id="currentSoundDisplay" class="text-xs font-mono text-amber-400 bg-slate-950/80 p-2 rounded-lg border border-slate-800 truncate">
+              None (Waiting for first touch)
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings & Customization Box -->
+        <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-5 shadow-xl">
+          <h2 class="font-bold text-sm text-slate-200 pb-3 border-b border-slate-800 mb-3 flex items-center gap-2">
+            <span>⚙️</span> Detection Controls
+          </h2>
+
+          <div class="space-y-4">
+            
+            <!-- Detection Mode -->
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">Trigger Condition</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" id="modeTouch" class="mode-btn active px-3 py-2 rounded-lg text-xs font-medium border text-center transition">
+                  ✋ Hand Touching Phone
+                </button>
+                <button type="button" id="modeAny" class="mode-btn px-3 py-2 rounded-lg text-xs font-medium border text-center transition">
+                  📱 Any Phone Visible
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-500 mt-1" id="modeHint">
+                Recommended: Triggers only when your hand touches or holds the phone.
+              </p>
+            </div>
+
+            <!-- Volume Slider -->
+            <div>
+              <div class="flex justify-between text-xs text-slate-300 mb-1">
+                <span>Scolding Volume</span>
+                <span id="volumeVal" class="font-mono text-rose-400">100%</span>
+              </div>
+              <input type="range" id="volumeSlider" min="0" max="100" value="100" class="w-full accent-rose-500 cursor-pointer" />
+            </div>
+
+            <!-- AI Sensitivity -->
+            <div>
+              <div class="flex justify-between text-xs text-slate-300 mb-1">
+                <span>Phone Confidence</span>
+                <span id="confVal" class="font-mono text-slate-400">55%</span>
+              </div>
+              <input type="range" id="confSlider" min="30" max="85" value="55" class="w-full accent-rose-500 cursor-pointer" />
+            </div>
+
+            <!-- Cooldown notice -->
+            <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 leading-relaxed">
+              <strong class="text-slate-300">How it stops:</strong> When the meme finishes speaking, you must put your phone down. Next time you reach for it, a new distinct meme will play!
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/60 py-3 text-center text-xs text-slate-500">
+      Force Study AI &bull; Stop scrolling, start studying &bull; Powered by TensorFlow.js & MediaPipe
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
