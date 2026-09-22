@@ -445,38 +445,76 @@ async function enumerateCameras() {
 async function startCamera(deviceId = null) {
   if (STATE.stream) {
     STATE.stream.getTracks().forEach(t => t.stop());
+    STATE.stream = null;
   }
 
-  const constraints = {
+  // Graceful constraints: avoid forced facingMode on desktop/Windows
+  let constraints = {
     video: {
-      width: { ideal: 1920 },
-      height: { ideal: 1080 },
-      ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' })
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
     },
     audio: false
   };
 
+  if (deviceId && typeof deviceId === 'string' && deviceId.trim().length > 0) {
+    constraints.video.deviceId = { exact: deviceId };
+  }
+
   try {
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    let stream = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (constraintErr) {
+      console.warn('[ForceStudyAI] Specific constraints failed, attempting generic { video: true }...', constraintErr);
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    }
+
     STATE.stream = stream;
     DOM.video.srcObject = stream;
 
+    // Robust metadata loading - NEVER hang indefinitely
     await new Promise((resolve) => {
-      DOM.video.onloadedmetadata = () => {
-        STATE.videoWidth = DOM.video.videoWidth || 1280;
-        STATE.videoHeight = DOM.video.videoHeight || 720;
-        resizeCanvas();
-        resolve();
+      let done = false;
+      const onReady = () => {
+        if (!done) {
+          done = true;
+          STATE.videoWidth = DOM.video.videoWidth || 1280;
+          STATE.videoHeight = DOM.video.videoHeight || 720;
+          resizeCanvas();
+          resolve();
+        }
       };
+
+      if (DOM.video.readyState >= 1 && DOM.video.videoWidth > 0) {
+        onReady();
+      } else {
+        DOM.video.onloadedmetadata = onReady;
+        DOM.video.onloadeddata = onReady;
+        DOM.video.oncanplay = onReady;
+        setTimeout(onReady, 1000); // 1s safety timeout
+      }
     });
 
-    await DOM.video.play();
+    try {
+      await DOM.video.play();
+    } catch (playErr) {
+      console.warn('[ForceStudyAI] Video play call warning:', playErr);
+    }
+
+    // Forcefully hide placeholder with both class and style
     DOM.cameraPlaceholder.classList.add('hidden');
+    DOM.cameraPlaceholder.style.setProperty('display', 'none', 'important');
+    
     applyMirroring();
+
+    // Re-enumerate cameras so names populate if permissions were just granted
+    enumerateCameras();
+
     return true;
   } catch (err) {
-    console.error('[ForceStudyAI] Camera error:', err);
-    alert('Unable to access camera. Please allow camera access.');
+    console.error('[ForceStudyAI] Camera access failed:', err);
+    alert('Camera Access Notice:\n' + (err.message || 'Please check that camera permissions are allowed in your browser address bar.'));
     return false;
   }
 }
@@ -488,6 +526,7 @@ function stopCamera() {
   }
   DOM.video.srcObject = null;
   DOM.cameraPlaceholder.classList.remove('hidden');
+  DOM.cameraPlaceholder.style.display = 'flex';
   DOM.ctx.clearRect(0, 0, DOM.canvas.width, DOM.canvas.height);
   STATE.userTracker.active = false;
   STATE.userTracker.alpha = 0;
@@ -505,22 +544,50 @@ function applyMirroring() {
 
 // --- Session Lifecycle ---
 async function startSession() {
-  const cameraOk = await startCamera(DOM.cameraSelect.value);
-  if (!cameraOk) return;
+  if (STATE.isSessionActive) return;
+
+  // Immediate visual feedback on buttons
+  if (DOM.heroStartBtn) {
+    DOM.heroStartBtn.innerHTML = '<span>⏳</span> Connecting Camera...';
+    DOM.heroStartBtn.disabled = true;
+  }
+  if (DOM.btnText) {
+    DOM.btnText.innerText = 'Connecting...';
+  }
+
+  const selectedDeviceId = DOM.cameraSelect ? DOM.cameraSelect.value : null;
+  const cameraOk = await startCamera(selectedDeviceId);
+
+  if (!cameraOk) {
+    if (DOM.heroStartBtn) {
+      DOM.heroStartBtn.innerHTML = '<span>▶</span> Initiate Study Session';
+      DOM.heroStartBtn.disabled = false;
+    }
+    if (DOM.btnText) {
+      DOM.btnText.innerText = 'Start';
+    }
+    return;
+  }
 
   STATE.isSessionActive = true;
   STATE.scoldState = 'IDLE';
   STATE.lastPersonSeenTime = performance.now();
   STATE.isUserAbsent = false;
 
+  // Reset hero button state
+  if (DOM.heroStartBtn) {
+    DOM.heroStartBtn.innerHTML = '<span>▶</span> Initiate Study Session';
+    DOM.heroStartBtn.disabled = false;
+  }
+
   if (audioPlayer.paused) {
     audioPlayer.load();
   }
 
   DOM.btnIcon.innerText = '⏹';
-  DOM.btnText.innerText = 'End Session';
-  DOM.toggleSessionBtn.classList.replace('bg-rose-500', 'bg-slate-700');
-  DOM.toggleSessionBtn.classList.replace('hover:bg-rose-600', 'hover:bg-slate-600');
+  DOM.btnText.innerText = 'End';
+  DOM.toggleSessionBtn.classList.remove('bg-white', 'text-slate-950');
+  DOM.toggleSessionBtn.classList.add('bg-slate-800', 'text-white', 'border', 'border-white/10');
 
   updateSystemStatus('studying', 'Studying peacefully 📚');
   DOM.quickScoldIndicator.innerText = 'Studying in progress...';
@@ -556,9 +623,14 @@ function stopSession() {
   DOM.scoldBanner.classList.add('-translate-y-20', 'opacity-0');
 
   DOM.btnIcon.innerText = '▶';
-  DOM.btnText.innerText = 'Start Session';
-  DOM.toggleSessionBtn.classList.replace('bg-slate-700', 'bg-rose-500');
-  DOM.toggleSessionBtn.classList.replace('hover:bg-slate-600', 'hover:bg-rose-600');
+  DOM.btnText.innerText = 'Start';
+  DOM.toggleSessionBtn.classList.remove('bg-slate-800', 'text-white', 'border', 'border-white/10');
+  DOM.toggleSessionBtn.classList.add('bg-white', 'text-slate-950');
+
+  if (DOM.heroStartBtn) {
+    DOM.heroStartBtn.innerHTML = '<span>▶</span> Initiate Study Session';
+    DOM.heroStartBtn.disabled = false;
+  }
 
   updateSystemStatus('idle', 'System Idle');
   if (DOM.deskPresenceText) DOM.deskPresenceText.innerText = 'INACTIVE';
