@@ -13,6 +13,15 @@ const STATE = {
   isMirrored: true,
   isFullscreen: false,
 
+  // Absence / Desk Departure Alarm State
+  absenceAlarmEnabled: true,
+  absenceGracePeriodMs: 4000, // 4s grace period before triggering absence scold
+  lastPersonSeenTime: performance.now(),
+  isUserAbsent: false,
+  lastAbsenceScoldEndTime: 0,
+  absenceCooldownMs: 7000, // 7s cooldown between repeated absence scolds
+  currentScoldType: 'phone', // 'phone' | 'absence'
+
   // Audio Scolding State Machine: 'IDLE' | 'PLAYING' | 'WAIT_RELEASE'
   scoldState: 'IDLE',
   releaseCounter: 0,
@@ -105,13 +114,19 @@ const DOM = {
   statusText: document.getElementById('statusText'),
   alarmOverlay: document.getElementById('alarmOverlay'),
   scoldBanner: document.getElementById('scoldBanner'),
+  scoldIcon: document.getElementById('scoldIcon'),
+  scoldReasonBadge: document.getElementById('scoldReasonBadge'),
+  scoldActionHint: document.getElementById('scoldActionHint'),
   scoldMessage: document.getElementById('scoldMessage'),
   studyTimerDisplay: document.getElementById('studyTimerDisplay'),
   drawerTimerDisplay: document.getElementById('drawerTimerDisplay'),
   distractionCount: document.getElementById('distractionCount'),
   drawerSlackingDisplay: document.getElementById('drawerSlackingDisplay'),
-  phoneStatusText: document.getElementById('phoneStatusText'),
+  deskPresenceText: document.getElementById('deskPresenceText'),
   touchStatusText: document.getElementById('touchStatusText'),
+  toggleAbsenceBtn: document.getElementById('toggleAbsenceBtn'),
+  absenceDelaySlider: document.getElementById('absenceDelaySlider'),
+  absenceDelayVal: document.getElementById('absenceDelayVal'),
   voiceList: document.getElementById('voiceList'),
   voiceCountBadge: document.getElementById('voiceCountBadge'),
   currentSoundDisplay: document.getElementById('currentSoundDisplay'),
@@ -270,17 +285,34 @@ function getNextDistinctVoice() {
 function setupAudioEvents() {
   audioPlayer.addEventListener('ended', () => {
     console.log('[ForceStudyAI] Audio finished playing.');
-    STATE.scoldState = 'WAIT_RELEASE';
-    STATE.releaseCounter = 0;
+    STATE.lastAbsenceScoldEndTime = performance.now();
 
     // Smoothly slide toast out and remove ambient glow
     DOM.scoldBanner.classList.add('-translate-y-20', 'opacity-0');
     DOM.alarmOverlay.classList.remove('scold-ambient-active', 'opacity-100');
     DOM.alarmOverlay.classList.add('opacity-0');
 
-    updateSystemStatus('cooling_down', 'Put phone down to resume');
+    if (STATE.currentScoldType === 'absence') {
+      // If scolded for absence:
+      if (STATE.isUserAbsent) {
+        // Still absent! Set state to IDLE so cooldown can trigger another distinct meme if they stay away
+        STATE.scoldState = 'IDLE';
+        updateSystemStatus('warning', 'STUDENT STILL ABSENT');
+        DOM.quickScoldIndicator.innerText = '⚠️ Desk abandoned! Return to study!';
+      } else {
+        STATE.scoldState = 'IDLE';
+        updateSystemStatus('studying', 'Studying peacefully 📚');
+        DOM.quickScoldIndicator.innerText = 'Studying in progress...';
+      }
+    } else {
+      // Scolded for phone touch: wait for phone to be put down
+      STATE.scoldState = 'WAIT_RELEASE';
+      STATE.releaseCounter = 0;
+      updateSystemStatus('cooling_down', 'Put phone down to resume');
+      DOM.quickScoldIndicator.innerText = 'Put your phone away to resume';
+    }
+
     DOM.currentSoundDisplay.innerText = `Finished: ${STATE.lastPlayedVoice?.title || ''}`;
-    DOM.quickScoldIndicator.innerText = 'Put your phone away to resume';
     renderVoiceListUI();
   });
 
@@ -294,13 +326,14 @@ function setupAudioEvents() {
 }
 
 // --- Trigger Scolding Action ---
-function triggerMemeScold(sourceDesc = "Camera Detection") {
+function triggerMemeScold(sourceDesc = "Camera Detection", scoldType = "phone") {
   if (STATE.scoldState === 'PLAYING') return;
 
   const voice = getNextDistinctVoice();
   if (!voice) return;
 
   STATE.scoldState = 'PLAYING';
+  STATE.currentScoldType = scoldType;
   STATE.distractionCount++;
   
   DOM.distractionCount.innerText = STATE.distractionCount;
@@ -310,14 +343,26 @@ function triggerMemeScold(sourceDesc = "Camera Detection") {
   DOM.alarmOverlay.classList.remove('opacity-0');
   DOM.alarmOverlay.classList.add('scold-ambient-active', 'opacity-100');
 
+  // Dynamic Toast Content based on Scold Reason
+  if (scoldType === 'absence') {
+    if (DOM.scoldIcon) DOM.scoldIcon.innerText = '🏃‍♂️';
+    if (DOM.scoldReasonBadge) DOM.scoldReasonBadge.innerText = 'DESK ABANDONED // STUDENT MISSING';
+    if (DOM.scoldActionHint) DOM.scoldActionHint.innerText = 'Return to desk immediately!';
+    updateSystemStatus('scolding', 'STUDENT LEFT DESK!');
+    DOM.quickScoldIndicator.innerText = '🚨 Left desk! Get back to studying!';
+  } else {
+    if (DOM.scoldIcon) DOM.scoldIcon.innerText = '📵';
+    if (DOM.scoldReasonBadge) DOM.scoldReasonBadge.innerText = 'INTERCEPTED // SMARTPHONE DETECTED';
+    if (DOM.scoldActionHint) DOM.scoldActionHint.innerText = 'Put phone down';
+    updateSystemStatus('scolding', 'DISTRACTION INTERCEPTED');
+    DOM.quickScoldIndicator.innerText = `Scolding: ${voice.title}`;
+  }
+
   // Slide down sleek top HUD toast
   DOM.scoldMessage.innerText = `"${voice.title}"`;
   DOM.scoldBanner.classList.remove('-translate-y-20', 'opacity-0');
 
-  // Status Displays
-  updateSystemStatus('scolding', 'DISTRACTION INTERCEPTED');
   DOM.currentSoundDisplay.innerText = `Playing: ${voice.title}`;
-  DOM.quickScoldIndicator.innerText = `Scolding: ${voice.title}`;
 
   // Play Audio
   audioPlayer.src = voice.url;
@@ -465,6 +510,8 @@ async function startSession() {
 
   STATE.isSessionActive = true;
   STATE.scoldState = 'IDLE';
+  STATE.lastPersonSeenTime = performance.now();
+  STATE.isUserAbsent = false;
 
   if (audioPlayer.paused) {
     audioPlayer.load();
@@ -502,11 +549,11 @@ function stopSession() {
   audioPlayer.pause();
   audioPlayer.currentTime = 0;
   STATE.scoldState = 'IDLE';
+  STATE.isUserAbsent = false;
 
-  DOM.alarmOverlay.classList.remove('opacity-100');
+  DOM.alarmOverlay.classList.remove('scold-ambient-active', 'opacity-100');
   DOM.alarmOverlay.classList.add('opacity-0');
-  DOM.scoldBanner.classList.add('translate-y-36', 'opacity-0');
-  document.body.classList.remove('shake-active');
+  DOM.scoldBanner.classList.add('-translate-y-20', 'opacity-0');
 
   DOM.btnIcon.innerText = '▶';
   DOM.btnText.innerText = 'Start Session';
@@ -514,7 +561,7 @@ function stopSession() {
   DOM.toggleSessionBtn.classList.replace('hover:bg-slate-600', 'hover:bg-rose-600');
 
   updateSystemStatus('idle', 'System Idle');
-  DOM.phoneStatusText.innerText = 'NO PHONE';
+  if (DOM.deskPresenceText) DOM.deskPresenceText.innerText = 'INACTIVE';
   DOM.touchStatusText.innerText = 'NO TOUCH';
   DOM.quickScoldIndicator.innerText = 'Session ended';
 }
@@ -548,7 +595,7 @@ async function detectionLoop(now) {
         await STATE.handsModel.send({ image: DOM.video });
       }
 
-      // 1. Find User (Person) for continuous tracking square
+      // 1. Find User (Person)
       let maxPersonArea = 0;
       for (const pred of predictions) {
         if (pred.class === 'person' && pred.score >= STATE.personConfidenceThreshold) {
@@ -576,17 +623,60 @@ async function detectionLoop(now) {
     }
   }
 
+  // 3. Process Student Presence & Desk Departure Alarm
+  if (primaryPersonBox) {
+    STATE.lastPersonSeenTime = now;
+    if (STATE.isUserAbsent) {
+      STATE.isUserAbsent = false;
+      updateSystemStatus('studying', 'Student returned 📚');
+      DOM.quickScoldIndicator.innerText = 'Welcome back! Studying peacefully 📚';
+    }
+    if (DOM.deskPresenceText) {
+      DOM.deskPresenceText.innerText = 'PRESENT';
+      DOM.deskPresenceText.className = 'text-xs font-mono text-emerald-400 mt-0.5 block truncate';
+    }
+  } else {
+    // User is NOT visible in camera feed!
+    const absentMs = now - STATE.lastPersonSeenTime;
+    if (STATE.absenceAlarmEnabled) {
+      const remainingSec = Math.max(0, Math.ceil((STATE.absenceGracePeriodMs - absentMs) / 1000));
+      if (absentMs < STATE.absenceGracePeriodMs) {
+        if (DOM.deskPresenceText) {
+          DOM.deskPresenceText.innerText = `ABSENT (${remainingSec}s)`;
+          DOM.deskPresenceText.className = 'text-xs font-mono text-amber-400 mt-0.5 block truncate';
+        }
+        if (STATE.scoldState === 'IDLE') {
+          DOM.quickScoldIndicator.innerText = `Student away... (${remainingSec}s)`;
+        }
+      } else {
+        // Grace period expired: user has left the desk!
+        STATE.isUserAbsent = true;
+        if (DOM.deskPresenceText) {
+          DOM.deskPresenceText.innerText = 'GONE (SCOLDING)';
+          DOM.deskPresenceText.className = 'text-xs font-mono text-rose-500 font-bold mt-0.5 block truncate animate-pulse';
+        }
+
+        // Trigger absence scold if IDLE and cooldown passed
+        if (STATE.scoldState === 'IDLE' && (now - STATE.lastAbsenceScoldEndTime > STATE.absenceCooldownMs)) {
+          console.log('[ForceStudyAI] Student not visible in camera! Triggering absence scold.');
+          triggerMemeScold("Desk Abandonment / Student Not Visible", "absence");
+        }
+      }
+    } else {
+      if (DOM.deskPresenceText) {
+        DOM.deskPresenceText.innerText = 'NOT VISIBLE';
+        DOM.deskPresenceText.className = 'text-xs font-mono text-slate-400 mt-0.5 block truncate';
+      }
+    }
+  }
+
   // Update & Draw Smoothed Cyber User Tracking Reticle
   updateAndDrawUserTracker(primaryPersonBox, handTouchingPhone || (phoneDetected && STATE.detectionMode === 'any'));
 
-  // Update Status Displays
-  DOM.phoneStatusText.innerText = phoneDetected ? '📱 PHONE VISIBLE' : 'NO PHONE';
-  DOM.phoneStatusText.className = `text-xs font-bold font-mono mt-1 block truncate ${phoneDetected ? 'text-amber-400' : 'text-slate-400'}`;
-
   DOM.touchStatusText.innerText = handTouchingPhone ? '✋ TOUCH DETECTED!' : 'NO TOUCH';
-  DOM.touchStatusText.className = `text-xs font-bold font-mono mt-1 block truncate ${handTouchingPhone ? 'text-rose-500 font-extrabold animate-pulse' : 'text-slate-400'}`;
+  DOM.touchStatusText.className = `text-xs font-mono mt-1 block truncate ${handTouchingPhone ? 'text-rose-400 font-semibold animate-pulse' : 'text-slate-300'}`;
 
-  // Evaluate Scolding State Machine
+  // Evaluate Phone Scolding State Machine
   const isTriggerMet = (STATE.detectionMode === 'touch') ? handTouchingPhone : phoneDetected;
   handleScoldingStateMachine(isTriggerMet);
 
@@ -627,7 +717,7 @@ function handleScoldingStateMachine(isTriggerConditionMet) {
   switch (STATE.scoldState) {
     case 'IDLE':
       if (isTriggerConditionMet) {
-        triggerMemeScold("Real-Time Vision");
+        triggerMemeScold("Real-Time Vision", "phone");
       }
       break;
 
@@ -638,7 +728,7 @@ function handleScoldingStateMachine(isTriggerConditionMet) {
     case 'WAIT_RELEASE':
       if (!isTriggerConditionMet) {
         STATE.releaseCounter++;
-        if (STATE.releaseCounter > 40) { // ~1.3s of no touch
+        if (STATE.releaseCounter > 35) { // ~1.2s of no touch
           STATE.scoldState = 'IDLE';
           STATE.releaseCounter = 0;
           updateSystemStatus('studying', 'Studying peacefully 📚');
@@ -1005,6 +1095,33 @@ function setupEventListeners() {
     STATE.phoneConfidenceThreshold = val / 100;
     DOM.confVal.innerText = `${val}%`;
   });
+
+  // Desk Departure Alarm Toggle
+  if (DOM.toggleAbsenceBtn) {
+    DOM.toggleAbsenceBtn.addEventListener('click', () => {
+      STATE.absenceAlarmEnabled = !STATE.absenceAlarmEnabled;
+      if (STATE.absenceAlarmEnabled) {
+        DOM.toggleAbsenceBtn.innerText = 'ON';
+        DOM.toggleAbsenceBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition';
+      } else {
+        DOM.toggleAbsenceBtn.innerText = 'OFF';
+        DOM.toggleAbsenceBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-slate-800 text-slate-400 border border-slate-700 transition';
+        if (DOM.deskPresenceText) {
+          DOM.deskPresenceText.innerText = 'DISABLED';
+          DOM.deskPresenceText.className = 'text-xs font-mono text-slate-500 mt-0.5 block truncate';
+        }
+      }
+    });
+  }
+
+  // Absence Delay Grace Period Slider
+  if (DOM.absenceDelaySlider) {
+    DOM.absenceDelaySlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      STATE.absenceGracePeriodMs = val * 1000;
+      if (DOM.absenceDelayVal) DOM.absenceDelayVal.innerText = `${val}s`;
+    });
+  }
 }
 
 // Bootstrap
