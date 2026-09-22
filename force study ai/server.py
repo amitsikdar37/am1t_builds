@@ -48,9 +48,10 @@ class ForceStudyHandler(SimpleHTTPRequestHandler):
                 if ext in AUDIO_EXTENSIONS:
                     file_path = os.path.join(VOICES_DIR, filename)
                     file_size = os.path.getsize(file_path)
+                    file_mtime = int(os.path.getmtime(file_path))
                     voices.append({
                         "filename": filename,
-                        "url": f"/voices/{urllib.parse.quote(filename)}",
+                        "url": f"/voices/{urllib.parse.quote(filename)}?v={file_mtime}",
                         "size": file_size,
                         "title": os.path.splitext(filename)[0]
                     })
@@ -75,6 +76,7 @@ class ForceStudyHandler(SimpleHTTPRequestHandler):
     def end_headers(self):
         # Add basic CORS and caching headers for static files
         self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Cache-Control", "no-cache, must-revalidate")
         super().end_headers()
 
     def log_message(self, format, *args):
