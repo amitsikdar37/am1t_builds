@@ -1089,18 +1089,20 @@ export const App: React.FC = () => {
         onVolumeChange={(v) => phonkAudio.setVolume(v)}
       />
 
-      {/* OBS Studio & Live Broadcast Modal */}
-      <ObsStudioModal
-        isOpen={isObsModalOpen}
-        onClose={() => setIsObsModalOpen(false)}
-        streamTakeoverMode={streamTakeoverMode}
-        onToggleTakeoverMode={() => setStreamTakeoverMode(m => m === 'fullscreen' ? 'pip' : 'fullscreen')}
-        autoCyclePresets={autoCyclePresets}
-        onToggleAutoCycle={() => setAutoCyclePresets(v => !v)}
-        onEnterZeroUi={() => setIsZeroUi(true)}
-        onOpenProjector={handleOpenProjector}
-        currentPreset={selectedPreset}
-      />
+      {/* OBS Studio & Live Broadcast Modal (Desktop Only) */}
+      {!mobileDetector.isMobile() && (
+        <ObsStudioModal
+          isOpen={isObsModalOpen}
+          onClose={() => setIsObsModalOpen(false)}
+          streamTakeoverMode={streamTakeoverMode}
+          onToggleTakeoverMode={() => setStreamTakeoverMode(m => m === 'fullscreen' ? 'pip' : 'fullscreen')}
+          autoCyclePresets={autoCyclePresets}
+          onToggleAutoCycle={() => setAutoCyclePresets(v => !v)}
+          onEnterZeroUi={() => setIsZeroUi(true)}
+          onOpenProjector={handleOpenProjector}
+          currentPreset={selectedPreset}
+        />
+      )}
 
     </div>
   );

@@ -1,3 +1,5 @@
+import { mobileDetector } from './mobileDetector';
+
 export interface AudioOutputDevice {
   deviceId: string;
   label: string;
@@ -44,7 +46,7 @@ class BroadcastAudioEngine {
   }
 
   public async getOutputDevices(): Promise<AudioOutputDevice[]> {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+    if (mobileDetector.isMobile() || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
       return [];
     }
     try {
@@ -119,6 +121,11 @@ class BroadcastAudioEngine {
   }
 
   public async startBroadcast(targetDeviceId?: string): Promise<{ success: boolean; error?: string }> {
+    // Strictly disable on mobile: mobile phones do not support OBS or Virtual Audio Cables.
+    if (mobileDetector.isMobile()) {
+      return { success: false, error: 'Broadcast audio is disabled on mobile devices.' };
+    }
+
     if (this.isBroadcasting) {
       if (targetDeviceId && targetDeviceId !== this.selectedDeviceId) {
         await this.changeOutputDevice(targetDeviceId);
@@ -295,7 +302,7 @@ class BroadcastAudioEngine {
       endTime: number;
     }
   ): AudioBufferSourceNode | null {
-    if (!this.isBroadcasting || !this.broadcastCtx || !this.phonkGainNode) return null;
+    if (mobileDetector.isMobile() || !this.isBroadcasting || !this.broadcastCtx || !this.phonkGainNode) return null;
 
     if (this.broadcastCtx.state === 'suspended') {
       this.broadcastCtx.resume();
@@ -382,7 +389,7 @@ class BroadcastAudioEngine {
    * Schedules a procedural 808 drop explosion in the broadcast context for procedural tracks
    */
   public playProceduralDrop(delaySeconds: number): void {
-    if (!this.isBroadcasting || !this.broadcastCtx || !this.phonkGainNode) return;
+    if (mobileDetector.isMobile() || !this.isBroadcasting || !this.broadcastCtx || !this.phonkGainNode) return;
     if (this.broadcastCtx.state === 'suspended') {
       this.broadcastCtx.resume();
     }

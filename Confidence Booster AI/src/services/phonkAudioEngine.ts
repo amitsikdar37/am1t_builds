@@ -1,5 +1,6 @@
 import { PhonkTrackId, PhonkTrackInfo } from '../types';
 import { broadcastAudio } from './broadcastAudioEngine';
+import { mobileDetector } from './mobileDetector';
 
 export interface AudioPlaybackInfo {
   startTime: number;
@@ -508,6 +509,12 @@ class PhonkAudioEngine {
       endTime: number;
     }
   ): void {
+    // Strictly disable on mobile: mobile phones do not support OBS/Virtual Cable.
+    // Prevents duplicate AudioContext playback and eliminates the double-echo on phone speakers!
+    if (mobileDetector.isMobile()) {
+      return;
+    }
+
     if (broadcastAudio.getIsBroadcasting()) {
       broadcastAudio.playPhonkBuffer(buffer, offsetSec, durationSec, filterConfig);
     } else {
@@ -518,6 +525,11 @@ class PhonkAudioEngine {
   }
 
   private ensureBroadcastProceduralDrop(delaySeconds: number): void {
+    // Strictly disable on mobile: prevents echo and duplicate audio on phones
+    if (mobileDetector.isMobile()) {
+      return;
+    }
+
     if (broadcastAudio.getIsBroadcasting()) {
       broadcastAudio.playProceduralDrop(delaySeconds);
     } else {
@@ -529,7 +541,7 @@ class PhonkAudioEngine {
 
   /**
    * Plays the real iconic Phonk beat drop (Montagem Tomada 808 drop)
-   * into masterGain (Headphones) AND broadcastAudio (CABLE Input) for instant verification!
+   * into masterGain (Headphones) AND broadcastAudio (CABLE Input on Desktop) for instant verification!
    */
   public async playQuickPhonkTest(): Promise<void> {
     this.initContext();
@@ -553,8 +565,10 @@ class PhonkAudioEngine {
       hSource.start(0, 3.2, 4.2);
       this.currentAudioSource = hSource;
 
-      // Always stream into CABLE Input (auto-starts broadcast if not yet running!)
-      this.ensureBroadcastPhonkBuffer(buffer, 3.2, 4.2);
+      // Stream into CABLE Input only on desktop (OBS streamer mode)
+      if (!mobileDetector.isMobile()) {
+        this.ensureBroadcastPhonkBuffer(buffer, 3.2, 4.2);
+      }
 
       const timer = window.setTimeout(() => {
         this.stop();
@@ -569,7 +583,9 @@ class PhonkAudioEngine {
       this.playBassDropImpact(0.55);
       this.playKick(now + 0.55, 1.3);
       this.play808Sub(now + 0.55, 1.2, 46.2, 55.0, 1.0);
-      this.ensureBroadcastProceduralDrop(0.55);
+      if (!mobileDetector.isMobile()) {
+        this.ensureBroadcastProceduralDrop(0.55);
+      }
     }
   }
 
@@ -813,7 +829,7 @@ class PhonkAudioEngine {
     this.activeTimers.push(dropTimer);
 
     this.playBassDropImpact(track.dropDelaySeconds);
-    if (broadcastAudio.getIsBroadcasting()) {
+    if (!mobileDetector.isMobile() && broadcastAudio.getIsBroadcasting()) {
       broadcastAudio.playProceduralDrop(track.dropDelaySeconds);
     }
 

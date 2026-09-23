@@ -16,6 +16,7 @@ import {
   Radio
 } from 'lucide-react';
 import { TriggerMode, EditPresetId } from '../types';
+import { mobileDetector } from '../services/mobileDetector';
 
 interface ControlsBarProps {
   onSwitchCamera: () => void;
@@ -225,16 +226,18 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
             <span className="hidden sm:inline">TRACKS</span>
           </button>
 
-          {/* OBS Studio / Live Broadcast Connect Button */}
-          <button
-            onClick={onOpenObsModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyber-cyan/80 hover:border-white text-xs font-mono text-cyber-cyan hover:text-white transition-all shadow-md shadow-cyber-cyan/20"
-            title="Connect to OBS Virtual Camera, Google Meet, Teams, OmeTV"
-          >
-            <Radio className="w-3.5 h-3.5 text-cyber-cyan animate-pulse" />
-            <span className="font-bold hidden sm:inline">CONNECT OBS</span>
-            <span className="font-bold sm:hidden">OBS</span>
-          </button>
+          {/* OBS Studio / Live Broadcast Connect Button (Desktop Only) */}
+          {!mobileDetector.isMobile() && (
+            <button
+              onClick={onOpenObsModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyber-cyan/80 hover:border-white text-xs font-mono text-cyber-cyan hover:text-white transition-all shadow-md shadow-cyber-cyan/20"
+              title="Connect to OBS Virtual Camera, Google Meet, Teams, OmeTV"
+            >
+              <Radio className="w-3.5 h-3.5 text-cyber-cyan animate-pulse" />
+              <span className="font-bold hidden sm:inline">CONNECT OBS</span>
+              <span className="font-bold sm:hidden">OBS</span>
+            </button>
+          )}
         </div>
 
         <div className="hidden sm:block h-5 w-[1px] bg-cyber-green/30" />
