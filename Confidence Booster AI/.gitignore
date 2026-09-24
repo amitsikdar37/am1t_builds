@@ -5,12 +5,6 @@ node_modules/
 dist/
 build/
 
-# Local audio test batch scripts & binaries (kept locally on machine, not pushed to repo)
-ENABLE_STREAMER_MIC.bat
-RESTORE_DEFAULT_MIC.bat
-tools/
-*.exe
-
 # Local environment & config
 .env
 .env.local
