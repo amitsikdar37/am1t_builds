@@ -1,0 +1,19 @@
+{
+  "name": "force-study-ai",
+  "version": "1.0.0",
+  "description": "AI-powered fullscreen study monitor with precision tracking and meme scolding feedback",
+  "main": "index.html",
+  "scripts": {
+    "start": "python server.py",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "ai",
+    "study-monitor",
+    "tensorflowjs",
+    "mediapipe",
+    "meme-scolder"
+  ],
+  "author": "",
+  "license": "ISC"
+}
