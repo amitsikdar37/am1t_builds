@@ -1,5 +1,5 @@
-# 🗿 SIGMA // PHONK WEBCAM // TACTICAL MONITOR
-### *Confidence Booster AI — Real-Time Computer Vision & Phonk Edit Generator*
+# 🗿 CONFIDENCE BOOSTER AI // SIGMA PHONK WEBCAM
+### *Real-Time Computer Vision AI & Viral Phonk Video Edit Generator*
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://am1t-builds-rm3g.vercel.app/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
@@ -15,187 +15,248 @@
 Experience the application live in your browser:  
 👉 **[https://am1t-builds-rm3g.vercel.app/](https://am1t-builds-rm3g.vercel.app/)**
 
-> **Note:** Requires camera access. All AI vision processing, audio synthesis, and video rendering happen **100% client-side** directly in your browser. Zero video or biometric data is transmitted or stored on any server.
+> **Privacy Note:** 100% Client-Side. All computer vision, gesture detection, audio synthesis, and video rendering run directly inside your web browser via WebGL and WebAssembly. Zero video, audio, or biometric data is ever sent to or stored on any server.
 
 ---
 
-## ⚡ Overview
+## ⚡ What is Confidence Booster AI?
 
-**Confidence Booster AI** (also known as **Sigma Phonk Webcam**) is a cutting-edge, browser-native tactical monitor and automated video editor. Using Google's **MediaPipe Vision AI**, the app tracks your face landmarks, head orientation (pitch, yaw, roll), and hand movements in real-time. 
+**Confidence Booster AI** (also known as **Sigma Phonk Webcam**) is a tactical monitor and automated video editor designed for streamers, content creators, and video callers.
 
-When it detects an "alpha gesture"—such as taking a sip of your drink or adjusting your glasses—it instantly creates a synchronized, adrenaline-fueled **Phonk Beat Drop Edit** featuring fluid slow-motion build-ups, screen-shaking 808 impacts, chromatic aberration, ghost trails, and dark manga strobe glitches.
-
-You can preview the generated edit instantly in Picture-in-Picture (PiP) and export it directly as a high-quality **MP4 video** with encoded audio!
+Using Google's **MediaPipe Vision AI**, the web app tracks your facial landmarks, 3D head orientation (pitch, yaw, roll), and hand movements in real-time. Whenever you perform an "alpha gesture"—such as taking a sip of water or adjusting your glasses—the system automatically triggers an adrenaline-fueled **Phonk Beat Drop Edit** with slow-motion replays, screen-shaking 808 bass, chromatic aberration, ghost trails, and dark manga strobe glitches.
 
 ---
 
-## ✨ Key Features
+## 💻 System & Hardware Requirements
 
-### 🧠 1. Real-Time On-Device AI Vision
-- **GPU-Accelerated Face & Hand Landmarker**: Powered by `@mediapipe/tasks-vision`, tracking 468+ facial landmarks and hand coordinates at 30–60 FPS.
-- **Dynamic Action Detection**:
-  - ☕ **Drink Sip Detection**: Automatically detects when a cup, bottle, or mug approaches your mouth with head tilt.
-  - 👓 **Glasses Adjust Detection**: Detects hand elevation near the eye/temple region.
-  - ⚡ **Dual Mode**: Monitors both gestures simultaneously.
-  - 🎛️ **Sensitivity Tuner**: Cycle between `NORMAL`, `HIGH`, and `HYPER` sensitivity for different lighting conditions.
+Before running the project, make sure your computer meets these basic requirements:
 
-### 📐 2. 3D Perspective Tactical Target HUD
-- **3D Wireframe Target Cube**: Renders a true 3D perspective-projected tactical wireframe bounding box anchored to your face that tracks 3D Euler angles (pitch, yaw, and roll).
-- **Cyber Tactical Overlay**: Live millisecond timecodes, target acquisition crosshairs, CAM-01 status, and neon visualizers.
-- **Mirror Mode Support**: Full horizontal flip alignment for natural selfie-camera interaction.
-
-### 🎬 3. Multi-Take Cinematic Edit Presets
-Each preset features dynamic slow-motion frame interpolation, camera zooms, flash strobe impacts, and beat synchronization:
-
-| Preset | Sound / Track | Visual Style & Effects |
-|---|---|---|
-| **👻 GHOST TRAILS** | *Montagem Tomada* | Ethereal slow-motion ghost trails, afterimages, neon cyan/magenta beat pulses, and chromatic aberration. |
-| **🗿 SIGMA SNAPS** | *Marlon Mogged* | Hard beat cuts, extreme zooms, bass shakes, mogger overlays, and wasted meme aesthetic. |
-| **⚡ DARK MANGA** | *Mogger Phonk* | High-contrast black & white manga inversion, negative-film flashes, and lightning-fast strobe glitches. |
-
-### 🔊 4. Web Audio Engine & Meme Soundboard
-- **Synchronized 808 Bass Drops**: Visual edits are dynamically synchronized with musical drops down to the millisecond.
-- **Track Selection**: Switch between high-energy phonk tracks including *Montagem Tomada*, *Marlon Mogged*, and *Mogger*.
-- **Interactive Meme Soundboard**:
-  - 🗿 *"What the sigma"*
-  - 🐺 *"Sigma male rule #1: Never break eye contact"*
-  - 💪 *"Gigachad mode activated"*
-  - 💀 *"Emotional damage"*
-  - 🔊 *Bass Cannon 808 & Vinyl Scratch FX*
-
-### 📹 5. Fast-Start MP4 Video Export
-- **In-Memory Frame Buffer**: Continuously maintains rolling frame buffers (pre-roll and post-roll takes) in RAM with zero lag.
-- **Browser-Side MP4 Conversion**: Uses `@mediabunny` and `@mediabunny/aac-encoder` (WebAssembly AAC audio encoder) to produce universal, fast-start MP4 files ready for TikTok, Instagram Reels, and YouTube Shorts.
+- **Operating System**: Windows 10/11, macOS, or Linux.
+- **Node.js**: **v18.0.0 or higher** (v20 LTS or v22 LTS strongly recommended).
+- **Web Browser**: Google Chrome, Microsoft Edge, Brave, or Opera (Chromium-based browsers provide the best WebGL and Web Audio performance).
+- **Hardware**:
+  - Any working webcam or mobile front camera.
+  - Hardware Acceleration turned **ON** in browser settings (`chrome://settings/system`).
+  - 4 GB RAM minimum (8 GB recommended for 60 FPS video recording).
 
 ---
 
-## 🕹️ Controls & Shortcuts
+## 🚀 Beginner's Quickstart Guide (Run Locally in 5 Minutes)
 
-| Key / Control | Action |
-|---|---|
-| <kbd>SPACE</kbd> | **Force Drop / Trigger**: Manually initiate the phonk edit instantly without waiting for gesture detection. |
-| **STYLE PRESETS** | Switch between *Ghost Trails*, *Sigma Snaps*, and *Dark Manga*. |
-| **TRIGGER MODE** | Toggle between `BOTH`, `DRINK`, or `GLASSES` auto-detection. |
-| **SENSITIVITY** | Cycle detection threshold (`NORM` $\rightarrow$ `HIGH` $\rightarrow$ `HYPER`). |
-| **CAMERA** | Switch between available camera devices (front / rear). |
-| **MIRROR** | Toggle horizontal video flip. |
-| **AUDIO / TRACKS** | Mute/unmute master audio or open the Soundboard & Track selector. |
-| **DOWNLOAD MP4** | Export and download the generated edit once playback completes. |
-| **FULLSCREEN** | Toggle immersive edge-to-edge tactical display. |
+Follow these exact steps to clone, install, and run the project on your computer without running into common errors:
 
----
-
-## 🛠️ Tech Stack
-
-- **Framework**: [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- **Bundler & Tooling**: [Vite 6](https://vitejs.dev/)
-- **Styling**: [Tailwind CSS 3](https://tailwindcss.com/) + Custom Cyberpunk / Tactical HUD CSS
-- **AI / Computer Vision**: [@mediapipe/tasks-vision](https://developers.google.com/mediapipe/solutions/vision)
-- **Audio Synthesis**: Web Audio API + HTML5 Audio
-- **Video Processing & Encoding**:
-  - [Mediabunny](https://github.com/Vanilagy/mediabunny)
-  - [@mediabunny/aac-encoder](https://www.npmjs.com/package/@mediabunny/aac-encoder)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Special Effects**: [Canvas Confetti](https://www.npmjs.com/package/canvas-confetti)
-- **Deployment**: [Vercel](https://vercel.com/)
-
----
-
-## 🚀 Getting Started (Local Development)
-
-### Prerequisites
-Make sure you have **Node.js** (v18.0 or newer) and **npm** installed on your system.
-
-### Installation
-
-1. **Clone the repository:**
+### Step 1: Install Node.js
+If you don't already have Node.js installed:
+1. Visit [nodejs.org](https://nodejs.org/) and download the **LTS (Long Term Support)** version.
+2. Run the installer and click "Next" through the setup.
+3. Open your terminal (**Command Prompt**, **PowerShell**, or **macOS Terminal**) and check that Node is installed:
    ```bash
-   git clone https://github.com/<your-username>/confidence-booster-ai.git
-   cd "Confidence Booster AI"
+   node -v
+   npm -v
    ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Start the development server:**
-   ```bash
-   npm run dev
-   ```
-   Open your browser and navigate to `http://localhost:5173`.
-
-4. **Build for production:**
-   ```bash
-   npm run build
-   ```
-   The compiled production assets will be output to the `dist/` directory.
-
-5. **Preview production build:**
-   ```bash
-   npm run preview
-   ```
+   *You should see version numbers (e.g., `v20.18.0` and `10.8.2`).*
 
 ---
 
-## 📁 Project Structure
+### Step 2: Clone or Download the Project
+In your terminal, navigate to the folder where you want to keep your project and run:
+
+```bash
+git clone https://github.com/amitsikdar37/confidence-booster-ai.git
+cd "confidence-booster-ai"
+```
+
+*(If you downloaded the code as a ZIP file, extract it, open your terminal inside the extracted folder).*
+
+---
+
+### Step 3: Install Dependencies
+Run the following command to download all required packages:
+
+```bash
+npm install
+```
+
+> **Tip for beginners**: If npm displays warnings about optional dependencies, that is normal. As long as the command finishes without a red `ERR!`, the installation succeeded.
+
+---
+
+### Step 4: Start the Local Development Server
+Run:
+
+```bash
+npm run dev
+```
+
+You will see output similar to this:
 
 ```text
-Confidence Booster AI/
-├── public/
-│   ├── audios/              # Fallback audio assets
-│   ├── models/              # TFLite selfie segmenter models
-│   └── pngs/                # Meme overlays & graphics
-├── src/
-│   ├── audios/              # Bundled phonk tracks (Tomada, Marlon Mogged, Mogger)
-│   ├── components/
-│   │   ├── ControlsBar.tsx  # Floating bottom cyber controls HUD
-│   │   ├── EditOverlay.tsx  # Dynamic meme and reaction overlay
-│   │   ├── PipPlayer.tsx    # Picture-in-picture video preview & download
-│   │   ├── SoundboardModal.tsx # Track selection & meme soundboard
-│   │   └── TacticalHUD.tsx  # Millisecond timecode & HUD visualizer
-│   ├── pngs/                # Visual assets and mogger textures
-│   ├── services/
-│   │   ├── cameraManager.ts    # WebRTC camera feed handler & device switcher
-│   │   ├── clipRecorder.ts     # Canvas recording & Mediabunny MP4 / AAC pipeline
-│   │   ├── cube3dRenderer.ts   # 3D Euler-angle perspective target cube renderer
-│   │   ├── frameBuffer.ts      # Low-latency circular RAM frame buffer
-│   │   ├── phonkAudioEngine.ts # Web Audio API synthesizer & soundboard engine
-│   │   ├── selfieSegmenter.ts  # Background isolation & portrait segmentation
-│   │   ├── sigmaEditRenderer.ts# Phonk edit compositor (blends, zooms, strobes)
-│   │   └── visionDetector.ts   # MediaPipe FaceLandmarker & HandLandmarker
-│   ├── types/
-│   │   └── index.ts         # TypeScript definitions for metrics, tracks & presets
-│   ├── App.tsx              # Main orchestrator component
-│   ├── index.css            # Tailwind & futuristic tactical typography styles
-│   └── main.tsx             # React entry point
-├── package.json
-├── tailwind.config.js
-├── tsconfig.json
-├── vercel.json              # Vercel deployment routing configuration
-└── vite.config.ts
+  VITE v6.1.0  ready in 350 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: http://192.168.1.15:3000/
+  ➜  press h + enter to show help
 ```
 
 ---
 
-## 🔒 Privacy & Performance
-
-- **Zero Server Uplink**: No images, audio streams, or personal metrics ever leave your machine.
-- **Hardware Acceleration**: Computation runs on WebGL and WebAssembly (WASM) via GPU delegates where supported.
-- **Adaptive Frame Rate**: Optimizes canvas rendering loop dynamically based on device performance to maintain smooth FPS.
+### Step 5: Open the App in Your Browser
+1. Open Google Chrome or Microsoft Edge.
+2. Go to **`http://localhost:3000`**.
+3. When prompted, click **"Allow"** to grant camera access.
+4. Click **`INITIALIZE TACTICAL CAM`**.
+5. You're ready! Sip water, adjust your glasses, or press <kbd>SPACEBAR</kbd> to trigger a phonk drop!
 
 ---
 
-## 🤝 Contributing
+## 📱 How to Run on Mobile (Same Local Wi-Fi)
 
-Contributions, issues, and feature requests are welcome!  
-Feel free to open an issue or submit a pull request if you want to add new phonk tracks, visual presets, or detection triggers.
+The Vite development server is configured with `host: true`, allowing any smartphone on your local Wi-Fi to test the app.
+
+1. Make sure your phone and PC are connected to the **same Wi-Fi network**.
+2. Look at your terminal when running `npm run dev` to find your Network IP (e.g., `http://192.168.1.15:3000/`).
+3. On your phone's browser, open `http://<your-pc-ip>:3000`.
+
+> **Important Mobile Note for Local HTTP**:
+> Modern mobile browsers restrict camera access on non-secure (`http://`) origins unless it is `localhost`.
+> - **Option A (Instant)**: Test via the free live HTTPS deployment on Vercel: [am1t-builds-rm3g.vercel.app](https://am1t-builds-rm3g.vercel.app/).
+> - **Option B (Chrome Flag)**: In Android Chrome, visit `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, enter `http://<your-pc-ip>:3000`, tap **Enabled**, and restart Chrome.
+> - **Option C (Free HTTPS Tunnel)**: Run `npx localtunnel --port 3000` to get a temporary HTTPS URL for testing.
+
+---
+
+## 🎮 Features & Controls Guide
+
+| Control | Description |
+|---|---|
+| <kbd>SPACE</kbd> | **Force Drop Trigger**: Instantly fires the viral phonk edit without waiting for gesture detection. |
+| <kbd>ESC</kbd> | **Exit Zero-UI**: Restores all buttons if Zero-UI / OBS Streamer mode is active. |
+| **GHOST TRAILS** | Montagem Tomada track with ethereal chromatic afterimages and neon pulses. |
+| **SIGMA SNAPS** | Marlon Mogged track with hard beat zooms, screen shakes, and wasted aesthetic. |
+| **DARK MANGA** | Mogger Phonk with high-contrast B&W inverted flashes and strobe glitches. |
+| **TRIGGER MODE** | Switch between `BOTH` (sip or glasses), `DRINK` only, or `GLASSES` only. |
+| **SENSITIVITY** | Cycle AI detection threshold (`NORM` ➔ `HIGH` ➔ `HYPER`). |
+| **CAMERA SWITCH** | Switch between front and rear cameras (on laptops or mobile devices). |
+| **MIRROR** | Toggle horizontal video flip for a natural selfie-mirror view. |
+| **TRACKS** | Opens the Soundboard modal to adjust volume or play meme sound FX. |
+| **DOWNLOAD MP4** | Exports the recorded edit directly as a fast-start universal `.mp4` file. |
+
+---
+
+## 🎥 OBS Studio & Video Calls Setup (Google Meet, Telegram, Discord)
+
+Confidence Booster AI includes a built-in **OBS Broadcast Station** for Windows and macOS desktops:
+
+1. Click the **`((•)) OBS`** button in the bottom control bar.
+2. Click **`LAUNCH ALWAYS-ON-TOP PIP`** (Recommended) or **`LAUNCH PROJECTOR WINDOW`**.
+3. In **OBS Studio**:
+   - Add a source: **Window Capture** ➔ Select the projector / Chrome window.
+   - Set Capture Method: **`Windows 10 (1903 and up)`**.
+   - Click **Start Virtual Camera** in OBS Controls dock.
+4. In **Google Meet / Telegram / Discord**:
+   - Set Camera to **`OBS Virtual Camera`**.
+   - Set Microphone to **`CABLE Output (VB-Audio Virtual Cable)`** if using virtual audio routing.
+   - **Crucial**: Turn **OFF Noise Cancellation** in Google Meet so the 808 bass drop isn't filtered out!
+
+*(For full details, see the dedicated [OBS Setup Guide](file:///d:/VS%20Code/am1t_builds/Confidence%20Booster%20AI/OBS_SETUP_GUIDE.md)).*
+
+---
+
+## 📁 Repository Directory Structure
+
+```text
+Confidence Booster AI/
+├── public/
+│   ├── audios/                     # Fallback audio assets
+│   │   ├── marlon_gets_mogged.mp3
+│   │   ├── mogger.mp3
+│   │   └── Montagem_Tomada.mp3
+│   └── pngs/                       # Visual overlay textures
+│       └── MoggedPng.jpeg
+├── src/
+│   ├── audios/                     # High-fidelity phonk soundtrack buffers
+│   ├── components/
+│   │   ├── ControlsBar.tsx         # Bottom floating HUD controls & preset selector
+│   │   ├── ObsStudioModal.tsx      # OBS streamer station & audio broadcast modal
+│   │   ├── PipPlayer.tsx           # Picture-in-picture edit preview & MP4 download
+│   │   └── SoundboardModal.tsx     # Phonk tracks & interactive meme soundboard
+│   ├── pngs/                       # Mogger overlays & visual assets
+│   ├── services/
+│   │   ├── broadcastAudioEngine.ts # Web Audio DSP chain for OBS & CABLE Input routing
+│   │   ├── cameraManager.ts        # WebRTC camera manager with FOV & hardware zoom handling
+│   │   ├── clipRecorder.ts         # Fast-start MP4 video & AAC audio recorder
+│   │   ├── cube3dRenderer.ts      # 3D perspective wireframe target box renderer
+│   │   ├── frameBuffer.ts         # Circular rolling RAM frame buffer (pre-roll replay)
+│   │   ├── mobileDetector.ts      # Device profiler for locked 60 FPS mobile performance
+│   │   ├── phonkAudioEngine.ts    # Web Audio API 808 synthesizer & beat sequencer
+│   │   ├── sigmaEditRenderer.ts   # GPU compositing engine (blends, zooms, strobes)
+│   │   ├── unthrottledDriver.ts   # Web Worker clock ensuring unthrottled background 60 FPS
+│   │   └── visionDetector.ts      # MediaPipe FaceLandmarker & HandLandmarker pipeline
+│   ├── types/
+│   │   └── index.ts                # TypeScript interfaces & types
+│   ├── App.tsx                     # Master orchestrator & render loop
+│   ├── index.css                   # Tailwind directives & tactical HUD styling
+│   ├── main.tsx                    # React application entry point
+│   └── vite-env.d.ts               # Vite TypeScript environment types
+├── index.html                      # HTML root template with fonts and meta tags
+├── package.json                    # Project dependencies & npm scripts
+├── tailwind.config.js              # Cyberpunk color palettes & theme configuration
+├── tsconfig.json                   # Strict TypeScript compiler options
+├── vercel.json                     # Production deployment routing rules
+└── vite.config.ts                  # Vite server & build configuration
+```
+
+---
+
+## 🛠️ Available NPM Scripts
+
+In the project root, you can run:
+
+| Command | Action |
+|---|---|
+| `npm run dev` | Starts the Vite local development server on `http://localhost:3000`. |
+| `npm run build` | Runs TypeScript type-checking (`tsc`) and compiles optimized production assets to `dist/`. |
+| `npm run preview` | Spins up a local web server to preview your production `dist/` build. |
+
+---
+
+## ❓ Troubleshooting (FAQ for Beginners)
+
+### 1. "Port 3000 is in use, trying another one..."
+- **What happened**: Another process (like a previously opened terminal or another app) is already using port 3000.
+- **Solution**: Vite will automatically try port `3001` or `3002`. You can simply open the new port shown in your terminal. Alternatively, on Windows, close any existing node terminal or run `netstat -ano | findstr :3000` to find and stop the PID.
+
+### 2. "Camera Access Error / Permission Denied"
+- **What happened**: Your browser or operating system blocked camera access.
+- **Solution**:
+  1. Look at the address bar in Chrome/Edge, click the **Camera icon** or the **Tune/Lock icon** on the left of the URL, and select **"Allow"** for Camera.
+  2. On **Windows**: Open Windows Settings ➔ **Privacy & Security** ➔ **Camera** ➔ Ensure **"Let desktop apps access your camera"** is toggled **ON**.
+  3. Ensure no other application (like Zoom, Teams, or OBS) is exclusively locking your webcam.
+
+### 3. "The camera is lagging or dropping frames"
+- **What happened**: Browser hardware acceleration is turned off.
+- **Solution**:
+  1. In Chrome, go to `chrome://settings/system`.
+  2. Toggle **"Use graphics acceleration when available"** to **ON**.
+  3. Relaunch your browser.
+
+### 4. "The AI vision model takes 3-5 seconds to start"
+- **What happened**: On first load, Google MediaPipe downloads its lightweight WebAssembly vision model from Google CDN and compiles it on your GPU.
+- **Solution**: Once loaded, it stays cached in your browser for instant subsequent launches.
+
+---
+
+## 🔒 Security & Privacy
+
+- **No Data Collection**: There are no tracking scripts, cookies, analytics, or external server uploads.
+- **Local Media Streams**: Webcam frames remain strictly inside your browser's GPU buffer memory.
+- **Open Source**: You can inspect every line of code in `src/` to verify audio and video processing is 100% self-contained.
 
 ---
 
 ## 📜 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is open-source and licensed under the [MIT License](LICENSE).
 
 ---
 
