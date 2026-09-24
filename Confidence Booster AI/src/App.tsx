@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Camera, Zap, Radio, Tv } from 'lucide-react';
+import { Camera, Zap } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 import { TriggerMode, FaceData, PhonkTrackId, FrameRecord, EditPresetId } from './types';
@@ -11,13 +11,11 @@ import { sigmaEditRenderer } from './services/sigmaEditRenderer';
 import { clipRecorder } from './services/clipRecorder';
 import { draw3dTargetCube } from './services/cube3dRenderer';
 import { unthrottledDriver } from './services/unthrottledDriver';
-import { broadcastAudio } from './services/broadcastAudioEngine';
 import { mobileDetector } from './services/mobileDetector';
 
 import { PipPlayer, PipState } from './components/PipPlayer';
 import { ControlsBar } from './components/ControlsBar';
 import { SoundboardModal } from './components/SoundboardModal';
-import { ObsStudioModal } from './components/ObsStudioModal';
 
 export const App: React.FC = () => {
   // Application & PIP States
@@ -25,7 +23,6 @@ export const App: React.FC = () => {
   const pipStateRef = useRef<PipState>('STANDBY');
 
   const [cameraActive, setCameraActive] = useState(false);
-  const [isBroadcastingAudio, setIsBroadcastingAudio] = useState(broadcastAudio.getIsBroadcasting());
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isMirrored, setIsMirrored] = useState(true);
   const [triggerMode, setTriggerMode] = useState<TriggerMode>('both');
@@ -39,31 +36,9 @@ export const App: React.FC = () => {
   const [hasDownloadableClip, setHasDownloadableClip] = useState(false);
   const [isConvertingMp4, setIsConvertingMp4] = useState(false);
 
-  // OBS Studio & Live Broadcast States
-  const [isObsModalOpen, setIsObsModalOpen] = useState(false);
-  const [streamTakeoverMode, setStreamTakeoverMode] = useState<'pip' | 'fullscreen'>('fullscreen');
-  const [isZeroUi, setIsZeroUi] = useState(false);
-  const [autoCyclePresets, setAutoCyclePresets] = useState(true);
-  const [isProjectorActive, setIsProjectorActive] = useState(false);
-
-  const autoCyclePresetsRef = useRef(true);
-  const streamTakeoverModeRef = useRef<'pip' | 'fullscreen'>('fullscreen');
-  const projectorWindowRef = useRef<Window | null>(null);
-  const projectorCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const isProjectorActiveRef = useRef(false);
-  const startPopupRafRef = useRef<((win: Window) => void) | null>(null);
-
-  useEffect(() => {
-    isProjectorActiveRef.current = isProjectorActive;
-  }, [isProjectorActive]);
-
-  useEffect(() => {
-    autoCyclePresetsRef.current = autoCyclePresets;
-  }, [autoCyclePresets]);
-
-  useEffect(() => {
-    streamTakeoverModeRef.current = streamTakeoverMode;
-  }, [streamTakeoverMode]);
+  // Edit Playback configuration
+  const streamTakeoverMode: 'pip' | 'fullscreen' = 'fullscreen';
+  const autoCyclePresets = true;
 
   // Vision State
   const defaultFace: FaceData = {
@@ -162,26 +137,7 @@ export const App: React.FC = () => {
 
       // Brief tick to ensure DOM canvas is ready and sized
       window.setTimeout(() => {
-        const editCanvas = editCanvasRef.current;
-
-        // Route edit to OBS Pop-out Projector canvas if open, otherwise local editCanvas
-        let targetCanvas: HTMLCanvasElement | null = editCanvas;
-        let isProjectorTarget = false;
-
-        if (projectorWindowRef.current && !projectorWindowRef.current.closed) {
-          try {
-            const win = projectorWindowRef.current;
-            let pCanvas = projectorCanvasRef.current;
-            if (!pCanvas || !pCanvas.isConnected) {
-              pCanvas = win.document.getElementById('projectorCanvas') as HTMLCanvasElement | null;
-              if (pCanvas) projectorCanvasRef.current = pCanvas;
-            }
-            if (pCanvas) {
-              targetCanvas = pCanvas;
-              isProjectorTarget = true;
-            }
-          } catch (e) {}
-        }
+        const targetCanvas = editCanvasRef.current;
 
         if (!targetCanvas || frameBuffer.getFrameCount() === 0) {
           console.warn('Canvas or camera frames not available, returning to standby');
@@ -191,17 +147,12 @@ export const App: React.FC = () => {
           return;
         }
 
-        if (isProjectorTarget) {
-          targetCanvas.width = 1280;
-          targetCanvas.height = 720;
+        if (streamTakeoverMode === 'fullscreen') {
+          targetCanvas.width = window.innerWidth;
+          targetCanvas.height = window.innerHeight;
         } else {
-          if (streamTakeoverModeRef.current === 'fullscreen') {
-            targetCanvas.width = window.innerWidth;
-            targetCanvas.height = window.innerHeight;
-          } else {
-            targetCanvas.width = 640;
-            targetCanvas.height = 640;
-          }
+          targetCanvas.width = 640;
+          targetCanvas.height = 640;
         }
 
         // Start video recording for 1-click download
@@ -227,15 +178,15 @@ export const App: React.FC = () => {
             activeReplayFramesRef.current = null;
           }
 
-          // Auto-cycle to next preset if enabled (so streamer never repeats the same edit twice on video chat!)
-          if (autoCyclePresetsRef.current) {
+          // Auto-cycle to next preset if enabled (so the experience stays dynamic)
+          if (autoCyclePresets) {
             const cycleOrder: EditPresetId[] = ['ghost_trail_impact', 'dark_manga_strobe', 'sigma_hard_snaps'];
             const cur = stateRef.current.selectedPreset;
             const curIdx = cycleOrder.indexOf(cur);
             const nextIdx = (curIdx + 1) % cycleOrder.length;
             const nextPreset = cycleOrder[nextIdx];
             handleSelectPreset(nextPreset);
-            console.log(`[OBS Streamer Mode] Auto-cycled to next preset: ${nextPreset}`);
+            console.log(`[ConfidenceBooster] Auto-cycled to next preset: ${nextPreset}`);
           }
         };
 
@@ -306,49 +257,7 @@ export const App: React.FC = () => {
     const processLoop = async (now: number) => {
       if (!active) return;
 
-      // Track open status of projector window
-      const hasProjector = !!(projectorWindowRef.current && !projectorWindowRef.current.closed);
-      if (hasProjector !== isProjectorActiveRef.current) {
-        setIsProjectorActive(hasProjector);
-        isProjectorActiveRef.current = hasProjector;
-      }
-
-
-      // Check for projector's in-window video element
-      let pVideo: HTMLVideoElement | null = null;
-      if (hasProjector && projectorWindowRef.current) {
-        try {
-          const win = projectorWindowRef.current;
-          if (!win.closed) {
-            pVideo = win.document.getElementById('projectorVideo') as HTMLVideoElement | null;
-            if (!pVideo && win.document.body) {
-              pVideo = win.document.createElement('video');
-              pVideo.id = 'projectorVideo';
-              pVideo.autoplay = true;
-              pVideo.playsInline = true;
-              pVideo.muted = true;
-              pVideo.style.position = 'fixed';
-              pVideo.style.top = '0';
-              pVideo.style.left = '0';
-              pVideo.style.width = '4px';
-              pVideo.style.height = '4px';
-              pVideo.style.opacity = '0.01';
-              pVideo.style.pointerEvents = 'none';
-              pVideo.style.zIndex = '-9999';
-              win.document.body.appendChild(pVideo);
-            }
-            const stream = cameraManager.getStream();
-            if (pVideo && stream && pVideo.srcObject !== stream) {
-              pVideo.srcObject = stream;
-              pVideo.play().catch(() => {});
-            }
-          }
-        } catch (e) {}
-      }
-
-      const localVideo = videoRef.current;
-      // Prioritize pVideo when projector is active so video decoding stays 100% active even in background tabs!
-      const video = (pVideo && pVideo.readyState >= 2 && pVideo.videoWidth > 0) ? pVideo : localVideo;
+      const video = videoRef.current;
       const liveCanvas = liveCanvasRef.current;
 
       if (video && video.readyState >= 2) {
@@ -383,71 +292,8 @@ export const App: React.FC = () => {
 
           const currentFace = faceDataRef.current;
 
-          // 3. Render feed at FULL 60 FPS (Takes <0.5ms on GPU, completely immune to 2-3 FPS lag!)
-          if (hasProjector) {
-            // OBS PROJECTOR IS ACTIVE:
-            // Offload rendering entirely to projector canvas. Do not render video on main tab!
-            if (pipStateRef.current !== 'PLAYING') {
-              try {
-                const win = projectorWindowRef.current;
-                if (win && !win.closed) {
-                  let pCanvas = projectorCanvasRef.current;
-                  if (!pCanvas || !pCanvas.isConnected) {
-                    pCanvas = win.document.getElementById('projectorCanvas') as HTMLCanvasElement | null;
-                    if (!pCanvas && win.document.body) {
-                      pCanvas = win.document.createElement('canvas');
-                      pCanvas.id = 'projectorCanvas';
-                      pCanvas.width = 1280;
-                      pCanvas.height = 720;
-                      pCanvas.style.width = '100%';
-                      pCanvas.style.height = '100%';
-                      pCanvas.style.objectFit = 'cover';
-                      pCanvas.style.display = 'block';
-                      win.document.body.appendChild(pCanvas);
-                    }
-                    projectorCanvasRef.current = pCanvas;
-                  }
-
-                  if (pCanvas) {
-                    const pCtx = pCanvas.getContext('2d');
-                    if (pCtx) {
-                      const pw = pCanvas.width;
-                      const ph = pCanvas.height;
-
-                      pCtx.save();
-                      pCtx.clearRect(0, 0, pw, ph);
-
-                      const scale = Math.max(pw / vw, ph / vh);
-                      const sw = pw / scale;
-                      const sh = ph / scale;
-                      const sx = Math.max(0, (vw - sw) / 2);
-                      const sy = Math.max(0, (vh - sh) / 2);
-
-                      if (isMirrored) {
-                        pCtx.translate(pw, 0);
-                        pCtx.scale(-1, 1);
-                      }
-                      pCtx.drawImage(video, sx, sy, sw, sh, 0, 0, pw, ph);
-
-                      pCtx.fillStyle = 'rgba(0, 255, 102, 0.02)';
-                      pCtx.fillRect(0, 0, pw, ph);
-                      pCtx.restore();
-
-                      // Draw 3D wireframe target cube directly on projector feed
-                      if (currentFace.detected) {
-                        draw3dTargetCube(pCtx, currentFace, pw, ph, isMirrored, {
-                          sx, sy, sw, sh, dx: 0, dy: 0, dw: pw, dh: ph, vw, vh
-                        });
-                      }
-                    }
-                  }
-                }
-              } catch (e) {
-                // Ignore popup access or disposal errors
-              }
-            }
-          } else if (liveCanvas) {
-            // NORMAL LOCAL MODE: Render to liveCanvasRef on main window
+          // 3. Render feed at FULL 60 FPS directly on liveCanvas
+          if (liveCanvas) {
             const cw = liveCanvas.width || window.innerWidth;
             const ch = liveCanvas.height || window.innerHeight;
             const ctx = liveCtxRef.current || liveCanvas.getContext('2d');
@@ -535,61 +381,18 @@ export const App: React.FC = () => {
       animFrameRef.current = requestAnimationFrame(onMainRaf);
     };
 
-    // 3. Projector window RAF loop: drives frames when the OBS projector window is visible
-    let popupRafId: number | null = null;
-    const onPopupRaf = (now: number) => {
-      if (!active) return;
-      if (projectorWindowRef.current && !projectorWindowRef.current.closed) {
-        unthrottledDriver.recordRafTick(now);
-        runFrame(now);
-        try {
-          popupRafId = projectorWindowRef.current.requestAnimationFrame(onPopupRaf);
-        } catch (e) {}
-      }
-    };
-
-    startPopupRafRef.current = (win: Window) => {
-      try {
-        if (popupRafId && projectorWindowRef.current && !projectorWindowRef.current.closed) {
-          try {
-            projectorWindowRef.current.cancelAnimationFrame(popupRafId);
-          } catch (e) {}
-        }
-        popupRafId = win.requestAnimationFrame(onPopupRaf);
-      } catch (e) {}
-    };
-
-    // Register unthrottled worker and start single-flight loops
+    // Register unthrottled worker and start single-flight loop
     const unregisterWorker = unthrottledDriver.register(onWorkerTick);
     animFrameRef.current = requestAnimationFrame(onMainRaf);
 
-    if (projectorWindowRef.current && !projectorWindowRef.current.closed) {
-      try {
-        popupRafId = projectorWindowRef.current.requestAnimationFrame(onPopupRaf);
-      } catch (e) {}
-    }
-
     return () => {
       active = false;
-      startPopupRafRef.current = null;
       unregisterWorker();
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
       }
-      if (popupRafId && projectorWindowRef.current && !projectorWindowRef.current.closed) {
-        try {
-          projectorWindowRef.current.cancelAnimationFrame(popupRafId);
-        } catch (e) {}
-      }
     };
   }, [isMirrored, triggerMode, triggerAction]);
-
-  // Subscribe to live broadcast audio status
-  useEffect(() => {
-    return broadcastAudio.subscribe((active) => {
-      setIsBroadcastingAudio(active);
-    });
-  }, []);
 
   // Camera initialization
   const startCamera = async () => {
@@ -610,188 +413,23 @@ export const App: React.FC = () => {
       }
 
       await visionDetector.initialize();
-
-      // Automatically launch live Voice + Phonk broadcast into CABLE Input for Meet / OmeTV / WhatsApp (Desktop Only)
-      if (!mobileDetector.isMobile()) {
-        try {
-          await broadcastAudio.startBroadcast();
-        } catch (audioErr) {
-          console.warn('[BroadcastAudio] Auto-start broadcast warning:', audioErr);
-        }
-      }
     } catch (err) {
       console.error('Camera startup error:', err);
       setCameraError('Webcam access was denied or not found. Please allow camera permissions to continue.');
     }
   };
 
-  // Keyboard shortcut: SPACEBAR for instant trigger, ESC to exit Zero-UI mode
+  // Keyboard shortcut: SPACEBAR for instant trigger
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         e.preventDefault();
         triggerAction('manual');
-      } else if (e.code === 'Escape') {
-        setIsZeroUi(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [triggerAction]);
-
-  // Launch Pop-out Clean Projector Window or Always-On-Top PiP for OBS Window Capture
-  const handleOpenProjector = useCallback(async (mode: 'pip' | 'window' = 'pip') => {
-    if (projectorWindowRef.current && !projectorWindowRef.current.closed) {
-      projectorWindowRef.current.focus();
-      return;
-    }
-
-    let win: Window | null = null;
-
-    if (mode === 'pip' && typeof window !== 'undefined' && 'documentPictureInPicture' in window) {
-      try {
-        const dpip = (window as any).documentPictureInPicture;
-        win = await dpip.requestWindow({
-          width: 480,
-          height: 270,
-          preferInitialWindowPlacement: true
-        });
-      } catch (e) {
-        console.warn('Document Picture-in-Picture request failed, falling back to window.open:', e);
-      }
-    }
-
-    if (!win) {
-      win = window.open(
-        '',
-        'OBS_Projector_ConfidenceBooster',
-        'width=640,height=360,left=40,top=40,menubar=no,status=no,toolbar=no,location=no'
-      );
-    }
-
-    if (!win) {
-      alert('Pop-up was blocked by your browser! Please allow pop-ups for this site to use the OBS Projector window.');
-      return;
-    }
-
-    projectorWindowRef.current = win;
-    setIsProjectorActive(true);
-    isProjectorActiveRef.current = true;
-
-    const setupProjectorDOM = () => {
-      try {
-        if (!win || win.closed) return;
-        win.document.title = 'Confidence Booster - OBS Feed';
-
-        if (win.document.documentElement) {
-          win.document.documentElement.style.margin = '0';
-          win.document.documentElement.style.padding = '0';
-          win.document.documentElement.style.width = '100vw';
-          win.document.documentElement.style.height = '100vh';
-          win.document.documentElement.style.overflow = 'hidden';
-          win.document.documentElement.style.background = '#000';
-        }
-
-        if (win.document.body) {
-          win.document.body.style.margin = '0';
-          win.document.body.style.padding = '0';
-          win.document.body.style.background = '#000';
-          win.document.body.style.overflow = 'hidden';
-          win.document.body.style.display = 'flex';
-          win.document.body.style.alignItems = 'center';
-          win.document.body.style.justifyContent = 'center';
-          win.document.body.style.width = '100vw';
-          win.document.body.style.height = '100vh';
-
-          // 1. In-window Video Element (Keeps camera decoding continuously in the foreground window!)
-          let pVideo = win.document.getElementById('projectorVideo') as HTMLVideoElement | null;
-          if (!pVideo) {
-            pVideo = win.document.createElement('video');
-            pVideo.id = 'projectorVideo';
-            pVideo.autoplay = true;
-            pVideo.playsInline = true;
-            pVideo.muted = true;
-            pVideo.style.position = 'fixed';
-            pVideo.style.top = '0';
-            pVideo.style.left = '0';
-            pVideo.style.width = '4px';
-            pVideo.style.height = '4px';
-            pVideo.style.opacity = '0.01';
-            pVideo.style.pointerEvents = 'none';
-            pVideo.style.zIndex = '-9999';
-            win.document.body.appendChild(pVideo);
-          }
-          const stream = cameraManager.getStream();
-          if (stream && pVideo.srcObject !== stream) {
-            pVideo.srcObject = stream;
-            pVideo.play().catch(() => {});
-          }
-
-          // 2. High-performance 1280x720 HD Projector Canvas
-          let canvas = win.document.getElementById('projectorCanvas') as HTMLCanvasElement | null;
-          if (!canvas) {
-            canvas = win.document.createElement('canvas');
-            canvas.id = 'projectorCanvas';
-            canvas.width = 1280;
-            canvas.height = 720;
-            canvas.style.width = '100%';
-            canvas.style.height = '100%';
-            canvas.style.objectFit = 'cover';
-            canvas.style.display = 'block';
-            win.document.body.appendChild(canvas);
-          }
-          projectorCanvasRef.current = canvas;
-
-          // Temporary streamer guidance overlay that fades out cleanly after 4.5 seconds
-          if (!win.document.getElementById('streamerTip')) {
-            const tip = win.document.createElement('div');
-            tip.id = 'streamerTip';
-            tip.style.position = 'absolute';
-            tip.style.top = '8px';
-            tip.style.left = '8px';
-            tip.style.zIndex = '999';
-            tip.style.fontFamily = 'monospace';
-            tip.style.fontSize = '10px';
-            tip.style.fontWeight = 'bold';
-            tip.style.color = '#00ff66';
-            tip.style.background = 'rgba(0,0,0,0.85)';
-            tip.style.padding = '4px 10px';
-            tip.style.borderRadius = '4px';
-            tip.style.border = '1px solid rgba(0,255,102,0.4)';
-            tip.style.pointerEvents = 'none';
-            tip.style.transition = 'opacity 1s ease-out';
-            tip.innerText = '🟢 OBS ON-AIR: 60 FPS Locked • Never Freeze Active';
-            win.document.body.appendChild(tip);
-
-            win.setTimeout(() => {
-              if (tip && tip.parentNode) {
-                tip.style.opacity = '0';
-                win.setTimeout(() => tip.remove(), 1000);
-              }
-            }, 4500);
-          }
-        }
-      } catch (e) {
-        console.warn('Error setting up projector window DOM:', e);
-      }
-    };
-
-    setupProjectorDOM();
-    win.setTimeout(setupProjectorDOM, 50);
-
-    // Kick off popup RAF loop!
-    startPopupRafRef.current?.(win);
-
-    // Listen for projector window closure to automatically restore local rendering
-    const handleClose = () => {
-      setIsProjectorActive(false);
-      isProjectorActiveRef.current = false;
-      projectorWindowRef.current = null;
-      projectorCanvasRef.current = null;
-    };
-    win.addEventListener('beforeunload', handleClose);
-    win.addEventListener('pagehide', handleClose);
-  }, []);
 
   // Camera toggle
   const handleSwitchCamera = async () => {
@@ -921,109 +559,21 @@ export const App: React.FC = () => {
       {/* Main Fullscreen Webcam Canvas */}
       <canvas
         ref={liveCanvasRef}
-        className={`w-full h-full object-cover block ${isProjectorActive ? 'hidden' : ''}`}
+        className="w-full h-full object-cover block"
       />
 
-      {/* ON AIR BROADCAST STATION CONSOLE (When OBS Projector is active) */}
-      {isProjectorActive && cameraActive && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#050811]/95 backdrop-blur-md font-mono select-none px-6">
-          <div className="relative max-w-xl w-full p-8 bg-[#090d18] border border-cyber-green rounded-xl shadow-2xl shadow-cyber-green/20 flex flex-col items-center text-center">
-            {/* Pulsing On-Air Indicator */}
-            <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-red-950/70 border border-red-500/80 text-red-400 text-xs font-bold tracking-widest animate-pulse mb-6">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-lg shadow-red-500 animate-ping" />
-              <span>LIVE &bull; ON AIR IN OBS PROJECTOR</span>
-            </div>
-
-            <div className="w-20 h-20 rounded-full bg-cyber-green/10 border-2 border-cyber-green flex items-center justify-center text-cyber-green mb-5 shadow-lg shadow-cyber-green/30">
-              <Tv className="w-10 h-10 animate-pulse text-cyber-cyan" />
-            </div>
-
-            <h2 className="text-xl font-bold font-cyber text-cyber-green tracking-wider mb-2">
-              OBS BROADCAST PROJECTOR ACTIVE
-            </h2>
-            <p className="text-gray-300 text-xs leading-relaxed max-w-md mb-6">
-              Local rendering is offloaded. Your clean webcam feed, AI gesture detection, and Phonk edits are rendering cleanly at unthrottled 60 FPS directly in the OBS Projector window.
-            </p>
-
-            {/* Status Info Grid */}
-            <div className="w-full grid grid-cols-3 gap-3 bg-black/60 p-3 rounded-lg border border-gray-800 text-xs mb-6">
-              <div className="flex flex-col items-center">
-                <span className="text-gray-500 text-[10px] uppercase">Engine Status</span>
-                <span className="text-cyber-green font-bold flex items-center gap-1 mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyber-green" /> 60 FPS Locked
-                </span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-gray-500 text-[10px] uppercase">Active Preset</span>
-                <span className="text-cyber-cyan font-bold truncate max-w-[120px] mt-0.5">
-                  {selectedPreset === 'ghost_trail_impact' ? 'Ghost Trail' : selectedPreset === 'dark_manga_strobe' ? 'Dark Manga' : 'Sigma Mogged'}
-                </span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-gray-500 text-[10px] uppercase">AI Status</span>
-                <span className="text-yellow-400 font-bold mt-0.5">
-                  {pipState === 'STANDBY' ? 'Scanning...' : 'EDIT ACTIVE!'}
-                </span>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-3 w-full">
-              <button
-                onClick={() => triggerAction('manual')}
-                disabled={pipState !== 'STANDBY'}
-                className="flex-1 py-2.5 bg-cyber-green hover:bg-white text-black font-cyber font-bold text-xs rounded transition-all shadow-md shadow-cyber-green/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Zap className="w-4 h-4" />
-                FORCE DROP EDIT (SPACE)
-              </button>
-              <button
-                onClick={() => {
-                  if (projectorWindowRef.current) {
-                    try {
-                      projectorWindowRef.current.close();
-                    } catch (e) {}
-                    projectorWindowRef.current = null;
-                  }
-                  projectorCanvasRef.current = null;
-                  setIsProjectorActive(false);
-                }}
-                className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs rounded border border-gray-700 transition-colors cursor-pointer"
-              >
-                RETURN TO LOCAL
-              </button>
-            </div>
+      {/* 60 FPS Status Badge */}
+      {cameraActive && (
+        <div className="absolute top-4 left-4 z-40 flex items-center gap-2 font-mono pointer-events-none">
+          <div className="px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border bg-black/85 text-cyber-green border-cyber-green/60 shadow-lg shadow-cyber-green/20 backdrop-blur-md">
+            <span className="w-2 h-2 rounded-full bg-cyber-green animate-ping" />
+            <span>CONFIDENCE CAM &bull; 60 FPS</span>
           </div>
         </div>
       )}
 
-      {/* Live Audio Broadcast Status Badge (Desktop) or 60 FPS Status (Mobile) */}
-      {cameraActive && !isZeroUi && !isProjectorActive && (
-        <div className="absolute top-4 left-4 z-40 flex items-center gap-2 font-mono">
-          {mobileDetector.isMobile() ? (
-            <div className="px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border bg-black/85 text-cyber-green border-cyber-green/60 shadow-lg shadow-cyber-green/20 backdrop-blur-md">
-              <span className="w-2 h-2 rounded-full bg-cyber-green animate-ping" />
-              <span>CONFIDENCE CAM &bull; 60 FPS</span>
-            </div>
-          ) : (
-            <button
-              onClick={() => setIsObsModalOpen(true)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border backdrop-blur-md transition-all cursor-pointer shadow-lg ${
-                isBroadcastingAudio
-                  ? 'bg-black/85 text-cyber-green border-cyber-green/60 shadow-cyber-green/20 hover:border-cyber-green'
-                  : 'bg-black/85 text-yellow-400 border-yellow-500/60 hover:border-yellow-400'
-              }`}
-              title="Click to view broadcast audio controls, audio levels, or test phonk drop"
-            >
-              <span className={`w-2 h-2 rounded-full ${isBroadcastingAudio ? 'bg-cyber-green animate-ping' : 'bg-yellow-400'}`} />
-              <span>{isBroadcastingAudio ? 'LIVE CALL AUDIO: ACTIVE (CABLE Input)' : 'CALL AUDIO: INACTIVE (CLICK TO START)'}</span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* PICTURE-IN-PICTURE / FULLSCREEN STREAMER VIDEO PLAYER */}
-      {cameraActive && !isProjectorActive && (
+      {/* PICTURE-IN-PICTURE / FULLSCREEN VIDEO PLAYER */}
+      {cameraActive && (
         <PipPlayer
           state={pipState}
           editCanvasRef={editCanvasRef}
@@ -1032,24 +582,11 @@ export const App: React.FC = () => {
           canDownload={hasDownloadableClip}
           isConverting={isConvertingMp4}
           takeoverMode={streamTakeoverMode}
-          isZeroUi={isZeroUi}
         />
       )}
 
-      {/* Zero-UI Mode Floating Restore Badge */}
-      {isZeroUi && (
-        <div
-          onClick={() => setIsZeroUi(false)}
-          className="absolute top-3 left-3 z-50 px-3 py-1.5 bg-black/70 hover:bg-black/90 text-cyber-green hover:text-white border border-cyber-green/40 hover:border-cyber-green rounded-full text-xs font-mono flex items-center gap-2 cursor-pointer transition-all shadow-lg backdrop-blur-md opacity-40 hover:opacity-100"
-          title="Click or press ESC to exit Zero-UI mode and restore controls"
-        >
-          <Radio className="w-3.5 h-3.5 text-cyber-cyan animate-pulse" />
-          <span>OBS BROADCAST MODE &bull; [ESC] RESTORE UI</span>
-        </div>
-      )}
-
       {/* Minimal Bottom Controls Bar */}
-      {cameraActive && !isZeroUi && (
+      {cameraActive && (
         <ControlsBar
           onSwitchCamera={handleSwitchCamera}
           onToggleMirror={() => setIsMirrored(cameraManager.toggleMirror())}
@@ -1061,7 +598,6 @@ export const App: React.FC = () => {
             phonkAudio.setMuted(next);
           }}
           onOpenSoundboard={() => setIsSoundboardOpen(true)}
-          onOpenObsModal={() => setIsObsModalOpen(true)}
           triggerMode={triggerMode}
           onChangeTriggerMode={setTriggerMode}
           selectedPreset={selectedPreset}
@@ -1088,21 +624,6 @@ export const App: React.FC = () => {
         volume={phonkAudio.getVolume()}
         onVolumeChange={(v) => phonkAudio.setVolume(v)}
       />
-
-      {/* OBS Studio & Live Broadcast Modal (Desktop Only) */}
-      {!mobileDetector.isMobile() && (
-        <ObsStudioModal
-          isOpen={isObsModalOpen}
-          onClose={() => setIsObsModalOpen(false)}
-          streamTakeoverMode={streamTakeoverMode}
-          onToggleTakeoverMode={() => setStreamTakeoverMode(m => m === 'fullscreen' ? 'pip' : 'fullscreen')}
-          autoCyclePresets={autoCyclePresets}
-          onToggleAutoCycle={() => setAutoCyclePresets(v => !v)}
-          onEnterZeroUi={() => setIsZeroUi(true)}
-          onOpenProjector={handleOpenProjector}
-          currentPreset={selectedPreset}
-        />
-      )}
 
     </div>
   );

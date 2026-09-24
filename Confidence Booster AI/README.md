@@ -130,7 +130,6 @@ The Vite development server is configured with `host: true`, allowing any smartp
 | Control | Description |
 |---|---|
 | <kbd>SPACE</kbd> | **Force Drop Trigger**: Instantly fires the viral phonk edit without waiting for gesture detection. |
-| <kbd>ESC</kbd> | **Exit Zero-UI**: Restores all buttons if Zero-UI / OBS Streamer mode is active. |
 | **GHOST TRAILS** | Montagem Tomada track with ethereal chromatic afterimages and neon pulses. |
 | **SIGMA SNAPS** | Marlon Mogged track with hard beat zooms, screen shakes, and wasted aesthetic. |
 | **DARK MANGA** | Mogger Phonk with high-contrast B&W inverted flashes and strobe glitches. |
@@ -140,25 +139,6 @@ The Vite development server is configured with `host: true`, allowing any smartp
 | **MIRROR** | Toggle horizontal video flip for a natural selfie-mirror view. |
 | **TRACKS** | Opens the Soundboard modal to adjust volume or play meme sound FX. |
 | **DOWNLOAD MP4** | Exports the recorded edit directly as a fast-start universal `.mp4` file. |
-
----
-
-## 🎥 OBS Studio & Video Calls Setup (Google Meet, Telegram, Discord)
-
-Confidence Booster AI includes a built-in **OBS Broadcast Station** for Windows and macOS desktops:
-
-1. Click the **`((•)) OBS`** button in the bottom control bar.
-2. Click **`LAUNCH ALWAYS-ON-TOP PIP`** (Recommended) or **`LAUNCH PROJECTOR WINDOW`**.
-3. In **OBS Studio**:
-   - Add a source: **Window Capture** ➔ Select the projector / Chrome window.
-   - Set Capture Method: **`Windows 10 (1903 and up)`**.
-   - Click **Start Virtual Camera** in OBS Controls dock.
-4. In **Google Meet / Telegram / Discord**:
-   - Set Camera to **`OBS Virtual Camera`**.
-   - Set Microphone to **`CABLE Output (VB-Audio Virtual Cable)`** if using virtual audio routing.
-   - **Crucial**: Turn **OFF Noise Cancellation** in Google Meet so the 808 bass drop isn't filtered out!
-
-*(For full details, see the dedicated [OBS Setup Guide](file:///d:/VS%20Code/am1t_builds/Confidence%20Booster%20AI/OBS_SETUP_GUIDE.md)).*
 
 ---
 
@@ -177,12 +157,10 @@ Confidence Booster AI/
 │   ├── audios/                     # High-fidelity phonk soundtrack buffers
 │   ├── components/
 │   │   ├── ControlsBar.tsx         # Bottom floating HUD controls & preset selector
-│   │   ├── ObsStudioModal.tsx      # OBS streamer station & audio broadcast modal
 │   │   ├── PipPlayer.tsx           # Picture-in-picture edit preview & MP4 download
 │   │   └── SoundboardModal.tsx     # Phonk tracks & interactive meme soundboard
 │   ├── pngs/                       # Mogger overlays & visual assets
 │   ├── services/
-│   │   ├── broadcastAudioEngine.ts # Web Audio DSP chain for OBS & CABLE Input routing
 │   │   ├── cameraManager.ts        # WebRTC camera manager with FOV & hardware zoom handling
 │   │   ├── clipRecorder.ts         # Fast-start MP4 video & AAC audio recorder
 │   │   ├── cube3dRenderer.ts      # 3D perspective wireframe target box renderer

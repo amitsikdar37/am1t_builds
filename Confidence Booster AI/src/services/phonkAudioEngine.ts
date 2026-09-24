@@ -1,6 +1,4 @@
 import { PhonkTrackId, PhonkTrackInfo } from '../types';
-import { broadcastAudio } from './broadcastAudioEngine';
-import { mobileDetector } from './mobileDetector';
 
 export interface AudioPlaybackInfo {
   startTime: number;
@@ -256,23 +254,6 @@ class PhonkAudioEngine {
     return this.ctx;
   }
 
-  public connectBroadcastNode(node: AudioNode) {
-    this.initContext();
-    if (this.masterGain) {
-      try {
-        this.masterGain.connect(node);
-      } catch (e) {}
-    }
-  }
-
-  public disconnectBroadcastNode(node: AudioNode) {
-    if (this.masterGain) {
-      try {
-        this.masterGain.disconnect(node);
-      } catch (e) {}
-    }
-  }
-
   // --- Sound Generation Primitives ---
 
   // Distortion curve for crunchy Phonk saturation
@@ -497,51 +478,9 @@ class PhonkAudioEngine {
     this.playKick(now, 1.2);
   }
 
-  private ensureBroadcastPhonkBuffer(
-    buffer: AudioBuffer,
-    offsetSec = 0,
-    durationSec?: number,
-    filterConfig?: {
-      startFreq: number;
-      midFreq: number;
-      endFreq: number;
-      midTime: number;
-      endTime: number;
-    }
-  ): void {
-    // Strictly disable on mobile: mobile phones do not support OBS/Virtual Cable.
-    // Prevents duplicate AudioContext playback and eliminates the double-echo on phone speakers!
-    if (mobileDetector.isMobile()) {
-      return;
-    }
-
-    if (broadcastAudio.getIsBroadcasting()) {
-      broadcastAudio.playPhonkBuffer(buffer, offsetSec, durationSec, filterConfig);
-    } else {
-      broadcastAudio.startBroadcast().then(() => {
-        broadcastAudio.playPhonkBuffer(buffer, offsetSec, durationSec, filterConfig);
-      }).catch(e => console.warn('[PhonkAudioEngine] Auto-start broadcast error:', e));
-    }
-  }
-
-  private ensureBroadcastProceduralDrop(delaySeconds: number): void {
-    // Strictly disable on mobile: prevents echo and duplicate audio on phones
-    if (mobileDetector.isMobile()) {
-      return;
-    }
-
-    if (broadcastAudio.getIsBroadcasting()) {
-      broadcastAudio.playProceduralDrop(delaySeconds);
-    } else {
-      broadcastAudio.startBroadcast().then(() => {
-        broadcastAudio.playProceduralDrop(delaySeconds);
-      }).catch(e => console.warn('[PhonkAudioEngine] Auto-start broadcast drop error:', e));
-    }
-  }
-
   /**
    * Plays the real iconic Phonk beat drop (Montagem Tomada 808 drop)
-   * into masterGain (Headphones) AND broadcastAudio (CABLE Input on Desktop) for instant verification!
+   * into masterGain for instant verification!
    */
   public async playQuickPhonkTest(): Promise<void> {
     this.initContext();
@@ -565,11 +504,6 @@ class PhonkAudioEngine {
       hSource.start(0, 3.2, 4.2);
       this.currentAudioSource = hSource;
 
-      // Stream into CABLE Input only on desktop (OBS streamer mode)
-      if (!mobileDetector.isMobile()) {
-        this.ensureBroadcastPhonkBuffer(buffer, 3.2, 4.2);
-      }
-
       const timer = window.setTimeout(() => {
         this.stop();
       }, 4250);
@@ -583,9 +517,6 @@ class PhonkAudioEngine {
       this.playBassDropImpact(0.55);
       this.playKick(now + 0.55, 1.3);
       this.play808Sub(now + 0.55, 1.2, 46.2, 55.0, 1.0);
-      if (!mobileDetector.isMobile()) {
-        this.ensureBroadcastProceduralDrop(0.55);
-      }
     }
   }
 
@@ -691,15 +622,6 @@ class PhonkAudioEngine {
         this.currentAudioSource = source;
         const audioStartTime = performance.now();
 
-        // Also broadcast directly to CABLE Input with matching filter (auto-starts broadcast if needed!)
-        this.ensureBroadcastPhonkBuffer(this.tomadaAudioBuffer, 0, this.tomadaAudioBuffer.duration, {
-          startFreq: 420,
-          midFreq: 3600,
-          endFreq: 20000,
-          midTime: 3.4,
-          endTime: 3.57
-        });
-
         if (onEndedCallback) {
           source.onended = () => {
             if (this.isPlaying) {
@@ -734,9 +656,6 @@ class PhonkAudioEngine {
         source.start(0);
         this.currentAudioSource = source;
         const audioStartTime = performance.now();
-
-        // Also broadcast directly to CABLE Input (auto-starts broadcast if needed!)
-        this.ensureBroadcastPhonkBuffer(this.moggedAudioBuffer, 0, this.moggedAudioBuffer.duration);
 
         if (onEndedCallback) {
           source.onended = () => {
@@ -778,9 +697,6 @@ class PhonkAudioEngine {
         source.start(0);
         this.currentAudioSource = source;
         const audioStartTime = performance.now();
-
-        // Also broadcast directly to CABLE Input (auto-starts broadcast if needed!)
-        this.ensureBroadcastPhonkBuffer(this.moggerAudioBuffer, 0, this.moggerAudioBuffer.duration);
 
         if (onEndedCallback) {
           source.onended = () => {
@@ -829,9 +745,6 @@ class PhonkAudioEngine {
     this.activeTimers.push(dropTimer);
 
     this.playBassDropImpact(track.dropDelaySeconds);
-    if (!mobileDetector.isMobile() && broadcastAudio.getIsBroadcasting()) {
-      broadcastAudio.playProceduralDrop(track.dropDelaySeconds);
-    }
 
     const cowbellNotes = [740, 880, 988, 1109, 880, 740, 659, 740, 988, 1109, 1319, 1109];
     const dropLengthBeats = 16;
@@ -901,8 +814,6 @@ class PhonkAudioEngine {
       } catch {}
       this.lowpassFilter = null;
     }
-
-    broadcastAudio.stopPhonkBuffer();
   }
 }
 
