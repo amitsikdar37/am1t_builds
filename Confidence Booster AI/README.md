@@ -21,29 +21,46 @@ Experience the application live in your browser:
 
 ## ⚡ What is Confidence Booster AI?
 
-**Confidence Booster AI** (also known as **Sigma Phonk Webcam**) is a tactical monitor and automated video editor designed for streamers, content creators, and video callers.
+**Confidence Booster AI** is an interactive webcam application and automated video editor powered by real-time computer vision and Web Audio synthesis.
 
-Using Google's **MediaPipe Vision AI**, the web app tracks your facial landmarks, 3D head orientation (pitch, yaw, roll), and hand movements in real-time. Whenever you perform an "alpha gesture"—such as taking a sip of water or adjusting your glasses—the system automatically triggers an adrenaline-fueled **Phonk Beat Drop Edit** with slow-motion replays, screen-shaking 808 bass, chromatic aberration, ghost trails, and dark manga strobe glitches.
+Using Google's **MediaPipe Vision AI**, the web app tracks your facial landmarks, 3D head orientation (pitch, yaw, roll), and hand movements in real-time. Whenever you perform an "alpha gesture"—such as taking a sip of water or adjusting your glasses—the system automatically locks onto your face and triggers an adrenaline-fueled **Phonk Beat Drop Edit** with slow-motion replays, screen-shaking 808 bass, chromatic aberration, ghost trails, and dark manga strobe glitches.
+
+You can also export your recorded edits with one click as universal **MP4** video clips ready to post directly on TikTok, YouTube Shorts, or Instagram Reels.
+
+---
+
+## ✨ Key Features
+
+- **🎯 AI Gesture & Landmark Detection**: MediaPipe FaceLandmarker and HandLandmarker accurately detect drinking sips and glasses adjustments in real time.
+- **📦 3D Perspective Target Cube**: A cybernetic 3D wireframe bounding cube tracks your head in real 3D space, responding dynamically to pitch, yaw, and roll.
+- **🔄 Pre-Roll Circular RAM Buffer**: Constantly retains the previous few seconds of webcam footage in memory, so when you finish a sip, the replay includes the buildup, the action, and the bass drop.
+- **⚡ 3 Viral Phonk Edit Presets**:
+  - **👻 GHOST TRAILS** (*Montagem Tomada*): Ethereal RGB chromatic splits, motion blur afterimages, and heavy 808 sub-bass.
+  - **🗿 SIGMA SNAPS** (*Marlon Mogged*): Hard beat snap zooms, aggressive screen shake, and wasted mog aesthetic.
+  - **⚡ DARK MANGA** (*Mogger Phonk*): High-contrast inverted manga flashes, neon red/cyan outlines, and strobe glitches.
+- **📱 Mobile-First Performance**: Responsive auto-framing with zero black borders, touch-friendly HUD controls, adaptive frame timing, and zero audio echo.
+- **💾 Universal MP4 Video Exporter**: Fast client-side MP4 container packaging with synchronized AAC audio for instant downloads.
+- **🎵 Interactive Soundboard**: Includes volume sliders, procedural bass drop impacts, and Phonk audio previews.
 
 ---
 
 ## 💻 System & Hardware Requirements
 
-Before running the project, make sure your computer meets these basic requirements:
+Before running the project locally, ensure your machine meets these basic requirements:
 
 - **Operating System**: Windows 10/11, macOS, or Linux.
-- **Node.js**: **v18.0.0 or higher** (v20 LTS or v22 LTS strongly recommended).
-- **Web Browser**: Google Chrome, Microsoft Edge, Brave, or Opera (Chromium-based browsers provide the best WebGL and Web Audio performance).
+- **Node.js**: **v18.0.0 or higher** (v20 LTS or v22 LTS recommended).
+- **Web Browser**: Google Chrome, Microsoft Edge, Brave, or Opera (Chromium-based browsers provide optimal WebGL and Web Audio performance).
 - **Hardware**:
-  - Any working webcam or mobile front camera.
+  - Any working webcam or smartphone front camera.
   - Hardware Acceleration turned **ON** in browser settings (`chrome://settings/system`).
-  - 4 GB RAM minimum (8 GB recommended for 60 FPS video recording).
+  - 4 GB RAM minimum (8 GB recommended for 60 FPS recording).
 
 ---
 
 ## 🚀 Beginner's Quickstart Guide (Run Locally in 5 Minutes)
 
-Follow these exact steps to clone, install, and run the project on your computer without running into common errors:
+Follow these exact steps to clone, install, and run the project on your computer:
 
 ### Step 1: Install Node.js
 If you don't already have Node.js installed:
@@ -66,7 +83,7 @@ git clone https://github.com/amitsikdar37/confidence-booster-ai.git
 cd "confidence-booster-ai"
 ```
 
-*(If you downloaded the code as a ZIP file, extract it, open your terminal inside the extracted folder).*
+*(If you downloaded the code as a ZIP file, extract it, and open your terminal inside the extracted folder).*
 
 ---
 
@@ -111,7 +128,7 @@ You will see output similar to this:
 
 ## 📱 How to Run on Mobile (Same Local Wi-Fi)
 
-The Vite development server is configured with `host: true`, allowing any smartphone on your local Wi-Fi to test the app.
+The Vite development server is configured with `host: true`, allowing any smartphone on your local Wi-Fi to test the app:
 
 1. Make sure your phone and PC are connected to the **same Wi-Fi network**.
 2. Look at your terminal when running `npm run dev` to find your Network IP (e.g., `http://192.168.1.15:3000/`).
@@ -125,19 +142,19 @@ The Vite development server is configured with `host: true`, allowing any smartp
 
 ---
 
-## 🎮 Features & Controls Guide
+## 🎮 Controls & Interface Guide
 
 | Control | Description |
 |---|---|
 | <kbd>SPACE</kbd> | **Force Drop Trigger**: Instantly fires the viral phonk edit without waiting for gesture detection. |
-| **GHOST TRAILS** | Montagem Tomada track with ethereal chromatic afterimages and neon pulses. |
-| **SIGMA SNAPS** | Marlon Mogged track with hard beat zooms, screen shakes, and wasted aesthetic. |
-| **DARK MANGA** | Mogger Phonk with high-contrast B&W inverted flashes and strobe glitches. |
+| **👻 GHOST TRAILS** | Selects the Montagem Tomada preset with ghost afterimages and 808 drop. |
+| **🗿 SIGMA SNAPS** | Selects the Marlon Mogged preset with beat snap zooms and wasted aesthetic. |
+| **⚡ DARK MANGA** | Selects the Mogger Phonk preset with B&W inverted flashes and strobe glitches. |
 | **TRIGGER MODE** | Switch between `BOTH` (sip or glasses), `DRINK` only, or `GLASSES` only. |
 | **SENSITIVITY** | Cycle AI detection threshold (`NORM` ➔ `HIGH` ➔ `HYPER`). |
 | **CAMERA SWITCH** | Switch between front and rear cameras (on laptops or mobile devices). |
 | **MIRROR** | Toggle horizontal video flip for a natural selfie-mirror view. |
-| **TRACKS** | Opens the Soundboard modal to adjust volume or play meme sound FX. |
+| **TRACKS** | Opens the Soundboard modal to adjust master volume or test phonk drops. |
 | **DOWNLOAD MP4** | Exports the recorded edit directly as a fast-start universal `.mp4` file. |
 
 ---
@@ -158,7 +175,7 @@ Confidence Booster AI/
 │   ├── components/
 │   │   ├── ControlsBar.tsx         # Bottom floating HUD controls & preset selector
 │   │   ├── PipPlayer.tsx           # Picture-in-picture edit preview & MP4 download
-│   │   └── SoundboardModal.tsx     # Phonk tracks & interactive meme soundboard
+│   │   └── SoundboardModal.tsx     # Phonk tracks & interactive soundboard
 │   ├── pngs/                       # Mogger overlays & visual assets
 │   ├── services/
 │   │   ├── cameraManager.ts        # WebRTC camera manager with FOV & hardware zoom handling
@@ -209,7 +226,7 @@ In the project root, you can run:
 - **Solution**:
   1. Look at the address bar in Chrome/Edge, click the **Camera icon** or the **Tune/Lock icon** on the left of the URL, and select **"Allow"** for Camera.
   2. On **Windows**: Open Windows Settings ➔ **Privacy & Security** ➔ **Camera** ➔ Ensure **"Let desktop apps access your camera"** is toggled **ON**.
-  3. Ensure no other application (like Zoom, Teams, or OBS) is exclusively locking your webcam.
+  3. Ensure no other application (like Zoom, Teams, or another browser window) is exclusively locking your webcam.
 
 ### 3. "The camera is lagging or dropping frames"
 - **What happened**: Browser hardware acceleration is turned off.
