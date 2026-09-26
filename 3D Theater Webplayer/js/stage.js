@@ -32,7 +32,7 @@ export function buildStage(scene) {
   aisle.position.set(0, 0.0, SCR_Z + 7 + aisleLength/2);
   g.add(aisle);
 
-  // LED floor safety strips along both aisle sides (like real IMAX theatres)
+  // LED floor safety strips along both aisle sides (like modern cinema theatres)
   const ledMat = new THREE.MeshBasicMaterial({ color:0xff4400 });
   const ledGeo = new THREE.BoxGeometry(0.06, 0.02, aisleLength);
   const ledL = new THREE.Mesh(ledGeo, ledMat);

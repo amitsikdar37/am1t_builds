@@ -1,7 +1,7 @@
 {
   "name": "3d-theater-webplayer",
   "version": "1.0.0",
-  "description": "A fully local, immersive 3D IMAX cinema hall experience in your browser. No server needed — open index.html directly.",
+  "description": "A fully local, immersive 3D Web Cinema Player and Virtual Theatre Engine (IMAX-Style Architecture) in your browser.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

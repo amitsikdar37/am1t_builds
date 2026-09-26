@@ -1,6 +1,6 @@
 /* ================================================================
-   IMAX THEATRE WEBPLAYER — style.css
-   Dark Cinema UI with glassmorphism HUD
+   3D WEB CINEMA PLAYER — style.css
+   Virtual 3D Theatre Engine (IMAX-Style Architecture)
    ================================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap');
@@ -103,7 +103,7 @@ html, body {
 
 .curtains-open #loading-center { opacity: 0; pointer-events: none; }
 
-.imax-brand {
+.cinema-brand {
   font-family: "Bebas Neue", sans-serif;
   font-size: 64px; letter-spacing: 12px; color: var(--gold);
   text-shadow: 0 0 40px rgba(200,169,110,0.6), 0 0 80px rgba(200,169,110,0.3);
@@ -501,6 +501,6 @@ input[type="range"] { -webkit-appearance: none; appearance: none; outline: none;
   .time-display { display: none; }
   .volume-wrap { width: 60px; }
   #hud { padding: 0 12px 12px; }
-  .imax-brand { font-size: 42px; }
+  .cinema-brand { font-size: 42px; }
   #drop-zone { padding: 36px 28px; }
 }

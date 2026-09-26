@@ -205,7 +205,7 @@ app.get('/thumbnail/:filename', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`===========================================`);
-  console.log(`🍿 IMAX Media Server is running!`);
+  console.log(`🍿 3D Cinema Media Server is running!`);
   console.log(`🎬 Open http://localhost:${PORT} in your browser`);
   console.log(`📁 Place your videos in: ${MOVIES_DIR}`);
   console.log(`===========================================`);

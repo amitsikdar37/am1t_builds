@@ -137,13 +137,13 @@ export function updateScreenMasking(videoAspect, videoTexture) {
   }
 
   if(videoAspect > maxAspect) {
-    // Video is wider than IMAX (e.g. CinemaScope 2.39:1). 
+    // Video is wider than screen frame (e.g. CinemaScope 2.39:1). 
     // Top and bottom masking curtains physically drop down.
     targetW = SCR_W;
     targetH = SCR_W / videoAspect;
   } else {
-    // Video is narrower than IMAX (e.g. vertical 9:16 or standard 4:3).
-    // The physical screen stays fully open at IMAX dimensions.
+    // Video is narrower than screen frame (e.g. vertical 9:16 or standard 4:3).
+    // The physical screen stays fully open at full theatre dimensions.
     targetW = SCR_W;
     targetH = SCR_H;
     

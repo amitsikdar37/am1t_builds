@@ -1,10 +1,10 @@
-# 3D IMAX Theatre WebPlayer
+# 3D Web Cinema Player (IMAX-Style Architecture)
 
-A fully immersive 3D IMAX cinema hall experience built right in your browser!
+A fully immersive Virtual 3D Theatre Engine built right in your browser!
 This WebPlayer uses a local Node.js media server to instantly extract and process 5.1 Surround Sound audio, WebVTT subtitles, and stream high-quality MKV/MP4 files directly into a beautifully rendered 3D theatre.
 
 ## Features
-- **Real 3D Cinema Environment**: Curved IMAX screen, stadium seating, and dynamic screen bloom.
+- **Real 3D Cinema Environment**: Architectural curved screen (IMAX-style ratio), stadium seating, and dynamic screen bloom.
 - **5.1 Surround Sound Spatial Audio**: Dynamically maps 5.1 audio channels (like character dialogue) to physically modeled 3D speakers in the room using the Web Audio API.
 - **On-the-Fly Audio Switching**: Change dubbed audio tracks instantly while the movie is playing without stalling!
 - **Automatic Subtitles**: Automatically extracts subtitles from `.mkv` files and projects them into the 3D space with cinematic styling.
@@ -50,12 +50,12 @@ npm install
 Create a folder named `movies` inside the project folder if it doesn't already exist.
 Place your `.mkv`, `.mp4`, or `.webm` movie files directly into the `movies/` folder.
 
-### Step 5: Start the IMAX Server
+### Step 5: Start the Media Server
 In your terminal, run the following command to start the backend server:
 ```bash
 node server.js
 ```
-You should see a message saying `🍿 IMAX Media Server is running!`.
+You should see a message saying `🍿 3D Cinema Media Server is running!`.
 
 ### Step 6: Enjoy the Show!
 Open your modern web browser (Google Chrome or Microsoft Edge recommended) and go to:
