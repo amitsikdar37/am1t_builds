@@ -7,15 +7,15 @@
 const STATE = {
   isSessionActive: false,
   detectionMode: 'touch', // 'touch' (hand touches phone) or 'any' (any phone in sight)
-  phoneConfidenceThreshold: 0.55,
-  personConfidenceThreshold: 0.45,
+  phoneConfidenceThreshold: 0.35, // Optimized threshold for occluded handheld phones
+  personConfidenceThreshold: 0.22, // Optimized threshold for head-down study posture
   volume: 1.0,
   isMirrored: true,
   isFullscreen: false,
 
   // Absence / Desk Departure Alarm State
   absenceAlarmEnabled: true,
-  absenceGracePeriodMs: 4000, // 4s grace period before triggering absence scold
+  absenceGracePeriodMs: 8000, // 8s default grace period
   lastPersonSeenTime: performance.now(),
   isUserAbsent: false,
   lastAbsenceScoldEndTime: 0,
@@ -33,10 +33,19 @@ const STATE = {
   lastPlayedVoice: null,
   playedInCycle: new Set(),
 
-  // Vision Models
+  // Vision Models & Inference Pipeline
   cocoModel: null,
   handsModel: null,
   lastHandLandmarks: [],
+  isAiRunning: false, // Prevents pipeline starvation & frame piling
+
+  // Decoupled Vision Output Buffer (Rendered at 60 FPS)
+  latestPredictions: {
+    primaryPersonBox: null,
+    phoneDetections: [], // Array of { bbox, score, isTouching }
+    hasTouch: false,
+    hasPhone: false
+  },
 
   // Smoothed User Tracking Square (Cyber Reticle)
   userTracker: {
@@ -55,12 +64,13 @@ const STATE = {
   videoWidth: 1280,
   videoHeight: 720,
 
-  // Timer & FPS
+  // Timer, Rendering & FPS
   timerSeconds: 0,
   timerInterval: null,
   lastFrameTime: performance.now(),
   fps: 0,
-  fpsUpdateTimer: 0
+  fpsUpdateTimer: 0,
+  renderLoopId: null
 };
 
 // Fallback voices in case API is unavailable
@@ -176,11 +186,20 @@ function videoBoxToScreen(box) {
   const [vx, vy, vw, vh] = box;
   const { scale, offsetX, offsetY } = getCoverTransform();
 
+  const screenX = vx * scale + offsetX;
+  const screenY = vy * scale + offsetY;
+  const screenW = vw * scale;
+  const screenH = vh * scale;
+
+  // When camera video is CSS-mirrored, flip X position so canvas overlay
+  // visually aligns with mirrored feed, while canvas text stays left-to-right readable!
+  const x = STATE.isMirrored ? (DOM.canvas.width - screenX - screenW) : screenX;
+
   return {
-    x: vx * scale + offsetX,
-    y: vy * scale + offsetY,
-    w: vw * scale,
-    h: vh * scale
+    x,
+    y: screenY,
+    w: screenW,
+    h: screenH
   };
 }
 
@@ -392,8 +411,8 @@ async function loadModels() {
         hands.setOptions({
           maxNumHands: 2,
           modelComplexity: 1,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5
+          minDetectionConfidence: 0.4,
+          minTrackingConfidence: 0.4
         });
         hands.onResults(onHandResults);
         STATE.handsModel = hands;
@@ -442,24 +461,34 @@ async function enumerateCameras() {
   }
 }
 
+function isMobileOrTablet() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+         (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+}
+
 async function startCamera(deviceId = null) {
   if (STATE.stream) {
     STATE.stream.getTracks().forEach(t => t.stop());
     STATE.stream = null;
   }
 
-  // Graceful constraints: avoid forced facingMode on desktop/Windows
-  let constraints = {
-    video: {
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    },
-    audio: false
+  const isMobile = isMobileOrTablet();
+  let videoConstraints = {
+    width: { ideal: 1280 },
+    height: { ideal: 720 }
   };
 
   if (deviceId && typeof deviceId === 'string' && deviceId.trim().length > 0) {
-    constraints.video.deviceId = { exact: deviceId };
+    videoConstraints.deviceId = { exact: deviceId };
+  } else if (isMobile) {
+    // On smartphones and tablets, default to front-facing user camera
+    videoConstraints.facingMode = { ideal: 'user' };
   }
+
+  let constraints = {
+    video: videoConstraints,
+    audio: false
+  };
 
   try {
     let stream = null;
@@ -535,11 +564,11 @@ function stopCamera() {
 function applyMirroring() {
   if (STATE.isMirrored) {
     DOM.video.classList.add('mirrored');
-    DOM.canvas.classList.add('mirrored');
   } else {
     DOM.video.classList.remove('mirrored');
-    DOM.canvas.classList.remove('mirrored');
   }
+  // Canvas is never CSS-mirrored so HUD text renders cleanly left-to-right!
+  DOM.canvas.classList.remove('mirrored');
 }
 
 // --- Session Lifecycle ---
@@ -569,19 +598,36 @@ async function startSession() {
     return;
   }
 
+  // Prime audio pipeline to unlock browser autoplay policy (especially on iOS/Android mobile browsers)
+  try {
+    audioPlayer.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+    const primePromise = audioPlayer.play();
+    if (primePromise !== undefined) {
+      primePromise.then(() => {
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+      }).catch(() => {});
+    }
+  } catch (audioPrimeErr) {
+    console.warn('[ForceStudyAI] Audio prime note:', audioPrimeErr);
+  }
+
   STATE.isSessionActive = true;
   STATE.scoldState = 'IDLE';
   STATE.lastPersonSeenTime = performance.now();
   STATE.isUserAbsent = false;
+  STATE.isAiRunning = false;
+  STATE.latestPredictions = {
+    primaryPersonBox: null,
+    phoneDetections: [],
+    hasTouch: false,
+    hasPhone: false
+  };
 
   // Reset hero button state
   if (DOM.heroStartBtn) {
     DOM.heroStartBtn.innerHTML = '<span>▶</span> Initiate Study Session';
     DOM.heroStartBtn.disabled = false;
-  }
-
-  if (audioPlayer.paused) {
-    audioPlayer.load();
   }
 
   DOM.btnIcon.innerText = '⏹';
@@ -605,11 +651,19 @@ async function startSession() {
     DOM.drawerTimerDisplay.innerText = formatted;
   }, 1000);
 
-  requestAnimationFrame(detectionLoop);
+  // Launch decoupled high-performance loops:
+  // 1. 60 FPS Render loop for smooth HUD reticle, tags & telemetry
+  STATE.renderLoopId = requestAnimationFrame(renderLoop);
+  // 2. Asynchronous AI Vision loop for non-blocking neural inference
+  aiVisionLoop();
 }
 
 function stopSession() {
   STATE.isSessionActive = false;
+  if (STATE.renderLoopId) {
+    cancelAnimationFrame(STATE.renderLoopId);
+    STATE.renderLoopId = null;
+  }
   stopCamera();
   clearInterval(STATE.timerInterval);
 
@@ -617,6 +671,13 @@ function stopSession() {
   audioPlayer.currentTime = 0;
   STATE.scoldState = 'IDLE';
   STATE.isUserAbsent = false;
+  STATE.isAiRunning = false;
+  STATE.latestPredictions = {
+    primaryPersonBox: null,
+    phoneDetections: [],
+    hasTouch: false,
+    hasPhone: false
+  };
 
   DOM.alarmOverlay.classList.remove('scold-ambient-active', 'opacity-100');
   DOM.alarmOverlay.classList.add('opacity-0');
@@ -638,11 +699,11 @@ function stopSession() {
   DOM.quickScoldIndicator.innerText = 'Session ended';
 }
 
-// --- Real-Time Vision & Detection Loop ---
-async function detectionLoop(now) {
+// --- 60 FPS Smooth Render Loop (Decoupled from AI inference) ---
+function renderLoop(now) {
   if (!STATE.isSessionActive) return;
 
-  // FPS
+  // FPS Counter
   const delta = now - STATE.lastFrameTime;
   STATE.lastFrameTime = now;
   STATE.fps = Math.round(1000 / (delta || 1));
@@ -654,130 +715,212 @@ async function detectionLoop(now) {
   // Clear Canvas
   DOM.ctx.clearRect(0, 0, DOM.canvas.width, DOM.canvas.height);
 
-  let phoneDetected = false;
-  let handTouchingPhone = false;
-  let detectedPhoneBox = null;
-  let primaryPersonBox = null;
+  const preds = STATE.latestPredictions;
+  const isAlertActive = preds.hasTouch || (preds.hasPhone && STATE.detectionMode === 'any');
 
-  if (STATE.cocoModel && DOM.video.readyState >= 2) {
-    try {
+  // 1. Draw Phone Detection Boxes & Labels
+  if (preds.phoneDetections && preds.phoneDetections.length > 0) {
+    for (const p of preds.phoneDetections) {
+      drawPhoneBox(p.bbox, p.score, p.isTouching);
+    }
+  }
+
+  // 2. Draw User Tracking Reticle with 60 FPS Kinematic Lerp
+  updateAndDrawUserTracker(preds.primaryPersonBox, isAlertActive);
+
+  // 3. Update Status Pills
+  if (preds.hasTouch) {
+    DOM.touchStatusText.innerText = '✋ TOUCH DETECTED!';
+    DOM.touchStatusText.className = 'text-xs font-mono mt-1 block truncate text-rose-400 font-semibold animate-pulse';
+  } else if (preds.hasPhone) {
+    DOM.touchStatusText.innerText = '📱 IN SIGHT (NO TOUCH)';
+    DOM.touchStatusText.className = 'text-xs font-mono mt-1 block truncate text-amber-400';
+  } else {
+    DOM.touchStatusText.innerText = 'NO TOUCH';
+    DOM.touchStatusText.className = 'text-xs font-mono mt-1 block truncate text-slate-300';
+  }
+
+  STATE.renderLoopId = requestAnimationFrame(renderLoop);
+}
+
+// --- High-Precision Asynchronous AI Vision Loop ---
+async function aiVisionLoop() {
+  if (!STATE.isSessionActive) return;
+
+  if (STATE.isAiRunning) {
+    // Previous inference still active; defer to next frame to prevent queue buildup
+    setTimeout(aiVisionLoop, 20);
+    return;
+  }
+
+  STATE.isAiRunning = true;
+  const now = performance.now();
+
+  try {
+    let foundPersonBox = null;
+    const phoneDetections = [];
+    let hasTouch = false;
+    let hasPhone = false;
+
+    if (STATE.cocoModel && DOM.video.readyState >= 2) {
+      // 1. Run Object Detection
       const predictions = await STATE.cocoModel.detect(DOM.video);
 
+      // 2. Run Hand Tracking
       if (STATE.handsModel) {
-        await STATE.handsModel.send({ image: DOM.video });
+        try {
+          await STATE.handsModel.send({ image: DOM.video });
+        } catch (mpSendErr) {
+          console.warn('[ForceStudyAI] MediaPipe frame send error:', mpSendErr);
+        }
       }
 
-      // 1. Find User (Person)
+      // 3. Multi-Signal Person (Student) Presence Search
       let maxPersonArea = 0;
       for (const pred of predictions) {
         if (pred.class === 'person' && pred.score >= STATE.personConfidenceThreshold) {
           const area = pred.bbox[2] * pred.bbox[3];
           if (area > maxPersonArea) {
             maxPersonArea = area;
-            primaryPersonBox = pred.bbox;
+            foundPersonBox = pred.bbox;
           }
         }
       }
 
-      // 2. Find Smartphone
+      // 4. Smartphone Search (Includes 'cell phone' and 'remote' misclassifications)
       for (const pred of predictions) {
-        if (pred.class === 'cell phone' && pred.score >= STATE.phoneConfidenceThreshold) {
-          phoneDetected = true;
-          detectedPhoneBox = pred.bbox;
-          handTouchingPhone = checkHandTouchingPhone(detectedPhoneBox);
-
-          // Draw Phone Highlight
-          drawPhoneBox(detectedPhoneBox, pred.score, handTouchingPhone);
+        const isPhoneClass = (pred.class === 'cell phone' || pred.class === 'remote');
+        if (isPhoneClass && pred.score >= STATE.phoneConfidenceThreshold) {
+          hasPhone = true;
+          const isTouching = (STATE.detectionMode === 'any') ? true : checkHandTouchingPhone(pred.bbox, foundPersonBox);
+          if (isTouching) {
+            hasTouch = true;
+          }
+          phoneDetections.push({
+            bbox: pred.bbox,
+            score: pred.score,
+            isTouching
+          });
         }
       }
-    } catch (err) {
-      console.warn('Vision detection frame error:', err);
     }
-  }
 
-  // 3. Process Student Presence & Desk Departure Alarm
-  if (primaryPersonBox) {
-    STATE.lastPersonSeenTime = now;
-    if (STATE.isUserAbsent) {
-      STATE.isUserAbsent = false;
-      updateSystemStatus('studying', 'Student returned 📚');
-      DOM.quickScoldIndicator.innerText = 'Welcome back! Studying peacefully 📚';
-    }
-    if (DOM.deskPresenceText) {
-      DOM.deskPresenceText.innerText = 'PRESENT';
-      DOM.deskPresenceText.className = 'text-xs font-mono text-emerald-400 mt-0.5 block truncate';
-    }
-  } else {
-    // User is NOT visible in camera feed!
-    const absentMs = now - STATE.lastPersonSeenTime;
-    if (STATE.absenceAlarmEnabled) {
-      const remainingSec = Math.max(0, Math.ceil((STATE.absenceGracePeriodMs - absentMs) / 1000));
-      if (absentMs < STATE.absenceGracePeriodMs) {
-        if (DOM.deskPresenceText) {
-          DOM.deskPresenceText.innerText = `ABSENT (${remainingSec}s)`;
-          DOM.deskPresenceText.className = 'text-xs font-mono text-amber-400 mt-0.5 block truncate';
-        }
-        if (STATE.scoldState === 'IDLE') {
-          DOM.quickScoldIndicator.innerText = `Student away... (${remainingSec}s)`;
-        }
-      } else {
-        // Grace period expired: user has left the desk!
-        STATE.isUserAbsent = true;
-        if (DOM.deskPresenceText) {
-          DOM.deskPresenceText.innerText = 'GONE (SCOLDING)';
-          DOM.deskPresenceText.className = 'text-xs font-mono text-rose-500 font-bold mt-0.5 block truncate animate-pulse';
-        }
+    // Update shared buffer for 60 FPS renderer
+    STATE.latestPredictions = {
+      primaryPersonBox: foundPersonBox,
+      phoneDetections,
+      hasTouch,
+      hasPhone
+    };
 
-        // Trigger absence scold if IDLE and cooldown passed
-        if (STATE.scoldState === 'IDLE' && (now - STATE.lastAbsenceScoldEndTime > STATE.absenceCooldownMs)) {
-          console.log('[ForceStudyAI] Student not visible in camera! Triggering absence scold.');
-          triggerMemeScold("Desk Abandonment / Student Not Visible", "absence");
-        }
+    // 5. Multi-Signal Presence & Desk Departure Evaluation
+    // Presence is confirmed if person box is found OR hands are tracked on desk
+    const handsPresent = STATE.lastHandLandmarks && STATE.lastHandLandmarks.length > 0;
+    const studentPresent = (foundPersonBox !== null) || handsPresent;
+
+    if (studentPresent) {
+      STATE.lastPersonSeenTime = now;
+      if (STATE.isUserAbsent) {
+        STATE.isUserAbsent = false;
+        updateSystemStatus('studying', 'Student returned 📚');
+        DOM.quickScoldIndicator.innerText = 'Welcome back! Studying peacefully 📚';
+      }
+      if (DOM.deskPresenceText) {
+        DOM.deskPresenceText.innerText = 'PRESENT';
+        DOM.deskPresenceText.className = 'text-xs font-mono text-emerald-400 mt-0.5 block truncate';
       }
     } else {
-      if (DOM.deskPresenceText) {
-        DOM.deskPresenceText.innerText = 'NOT VISIBLE';
-        DOM.deskPresenceText.className = 'text-xs font-mono text-slate-400 mt-0.5 block truncate';
+      // Neither person body nor hands are visible in the frame
+      const absentMs = now - STATE.lastPersonSeenTime;
+      if (STATE.absenceAlarmEnabled) {
+        const remainingSec = Math.max(0, Math.ceil((STATE.absenceGracePeriodMs - absentMs) / 1000));
+        if (absentMs < STATE.absenceGracePeriodMs) {
+          if (DOM.deskPresenceText) {
+            DOM.deskPresenceText.innerText = `ABSENT (${remainingSec}s)`;
+            DOM.deskPresenceText.className = 'text-xs font-mono text-amber-400 mt-0.5 block truncate';
+          }
+          if (STATE.scoldState === 'IDLE') {
+            DOM.quickScoldIndicator.innerText = `Student away... (${remainingSec}s)`;
+          }
+        } else {
+          // Grace period fully expired: desk truly abandoned!
+          STATE.isUserAbsent = true;
+          if (DOM.deskPresenceText) {
+            DOM.deskPresenceText.innerText = 'GONE (SCOLDING)';
+            DOM.deskPresenceText.className = 'text-xs font-mono text-rose-500 font-bold mt-0.5 block truncate animate-pulse';
+          }
+
+          // Trigger absence scold if IDLE and cooldown has passed
+          if (STATE.scoldState === 'IDLE' && (now - STATE.lastAbsenceScoldEndTime > STATE.absenceCooldownMs)) {
+            console.log('[ForceStudyAI] Student not visible in camera! Triggering absence scold.');
+            triggerMemeScold("Desk Abandonment / Student Not Visible", "absence");
+          }
+        }
+      } else {
+        if (DOM.deskPresenceText) {
+          DOM.deskPresenceText.innerText = 'NOT VISIBLE';
+          DOM.deskPresenceText.className = 'text-xs font-mono text-slate-400 mt-0.5 block truncate';
+        }
       }
     }
+
+    // 6. Evaluate Phone Scolding State Machine
+    const isTriggerMet = (STATE.detectionMode === 'touch') ? hasTouch : hasPhone;
+    handleScoldingStateMachine(isTriggerMet);
+
+  } catch (err) {
+    console.warn('[ForceStudyAI] AI loop error:', err);
+  } finally {
+    STATE.isAiRunning = false;
+    if (STATE.isSessionActive) {
+      // Adaptive scheduling for continuous, responsive inference
+      setTimeout(aiVisionLoop, 25);
+    }
   }
-
-  // Update & Draw Smoothed Cyber User Tracking Reticle
-  updateAndDrawUserTracker(primaryPersonBox, handTouchingPhone || (phoneDetected && STATE.detectionMode === 'any'));
-
-  DOM.touchStatusText.innerText = handTouchingPhone ? '✋ TOUCH DETECTED!' : 'NO TOUCH';
-  DOM.touchStatusText.className = `text-xs font-mono mt-1 block truncate ${handTouchingPhone ? 'text-rose-400 font-semibold animate-pulse' : 'text-slate-300'}`;
-
-  // Evaluate Phone Scolding State Machine
-  const isTriggerMet = (STATE.detectionMode === 'touch') ? handTouchingPhone : phoneDetected;
-  handleScoldingStateMachine(isTriggerMet);
-
-  requestAnimationFrame(detectionLoop);
 }
 
-// --- Check Hand Touching Phone ---
-function checkHandTouchingPhone(phoneBox) {
+// --- Precision Smartphone Touch & Proximity Analysis ---
+function checkHandTouchingPhone(phoneBox, personBox) {
   const [px, py, pw, ph] = phoneBox;
-  const padding = 30; // Proximity threshold
-  const minX = px - padding;
-  const minY = py - padding;
-  const maxX = px + pw + padding;
-  const maxY = py + ph + padding;
+  const touchMargin = 55; // 55px margin in video coordinates for natural finger reach
+  const minX = px - touchMargin;
+  const minY = py - touchMargin;
+  const maxX = px + pw + touchMargin;
+  const maxY = py + ph + touchMargin;
 
+  // 1. Check all detected MediaPipe Hand landmarks across both hands
   if (STATE.lastHandLandmarks && STATE.lastHandLandmarks.length > 0) {
     for (const hand of STATE.lastHandLandmarks) {
       for (const landmark of hand) {
         const lx = landmark.x * STATE.videoWidth;
         const ly = landmark.y * STATE.videoHeight;
         if (lx >= minX && lx <= maxX && ly >= minY && ly <= maxY) {
-          return true;
+          return true; // Direct finger/palm contact detected!
         }
       }
     }
   }
 
-  // Fallback if MediaPipe Hands is unavailable
-  if (!STATE.handsModel || STATE.lastHandLandmarks.length === 0) {
+  // 2. Check Torso/Chest Proximity Fallback:
+  // When holding a smartphone in front of the upper body, fingers wrap around the phone edges
+  // and MediaPipe may fail to register separate hand landmarks due to occlusion.
+  // If the phone's center is within the active upper-body zone of the student, it is actively in-hand!
+  if (personBox) {
+    const [perX, perY, perW, perH] = personBox;
+    const phoneCenterX = px + pw / 2;
+    const phoneCenterY = py + ph / 2;
+
+    const inHorizBody = phoneCenterX >= perX && phoneCenterX <= (perX + perW);
+    const inUpperTorso = phoneCenterY >= (perY + perH * 0.20) && phoneCenterY <= (perY + perH * 0.95);
+
+    if (inHorizBody && inUpperTorso) {
+      return true;
+    }
+  }
+
+  // 3. Fallback if MediaPipe Hands is not supported/initialized on this hardware:
+  // If no hand tracker is available, any detected phone in view counts as active in touch mode
+  if (!STATE.handsModel) {
     return true;
   }
 

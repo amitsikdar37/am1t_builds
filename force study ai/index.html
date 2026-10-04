@@ -30,7 +30,7 @@
 
   <!-- FULLSCREEN CAMERA & HUD VIEWPORT -->
   <div id="videoContainer" class="fixed inset-0 w-full h-full bg-black overflow-hidden z-0">
-    <video id="webcam" playsinline autoplay muted class="absolute inset-0 w-full h-full object-cover"></video>
+    <video id="webcam" playsinline webkit-playsinline autoplay muted class="absolute inset-0 w-full h-full object-cover"></video>
     <canvas id="outputCanvas" class="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none"></canvas>
 
     <!-- Sleek Studio Welcome Screen -->
@@ -264,9 +264,9 @@
           <div>
             <div class="flex justify-between text-[11px] text-slate-400 mb-1 font-mono">
               <span>Absence Grace Delay</span>
-              <span id="absenceDelayVal" class="text-rose-400">4s</span>
+              <span id="absenceDelayVal" class="text-rose-400">8s</span>
             </div>
-            <input type="range" id="absenceDelaySlider" min="2" max="15" value="4" class="w-full accent-rose-500 cursor-pointer" />
+            <input type="range" id="absenceDelaySlider" min="4" max="20" value="8" class="w-full accent-rose-500 cursor-pointer" />
           </div>
         </div>
 
@@ -299,9 +299,9 @@
         <div>
           <div class="flex justify-between text-xs text-slate-300 mb-1">
             <span>Detection Confidence</span>
-            <span id="confVal" class="font-mono text-slate-400">55%</span>
+            <span id="confVal" class="font-mono text-slate-400">35%</span>
           </div>
-          <input type="range" id="confSlider" min="30" max="85" value="55" class="w-full accent-rose-500 cursor-pointer" />
+          <input type="range" id="confSlider" min="20" max="75" value="35" class="w-full accent-rose-500 cursor-pointer" />
         </div>
 
         <!-- Camera Selector -->
